@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>org.beast2</groupId>
+    <artifactId>beast2lang</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+
+    <name>Beast2Lang</name>
+    <description>A concise model definition language for Beast2 that translates to and from PhyloSpec/ModelPhy</description>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <antlr4.version>4.12.0</antlr4.version>
+        <maven.compiler.release>11</maven.compiler.release>
+    </properties>
+
+    <dependencies>
+        <!-- ANTLR4 runtime -->
+        <dependency>
+            <groupId>org.antlr</groupId>
+            <artifactId>antlr4-runtime</artifactId>
+            <version>${antlr4.version}</version>
+        </dependency>
+        
+        <!-- JSON library -->
+        <dependency>
+            <groupId>org.json</groupId>
+            <artifactId>json</artifactId>
+            <version>20230618</version>
+        </dependency>
+        
+        <!-- Command line parsing -->
+        <dependency>
+            <groupId>info.picocli</groupId>
+            <artifactId>picocli</artifactId>
+            <version>4.7.4</version>
+        </dependency>
+        
+        <!-- Testing -->
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.13.2</version>
+            <scope>test</scope>
+        </dependency>
+    
+    <dependency>
+        <groupId>beast2</groupId>
+        <artifactId>beast-base</artifactId>
+        <version>2.7.5</version>
+    </dependency>
+    <dependency>
+        <groupId>beast2</groupId>
+        <artifactId>beast-app</artifactId>
+        <version>2.7.5</version>
+    </dependency>
+    </dependencies>
+
+
+    <build>
+        <plugins>
+            <!-- ANTLR4 plugin -->
+<plugin>
+    <groupId>org.antlr</groupId>
+    <artifactId>antlr4-maven-plugin</artifactId>
+    <version>${antlr4.version}</version>
+    <executions>
+        <execution>
+            <id>antlr</id>
+            <goals>
+                <goal>antlr4</goal>
+            </goals>
+            <configuration>
+                <sourceDirectory>${project.basedir}/src/main/antlr4</sourceDirectory>
+                <outputDirectory>${project.build.directory}/generated-sources/antlr4</outputDirectory>
+                <visitor>true</visitor>
+                <listener>true</listener>
+                <treatWarningsAsErrors>false</treatWarningsAsErrors>
+                <arguments>
+                    <argument>-package</argument>
+                    <argument>org.beast2.modelLanguage.parser</argument>
+                </arguments>
+            </configuration>
+        </execution>
+    </executions>
+</plugin>            
+            <!-- Maven Compiler Plugin -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.13.0</version>
+                <configuration>
+                    <release>${maven.compiler.release}</release>
+                </configuration>
+            </plugin>
+            
+            <!-- Maven Shade Plugin for creating executable jar -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.4.1</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <configuration>
+                            <transformers>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                    <mainClass>org.beast2.modelLanguage.Beast2Lang</mainClass>
+                                </transformer>
+                            </transformers>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            
+            <!-- Maven Surefire Plugin for running tests -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.1.2</version>
+            </plugin>
+        </plugins>
+    </build>
+</project>

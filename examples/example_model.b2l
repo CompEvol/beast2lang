@@ -1,0 +1,20 @@
+// Define a log-normal distribution as prior for birth rate
+beast.base.inference.distribution.ParametricDistribution lognorm = beast.base.inference.distribution.LogNormalDistributionModel(M=0.0, S=1.0);
+
+// Define birth rate parameter with the log-normal prior
+beast.base.inference.parameter.RealParameter birthRate ~ Prior(distr=lognorm);
+
+// Define a Yule tree prior that uses the birth rate
+beast.base.evolution.tree.Tree myTree ~ beast.base.evolution.speciation.YuleModel(birthDiffRate=birthRate);
+
+// Define a JC69 substitution model
+beast.base.evolution.substitutionmodel.JukesCantor jc = beast.base.evolution.substitutionmodel.JukesCantor();
+
+// Define site model with the JC69 substitution model
+beast.base.evolution.sitemodel.SiteModel siteModel = beast.base.evolution.sitemodel.SiteModel(substModel=jc);
+
+// Create an alignment (this would typically be loaded from a file)
+beast.base.evolution.alignment.Alignment alignment = beast.base.evolution.alignment.Alignment();
+
+// Define the tree likelihood that connects the tree and alignment
+beast.base.evolution.likelihood.TreeLikelihood treeLikelihood = beast.base.evolution.likelihood.TreeLikelihood(data=alignment, tree=myTree, siteModel=siteModel);
