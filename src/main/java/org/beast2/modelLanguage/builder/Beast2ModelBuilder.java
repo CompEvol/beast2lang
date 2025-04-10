@@ -172,7 +172,7 @@ public class Beast2ModelBuilder {
                 value = Integer.parseInt(ctx.INTEGER_LITERAL().getText());
             } else if (ctx.FLOAT_LITERAL() != null) {
                 type = Literal.LiteralType.FLOAT;
-                value = Float.parseFloat(ctx.FLOAT_LITERAL().getText());
+                value = Double.parseDouble(ctx.FLOAT_LITERAL().getText());
             } else if (ctx.STRING_LITERAL() != null) {
                 type = Literal.LiteralType.STRING;
                 // Remove quotes from the string literal

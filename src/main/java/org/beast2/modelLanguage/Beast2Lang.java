@@ -11,6 +11,10 @@ import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
+import org.beast2.modelLanguage.model.Statement;
+import org.beast2.modelLanguage.model.VariableDeclaration;
+import org.beast2.modelLanguage.model.DistributionAssignment;
+
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
@@ -30,6 +34,44 @@ import java.util.concurrent.Callable;
          version = "beast2lang 0.1.0",
          description = "Provides utilities for working with Beast2 model definition language")
 public class Beast2Lang implements Callable<Integer> {
+
+    // Flag to track BEAST2 initialization status
+    private static boolean beast2Initialized = false;
+
+    /**
+     * Initialize BEAST2 classes and environment
+     */
+    private static void initializeBEAST2() {
+        if (beast2Initialized) {
+            return;
+        }
+        
+        try {
+            // Set program name for BEAST
+            Class<?> programStatusClass = Class.forName("beast.base.core.ProgramStatus");
+            java.lang.reflect.Field nameField = programStatusClass.getField("name");
+            nameField.set(null, "Beast2Lang");
+            
+            // Load BEAST packages
+            try {
+                Class<?> packageManagerClass = Class.forName("beast.pkgmgmt.PackageManager");
+                java.lang.reflect.Method loadExternalJarsMethod = 
+                    packageManagerClass.getMethod("loadExternalJars");
+                loadExternalJarsMethod.invoke(null);
+                System.out.println("BEAST2 packages initialized successfully");
+            } catch (Exception e) {
+                // Log but continue - core functionality should still work
+                System.err.println("Warning: Could not load some external packages: " + e.getMessage());
+            }
+            
+            // Log success
+            System.out.println("BEAST2 environment initialized");
+            beast2Initialized = true;
+        } catch (Exception e) {
+            System.err.println("Error initializing BEAST2: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
 
     @Command(name = "validate", description = "Validate a Beast2Lang file")
     public Integer validate(
@@ -61,7 +103,6 @@ public class Beast2Lang implements Callable<Integer> {
             System.out.println("Converting from " + fromFormat + " to " + toFormat + "...");
             
             // Initialize converters
-            Beast2ModelBuilder builder = new Beast2ModelBuilder();
             Beast2ToPhyloSpecConverter toPhyloSpecConverter = new Beast2ToPhyloSpecConverter();
             PhyloSpecToBeast2Converter toBeast2Converter = new PhyloSpecToBeast2Converter();
             Beast2ModelBuilderReflection reflectionBuilder = new Beast2ModelBuilderReflection();
@@ -70,7 +111,7 @@ public class Beast2Lang implements Callable<Integer> {
             if ("beast2".equals(fromFormat) && "phylospec".equals(toFormat)) {
                 try (FileInputStream fis = new FileInputStream(inputFile)) {
                     // Convert Beast2Lang to PhyloSpec
-                    Beast2Model model = builder.buildFromStream(fis);
+                    Beast2Model model = reflectionBuilder.buildFromStream(fis);
                     JSONObject phyloSpec = toPhyloSpecConverter.convert(model);
                     
                     // Output result
@@ -90,20 +131,25 @@ public class Beast2Lang implements Callable<Integer> {
                 writeOutput(outputFile, beast2Lang);
                 return 0;
             } else if ("beast2".equals(fromFormat) && "xml".equals(toFormat)) {
+                // Initialize BEAST2 environment
+                initializeBEAST2();
+                
                 try (FileInputStream fis = new FileInputStream(inputFile)) {
                     // Parse Beast2Lang
-                    Beast2Model model = reflectionBuilder.buildFromString(
-                            new String(Files.readAllBytes(inputFile.toPath())));
+                    Beast2Model model = reflectionBuilder.buildFromStream(fis);
                     
-                    // Convert to BEAST2 objects
-                    Object rootObject = reflectionBuilder.buildBeast2Objects(model);
-                    
-                    // Generate XML
-                    String xml = generateXML(rootObject);
-                    
-                    // Output result
-                    writeOutput(outputFile, xml);
-                    return 0;
+                    try {
+                        // Try reflection approach first
+                        Object rootObject = reflectionBuilder.buildBeast2Objects(model);
+                        
+                        // If successful, generate XML using BEAST's XML producer
+                        String xml = generateXML(rootObject);
+                        writeOutput(outputFile, xml);
+                        return 0;
+                    } catch (Exception e) {
+                        System.err.println("Error using reflection approach: " + e.getMessage());
+                        return 1;
+                    }
                 }
             } else {
                 System.err.println("Unsupported conversion: " + fromFormat + " to " + toFormat);
@@ -111,45 +157,6 @@ public class Beast2Lang implements Callable<Integer> {
             }
         } catch (Exception e) {
             System.err.println("Error converting file: " + e.getMessage());
-            e.printStackTrace();
-            return 1;
-        }
-    }
-
-    @Command(name = "create", description = "Create BEAST2 objects from Beast2Lang and optionally write XML")
-    public Integer create(
-            @Option(names = {"-o", "--output"}, description = "Output XML file") File outputFile,
-            @Parameters(paramLabel = "FILE", description = "Beast2Lang file to process") File inputFile) {
-        
-        try {
-            System.out.println("Creating BEAST2 objects from " + inputFile.getPath() + "...");
-            
-            // Parse the Beast2Lang file
-            Beast2ModelBuilderReflection builder = new Beast2ModelBuilderReflection();
-            String modelContent = new String(Files.readAllBytes(inputFile.toPath()));
-            Beast2Model model = builder.buildFromString(modelContent);
-            
-            // Create BEAST2 objects
-            Object rootObject = builder.buildBeast2Objects(model);
-            
-            // Print summary of created objects
-            Map<String, Object> beastObjects = builder.getBeastObjects();
-            System.out.println("Created " + beastObjects.size() + " BEAST2 objects:");
-            for (String key : beastObjects.keySet()) {
-                Object obj = beastObjects.get(key);
-                System.out.println("  - " + key + ": " + obj.getClass().getSimpleName());
-            }
-            
-            // If output file specified, write XML
-            if (outputFile != null) {
-                String xml = generateXML(rootObject);
-                writeOutput(outputFile, xml);
-                System.out.println("XML written to " + outputFile.getPath());
-            }
-            
-            return 0;
-        } catch (Exception e) {
-            System.err.println("Error creating BEAST2 objects: " + e.getMessage());
             e.printStackTrace();
             return 1;
         }
@@ -184,6 +191,7 @@ public class Beast2Lang implements Callable<Integer> {
         return xml;
     }
 
+
     /**
      * Write output to a file or stdout
      */
@@ -210,4 +218,7 @@ public class Beast2Lang implements Callable<Integer> {
         int exitCode = new CommandLine(new Beast2Lang()).execute(args);
         System.exit(exitCode);
     }
+    
+    // Implementation methods for direct XML generation would go here
+    // (These would implement generateVariableDeclXml, generateDistributionAssignXml, etc.)
 }

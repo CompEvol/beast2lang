@@ -57,11 +57,154 @@
         <artifactId>beast-app</artifactId>
         <version>2.7.5</version>
     </dependency>
+    <dependency>
+        <groupId>beast2</groupId>
+        <artifactId>beast-launcher</artifactId>
+        <version>2.7.5</version>
+    </dependency>
     </dependencies>
 
 
     <build>
         <plugins>
+        
+        <!-- Plugin to generate the command-line script -->
+<plugin>
+    <groupId>org.apache.maven.plugins</groupId>
+    <artifactId>maven-antrun-plugin</artifactId>
+    <version>3.1.0</version>
+    <executions>
+        <execution>
+            <id>create-shell-script</id>
+            <phase>package</phase>
+            <goals>
+                <goal>run</goal>
+            </goals>
+            <configuration>
+                <target>
+                    <echo file="${project.build.directory}/beast2lang">#!/bin/sh
+# Determine the location of this script
+if [ -z "$SCRIPT_LOCATION" ]; then
+    ## resolve links - $0 may be a link to application
+    PRG="$0"
+    # need this for relative symlinks
+    while [ -h "$PRG" ]; do
+        ls=`ls -ld "$PRG"`
+        link=`expr "$ls" : '.*-> \(.*\)$'`
+        if expr "$link" : '/.*' > /dev/null; then
+            PRG="$link"
+        else
+            PRG="`dirname "$PRG"`/$link"
+        fi
+    done
+    saveddir=`pwd`
+    SCRIPT_LOCATION=`dirname "$PRG"`
+    cd "$saveddir"
+fi
+
+# Find BEAST 2.7.x installation
+if [ -z "$BEAST" ]; then
+    # macOS Applications directory - look for any BEAST 2.7.x
+    if [ -d "/Applications" ]; then
+        BEAST_DIR=$(find /Applications -maxdepth 1 -type d -name "BEAST 2.7*" | sort -r | head -n 1)
+        if [ ! -z "$BEAST_DIR" ]; then
+            BEAST="$BEAST_DIR"
+        fi
+    fi
+    
+    # Home Applications directory - look for any BEAST 2.7.x
+    if [ -z "$BEAST" ] &amp;&amp; [ -d "$HOME/Applications" ]; then
+        BEAST_DIR=$(find $HOME/Applications -maxdepth 1 -type d -name "BEAST 2.7*" | sort -r | head -n 1)
+        if [ ! -z "$BEAST_DIR" ]; then
+            BEAST="$BEAST_DIR"
+        fi
+    fi
+    
+    # Check specific version as fallback
+    if [ -z "$BEAST" ]; then
+        if [ -d "/Applications/BEAST 2.7.5" ]; then
+            BEAST="/Applications/BEAST 2.7.5"
+        elif [ -d "$HOME/Applications/BEAST 2.7.5" ]; then
+            BEAST="$HOME/Applications/BEAST 2.7.5"
+        elif [ -d "/usr/local/share/beast" ]; then
+            # Check if this is a 2.7.x version in /usr/local/share/beast
+            if [ -f "/usr/local/share/beast/lib/version.xml" ]; then
+                VERSION=$(grep "2.7" "/usr/local/share/beast/lib/version.xml")
+                if [ ! -z "$VERSION" ]; then
+                    BEAST="/usr/local/share/beast"
+                fi
+            else
+                BEAST="/usr/local/share/beast"
+            fi
+        fi
+    fi
+    
+    # If we still can't find BEAST 2.7.x, try to fall back to bundled dependencies
+    if [ -z "$BEAST" ]; then
+        echo "BEAST 2.7.x installation not found. Using bundled dependencies."
+        BEAST="bundled"
+    else
+        echo "Found BEAST installation at: $BEAST"
+    fi
+fi
+
+# Set Java
+JAVA="java"
+if [ "$BEAST" != "bundled" ] &amp;&amp; [ -x "${BEAST}/jre/bin/java" ]; then
+    JAVA="${BEAST}/jre/bin/java"
+fi
+
+# Set classpath with BEAST JARs
+CP="${SCRIPT_LOCATION}/beast2lang-0.1.0-SNAPSHOT-jar-with-dependencies.jar"
+if [ "$BEAST" != "bundled" ]; then
+    # Add all BEAST JARs to classpath
+    for jar in ${BEAST}/lib/*.jar; do
+        CP="${CP}:${jar}"
+    done
+    # Add package JARs
+    if [ -d "${BEAST}/lib/packages" ]; then
+        for jar in ${BEAST}/lib/packages/*.jar; do
+            CP="${CP}:${jar}"
+        done
+    fi
+fi
+
+# Run the application
+"$JAVA" -Dlauncher.wait.for.exit=true -Xss256m -Xmx4g -Dbeast.user.package.dir=user.pkgs -cp "$CP" org.beast2.modelLanguage.Beast2Lang "$@"
+</echo>
+                    <chmod file="${project.build.directory}/beast2lang" perm="755"/>
+                </target>
+            </configuration>
+        </execution>
+    </executions>
+</plugin>
+
+<!-- Plugin to create an executable JAR with dependencies -->
+<plugin>
+    <groupId>org.apache.maven.plugins</groupId>
+    <artifactId>maven-assembly-plugin</artifactId>
+    <version>3.4.2</version>
+    <executions>
+        <execution>
+            <id>make-assembly</id>
+            <phase>package</phase>
+            <goals>
+                <goal>single</goal>
+            </goals>
+            <configuration>
+                <descriptorRefs>
+                    <descriptorRef>jar-with-dependencies</descriptorRef>
+                </descriptorRefs>
+                <archive>
+                    <manifest>
+                        <mainClass>org.beast2.modelLanguage.Beast2Lang</mainClass>
+                    </manifest>
+                </archive>
+            </configuration>
+        </execution>
+    </executions>
+</plugin>
+
             <!-- ANTLR4 plugin -->
 <plugin>
     <groupId>org.antlr</groupId>

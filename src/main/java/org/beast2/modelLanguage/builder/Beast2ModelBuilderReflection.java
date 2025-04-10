@@ -10,15 +10,15 @@ import org.beast2.modelLanguage.parser.Beast2ModelLanguageParser;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Method;
+import java.lang.reflect.*;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Stack;
 
-import java.lang.reflect.Modifier;
+import beast.base.core.BEASTInterface;
+import beast.base.core.Input;
 
 /**
  * Builder class that constructs a Beast2Model from an input file using ANTLR,
@@ -90,9 +90,15 @@ public class Beast2ModelBuilderReflection {
      * @throws Exception if construction fails
      */
     public Object buildBeast2Objects(Beast2Model model) throws Exception {
+
+        System.out.println("Creating beast2 objects");
+
         // First phase: Create all BEAST2 objects
         createBeast2Objects(model);
-        
+
+        System.out.println("Connecting beast2 objects");
+
+
         // Second phase: Connect objects by resolving references
         connectBeast2Objects(model);
         
@@ -102,242 +108,405 @@ public class Beast2ModelBuilderReflection {
         return rootObject;
     }
     
-    /**
-     * Create BEAST2 objects for all statements in the model
-     */
-    private void createBeast2Objects(Beast2Model model) throws Exception {
-        for (Statement statement : model.getStatements()) {
-            if (statement instanceof VariableDeclaration) {
-                createBeast2ObjectFromVariableDecl((VariableDeclaration) statement);
-            } else if (statement instanceof DistributionAssignment) {
-                createBeast2ObjectFromDistAssign((DistributionAssignment) statement);
-            }
+private void createBeast2Objects(Beast2Model model) throws Exception {
+    List<Statement> stmts = model.getStatements();
+    System.out.println("[DEBUG] createBeast2Objects: total statements = " + stmts.size());
+    for (Statement statement : stmts) {
+        System.out.println("[DEBUG]   statement = "
+            + statement.getClass().getSimpleName() + " → " + statement);
+        if (statement instanceof VariableDeclaration) {
+            System.out.println("[DEBUG]     → VariableDeclaration branch");
+            createBeast2ObjectFromVariableDecl((VariableDeclaration) statement);
+        } else if (statement instanceof DistributionAssignment) {
+            System.out.println("[DEBUG]     → DistributionAssignment branch");
+            createBeast2ObjectFromDistAssign((DistributionAssignment) statement);
+        } else {
+            System.out.println("[DEBUG]     → UNKNOWN statement type");
         }
     }
+}
     
-    /**
-     * Create a BEAST2 object from a VariableDeclaration
-     */
-    private void createBeast2ObjectFromVariableDecl(VariableDeclaration varDecl) throws Exception {
-        String className = varDecl.getClassName();
-        String variableName = varDecl.getVariableName();
-        Expression value = varDecl.getValue();
-        
-        // Create BEAST2 object using reflection
-        Class<?> beastClass = Class.forName(className);
-        Object beastObject = beastClass.getDeclaredConstructor().newInstance();
-        
-        // Set ID if method exists
+private void createBeast2ObjectFromVariableDecl(VariableDeclaration varDecl) {
+    String declaredTypeName      = varDecl.getClassName();   // e.g. "beast.base.inference.parameter.RealParameter"
+    String variableName          = varDecl.getVariableName(); 
+    Expression value             = varDecl.getValue();       // should be a FunctionCall
+
+    System.out.println("Creating object with name: " + variableName 
+                       + " of declared type: " + declaredTypeName);
+
+    if (!(value instanceof FunctionCall)) {
+        throw new IllegalArgumentException("Right side of variable declaration must be a function call");
+    }
+    FunctionCall funcCall = (FunctionCall) value;
+    String implementationClassName = funcCall.getClassName();
+
+    // 1) Load classes
+    Class<?> declaredType       = null;
+    try {
+        declaredType = Class.forName(declaredTypeName);
+    } catch (ClassNotFoundException e) {
+        throw new RuntimeException("Failed to obtain declared class " + declaredTypeName,e);
+    }
+    Class<?> implementationClass = null;
+    try {
+        implementationClass = Class.forName(implementationClassName);
+    } catch (ClassNotFoundException e) {
+        throw new RuntimeException("Failed to obtain implementation class " + implementationClassName,e);
+    }
+    if (!declaredType.isAssignableFrom(implementationClass)) {
+        throw new ClassCastException(
+            implementationClassName + " is not assignable to " + declaredTypeName
+        );
+    }
+
+    // 2) Instantiate
+    Object beastObject = null;
+    try {
+        beastObject = implementationClass.getDeclaredConstructor().newInstance();
+    } catch (InstantiationException e) {
+        throw new RuntimeException("Failed instantiation of " + implementationClassName, e);
+    } catch (IllegalAccessException e) {
+        throw new RuntimeException(e);
+    } catch (InvocationTargetException e) {
+        throw new RuntimeException(e);
+    } catch (NoSuchMethodException e) {
+        throw new RuntimeException(e);
+    }
+    System.out.println("Successfully instantiated " + implementationClassName);
+
+    // 3) setID if present
+    try {
+        Method setId = implementationClass.getMethod("setID", String.class);
         try {
-            Method setIdMethod = beastClass.getMethod("setID", String.class);
-            setIdMethod.invoke(beastObject, variableName);
-        } catch (NoSuchMethodException e) {
-            // Not all BEAST2 objects have setID method
+            setId.invoke(beastObject, variableName);
+        } catch (IllegalAccessException e) {
+            throw new RuntimeException("Failed to setID on " + implementationClassName, e);
+        } catch (InvocationTargetException e) {
+            throw new RuntimeException(e);
         }
-        
-        // Process the value expression
-        if (value instanceof FunctionCall) {
-            FunctionCall funcCall = (FunctionCall) value;
-            configureBeast2Object(beastObject, funcCall);
-        }
-        
-        // Store the created object
-        beastObjects.put(variableName, beastObject);
-    }
+    } catch (NoSuchMethodException ignore) {}
+
+    // 4) INTROSPECT all declared public Input<?> fields on the class
+    //    and build a name→Input<?> map
+    Map<String, Input<?>> inputMap = new HashMap<>();
+    for (Field f : implementationClass.getFields()) {
+    	
+    	System.out.println("  Field " + f);
+    	System.out.println("    type " + f.getType());
     
-    /**
-     * Create a BEAST2 object from a DistributionAssignment
-     */
+        if (Input.class.isAssignableFrom(f.getType())) {
+            @SuppressWarnings("unchecked")
+            Input<?> in = null;
+            try {
+                in = (Input<?>) f.get(beastObject);
+            } catch (IllegalAccessException e) {
+                throw new RuntimeException("Failed to get field " + f + " from " + beastObject, e);
+            }
+            inputMap.put(in.getName(), in);
+            // now inputMap.get("M") → the MParameterInput instance, etc.
+        }
+    }
+
+    // 5) CONFIGURE all arguments by matching name & type against that map
+    for (Argument arg : funcCall.getArguments()) {
+
+        System.out.println("  Argument " + arg);
+        System.out.println("    name " + arg.getName());
+
+        String   name     = arg.getName();
+        Object   rawValue = resolveExpressionValue(arg.getValue());
+
+        System.out.println("    rawValue: " + rawValue);
+
+        Input<?> in       = inputMap.get(name);
+        if (in == null) {
+            throw new RuntimeException("No Input named '" + name 
+                                       + "' in " + implementationClassName);
+        }
+        Class<?> expected = in.getType();
+        if (rawValue == null || ! expected.isAssignableFrom(rawValue.getClass())) {
+            throw new RuntimeException(String.format(
+                "Type mismatch for Input '%s' on %s: expected %s but got %s",
+                name,
+                implementationClassName,
+                expected.getSimpleName(),
+                rawValue == null ? "null" : rawValue.getClass().getSimpleName()
+            ));
+        }
+        // finally, set it
+        @SuppressWarnings("unchecked")
+        Input<Object> inObj = (Input<Object>) in;
+        inObj.setValue(rawValue, (BEASTInterface) beastObject);
+    }
+
+    // 6) Store the object
+    storeObject(variableName, beastObject);
+}
+
+    private void storeObject(String name, Object object) {
+        System.out.println("Storing object ");
+        System.out.println("  Name " + name);
+        System.out.println("  Object " + object);
+        beastObjects.put(name, object);
+
+    }
+
     private void createBeast2ObjectFromDistAssign(DistributionAssignment distAssign) throws Exception {
-        String className = distAssign.getClassName();
-        String variableName = distAssign.getVariableName();
+
+        String className     = distAssign.getClassName();
+        String varName       = distAssign.getVariableName();
         Expression distribution = distAssign.getDistribution();
-        
-        // Create the main object (e.g. RealParameter)
+
+        System.out.println("Creating random variable: " + varName);
+
+        // 1) Instantiate the parameter object
         Class<?> beastClass = Class.forName(className);
-        Object beastObject = null;
-        
+        Object beastObject  = beastClass.getDeclaredConstructor().newInstance();
+        System.out.println("[DEBUG] Instantiated parameter " + className + " as '" + varName + "'");
         try {
-            // Try to create using the default constructor
-            beastObject = beastClass.getDeclaredConstructor().newInstance();
-        } catch (InstantiationException | NoSuchMethodException e) {
-            // Try to find a static factory method like 'getInstance' or 'new'
-            try {
-                Method factoryMethod = beastClass.getMethod("getInstance");
-                beastObject = factoryMethod.invoke(null);
-            } catch (NoSuchMethodException ex) {
-                try {
-                    Method newMethod = beastClass.getMethod("new" + beastClass.getSimpleName());
-                    beastObject = newMethod.invoke(null);
-                } catch (NoSuchMethodException ex2) {
-                    // As a fallback, try to find any concrete implementation
-                    if (beastClass.isInterface() || Modifier.isAbstract(beastClass.getModifiers())) {
-                        // Try to find a concrete implementation
-                        String implClassName = className + "Impl";
-                        try {
-                            Class<?> implClass = Class.forName(implClassName);
-                            beastObject = implClass.getDeclaredConstructor().newInstance();
-                        } catch (ClassNotFoundException | NoSuchMethodException | InstantiationException ex3) {
-                            throw new RuntimeException("Cannot instantiate abstract class or interface: " + className);
-                        }
-                    } else {
-                        throw new RuntimeException("Cannot instantiate class: " + className, e);
-                    }
-                }
-            }
+            beastClass.getMethod("setID", String.class).invoke(beastObject, varName);
+        } catch (NoSuchMethodException ignore) {}
+        storeObject(varName, beastObject);
+
+        // 2) Bail if no distribution
+        if (!(distribution instanceof FunctionCall)) {
+            System.out.println("[DEBUG] No distribution for " + varName);
+            return;
         }
-        
-        if (beastObject == null) {
-            throw new RuntimeException("Failed to instantiate object of class: " + className);
-        }
-        
-        // Set ID if method exists
+        FunctionCall funcCall = (FunctionCall) distribution;
+
+        // 3) Instantiate the distribution
+        String distClassName = funcCall.getClassName();
+        Class<?> distClass   = Class.forName(distClassName);
+        Object distObject    = distClass.getDeclaredConstructor().newInstance();
+        System.out.println("[DEBUG] Instantiated distribution " + distClassName + " as '" + varName + "Prior'");
         try {
-            Method setIdMethod = beastClass.getMethod("setID", String.class);
-            setIdMethod.invoke(beastObject, variableName);
-        } catch (NoSuchMethodException e) {
-            // Not all BEAST2 objects have setID method
+            distClass.getMethod("setID", String.class).invoke(distObject, varName + "Prior");
+        } catch (NoSuchMethodException ignore) {}
+
+        // 4) Reflect over Input<?> fields
+        Map<String,Input<?>> inputMap = new HashMap<>();
+        Map<String,Class<?>> expectedTypeMap = new HashMap<>();
+        System.out.println("[DEBUG] Scanning public Input<?> fields on " + distClass.getSimpleName());
+        for (Field f : distClass.getFields()) {
+            if (!Input.class.isAssignableFrom(f.getType())) continue;
+            @SuppressWarnings("unchecked")
+            Input<?> in = (Input<?>) f.get(distObject);
+            String name = in.getName();
+            inputMap.put(name, in);
+
+            // first try the Input's own getType()
+            Class<?> expected = in.getType();
+            System.out.printf("[DEBUG]  field %-20s → B2L name '%s', Input.getType() = %s%n",
+                            f.getName(), name, expected);
+
+            // fallback if getType() was null
+            if (expected == null) {
+                Type gtype = f.getGenericType();
+                if (gtype instanceof ParameterizedType) {
+                    Type[] args = ((ParameterizedType) gtype).getActualTypeArguments();
+                    if (args.length == 1 && args[0] instanceof Class<?>) {
+                        expected = (Class<?>) args[0];
+                        System.out.printf("[DEBUG]    fallback generic type for '%s' = %s%n",
+                                        name, expected);
+                    }
+                }
+            }
+            expectedTypeMap.put(name, expected);
         }
-        
-        // Store the created object
-        beastObjects.put(variableName, beastObject);
-        
-        // Process the distribution expression to create the distribution object
-        if (distribution instanceof FunctionCall) {
-            FunctionCall funcCall = (FunctionCall) distribution;
+
+        // 5) Wire the 'x' input
+        Input<?> xIn = inputMap.get("x");
+        if (xIn != null) {
+            @SuppressWarnings("unchecked")
+            Input<Object> xi = (Input<Object>) xIn;
+            xi.setValue(beastObject, (BEASTInterface) distObject);
+            System.out.println("[DEBUG]  wired 'x' → " + varName);
+        }
+
+        // 6) Configure remaining args
+        System.out.println("[DEBUG] Configuring distribution arguments:");
+        for (Argument arg : funcCall.getArguments()) {
+            String name = arg.getName();
+            if ("x".equals(name)) continue;
+
+            Object rawValue = resolveExpressionValue(arg.getValue());
+            Class<?> rawClass = rawValue == null ? null : rawValue.getClass();
+            Class<?> expected = expectedTypeMap.get(name);
+
+            System.out.printf("[DEBUG]   arg '%s': rawValue=%s (%s), expected=%s%n",
+                            name,
+                            rawValue,
+                            rawClass,
+                            expected);
+
+            Input<?> in = inputMap.get(name);
+            if (in == null) {
+                throw new RuntimeException("No Input named '" + name
+                    + "' on distribution " + distClass.getSimpleName());
+            }
             
-            // Create the distribution object
-            String distClassName = funcCall.getClassName();
-            Class<?> distClass = Class.forName(distClassName);
-            Object distObject = null;
-            
-            try {
-                // Try to create using the default constructor
-                distObject = distClass.getDeclaredConstructor().newInstance();
-            } catch (InstantiationException | NoSuchMethodException e) {
-                // Try to find a static factory method like 'getInstance' or 'new'
-                try {
-                    Method factoryMethod = distClass.getMethod("getInstance");
-                    distObject = factoryMethod.invoke(null);
-                } catch (NoSuchMethodException ex) {
-                    try {
-                        Method newMethod = distClass.getMethod("new" + distClass.getSimpleName());
-                        distObject = newMethod.invoke(null);
-                    } catch (NoSuchMethodException ex2) {
-                        // As a fallback, try to find any concrete implementation
-                        if (distClass.isInterface() || Modifier.isAbstract(distClass.getModifiers())) {
-                            // Try to find a concrete implementation
-                            String implClassName = distClassName + "Impl";
-                            try {
-                                Class<?> implClass = Class.forName(implClassName);
-                                distObject = implClass.getDeclaredConstructor().newInstance();
-                            } catch (ClassNotFoundException | NoSuchMethodException | InstantiationException ex3) {
-                                throw new RuntimeException("Cannot instantiate abstract class or interface: " + distClassName);
-                            }
-                        } else {
-                            throw new RuntimeException("Cannot instantiate class: " + distClassName, e);
-                        }
-                    }
+            // FIX: Properly handle null expected type
+            // Only check compatibility if we have both an expected type and a non-null value
+            if (expected != null && rawValue != null) {
+                // Check if the raw value's class is assignable to the expected type
+                if (!expected.isAssignableFrom(rawValue.getClass())) {
+                    throw new RuntimeException(String.format(
+                        "Type mismatch for '%s': expected %s but got %s",
+                        name,
+                        expected.getSimpleName(),
+                        rawValue.getClass().getSimpleName()
+                    ));
+                }
+            } else {
+                // Log that we're skipping type checking due to null expected type
+                if (expected == null) {
+                    System.out.println("[DEBUG]    skipping type check for '" + name + "' (unknown expected type)");
                 }
             }
-            
-            if (distObject == null) {
-                throw new RuntimeException("Failed to instantiate distribution object of class: " + distClassName);
-            }
-            
-            // Set a unique ID for the distribution object
+
             try {
-                Method setIdMethod = distClass.getMethod("setID", String.class);
-                setIdMethod.invoke(distObject, variableName + "Prior");  // E.g. "kappaPrior"
-            } catch (NoSuchMethodException e) {
-                // Not all BEAST2 objects have setID method
-            }
-            
-            // First, automatically set the 'x' parameter to the main object
-            try {
-                // Try initByName method first
-                try {
-                    Method initMethod = distClass.getMethod("initByName", String.class, Object.class);
-                    initMethod.invoke(distObject, "x", beastObject);
-                } catch (NoSuchMethodException e) {
-                    // Try setInputValue method next
-                    try {
-                        Method setInputMethod = distClass.getMethod("setInputValue", String.class, Object.class);
-                        setInputMethod.invoke(distObject, "x", beastObject);
-                    } catch (NoSuchMethodException e2) {
-                        try {
-                            // If all else fails, try setter method
-                            Method setXMethod = distClass.getMethod("setX", beastClass);
-                            setXMethod.invoke(distObject, beastObject);
-                        } catch (NoSuchMethodException e3) {
-                            System.err.println("Could not find a method to set 'x' parameter on distribution");
-                        }
-                    }
-                }
+                @SuppressWarnings("unchecked")
+                Input<Object> inObj = (Input<Object>) in;
+                inObj.setValue(rawValue, (BEASTInterface) distObject);
+                System.out.println("[DEBUG]    set '" + name + "' → " + rawValue);
             } catch (Exception e) {
-                System.err.println("Failed to set 'x' parameter on distribution: " + e.getMessage());
-            }
-            
-            // Then, configure the distribution object with the parameters provided
-            configureBeast2Object(distObject, funcCall);
-            
-            // Store the distribution object
-            beastObjects.put(variableName + "Prior", distObject);
-            
-            // Try to establish the back-reference from the parameter to the distribution
-            try {
-                Method setDistMethod = beastClass.getMethod("setDistribution", distClass);
-                setDistMethod.invoke(beastObject, distObject);
-            } catch (NoSuchMethodException e) {
-                // Not all parameter classes have setDistribution method
+                System.err.println("[ERROR] Failed to set input '" + name + "': " + e.getMessage());
+                e.printStackTrace();
+                throw e;
             }
         }
-    } 
+
+        // 7) Store and hook back
+        storeObject(varName + "Prior", distObject);
+        try {
+            Method setDist = beastClass.getMethod("setDistribution", distClass);
+            setDist.invoke(beastObject, distObject);
+            System.out.println("[DEBUG] hooked distribution into " + varName);
+        } catch (NoSuchMethodException ignore) {}
+    }
     
     /**
      * Configure a BEAST2 object with parameters from a function call
      */
-    private void configureBeast2Object(Object beastObject, FunctionCall funcCall) throws Exception {
+    private void configureBeast2Object(Object beastObject, FunctionCall funcCall) {
+        
         Class<?> beastClass = beastObject.getClass();
         
-        // Process each argument
-        for (Argument arg : funcCall.getArguments()) {
-            String paramName = arg.getName();
-            Expression paramValue = arg.getValue();
-            
-            // Try to find initByName or setInputValue method
-            try {
-                // First try initByName(String, Object) method
-                Method initMethod = findMethodInHierarchy(beastClass, "initByName", String.class, Object.class);
-                if (initMethod != null) {
-                    Object value = resolveExpressionValue(paramValue);
-                    initMethod.invoke(beastObject, paramName, value);
-                    continue;
-                }
+        if (beastObject instanceof BEASTInterface) {
+            BEASTInterface beastIface = (BEASTInterface) beastObject;
+            for (Argument arg : funcCall.getArguments()) {
+                String paramName = arg.getName();
+                Object paramVal = resolveExpressionValue(arg.getValue());
+        
+                // 1. Inspect the Input
+                Input<?> input = beastIface.getInput(paramName);
+                Class<?> inputType = input.getType();
+        
+                // 2. If inputType is a list, but paramVal is a single Double, wrap it
+                //    Or if paramVal is "[...]", parse it into a List<Double>, etc.
+                Object convertedVal = convertIfNeeded(inputType, paramVal);
+        
+                // 3. Set the input
+                input.setValue(convertedVal, beastIface);
+        
+                // Then call validate or initAndValidate as needed...
+            }
+        }
+        else {
+            // Process each argument
+            for (Argument arg : funcCall.getArguments()) {
+                String paramName = arg.getName();
+                Expression paramValue = arg.getValue();
                 
-                // Try setInputValue(String, Object) method
-                Method setInputMethod = findMethodInHierarchy(beastClass, "setInputValue", String.class, Object.class);
-                if (setInputMethod != null) {
-                    Object value = resolveExpressionValue(paramValue);
-                    setInputMethod.invoke(beastObject, paramName, value);
-                    continue;
-                }
-                
-                // Try setter method
-                String setterName = "set" + capitalize(paramName);
-                Method[] methods = beastClass.getMethods();
-                for (Method method : methods) {
-                    if (method.getName().equals(setterName) && method.getParameterCount() == 1) {
+                // Try to find initByName or setInputValue method
+                try {
+                    // First try initByName(String, Object) method
+                    Method initMethod = findMethodInHierarchy(beastClass, "initByName", String.class, Object.class);
+                    if (initMethod != null) {
                         Object value = resolveExpressionValue(paramValue);
-                        method.invoke(beastObject, value);
-                        break;
+                        initMethod.invoke(beastObject, paramName, value);
+                        continue;
                     }
+                    
+                    // Try setInputValue(String, Object) method
+                    Method setInputMethod = findMethodInHierarchy(beastClass, "setInputValue", String.class, Object.class);
+                    if (setInputMethod != null) {
+                        Object value = resolveExpressionValue(paramValue);
+                        setInputMethod.invoke(beastObject, paramName, value);
+                        continue;
+                    }
+                    
+                    // Try setter method
+                    String setterName = "set" + capitalize(paramName);
+                    Method[] methods = beastClass.getMethods();
+                    for (Method method : methods) {
+                        if (method.getName().equals(setterName) && method.getParameterCount() == 1) {
+                            Object value = resolveExpressionValue(paramValue);
+                            method.invoke(beastObject, value);
+                            break;
+                        }
+                    }
+                } catch (Exception e) {
+                    System.err.println("Failed to set parameter " + paramName + " on " + beastClass.getName() + ": " + e.getMessage());
                 }
-            } catch (Exception e) {
-                System.err.println("Failed to set parameter " + paramName + " on " + beastClass.getName() + ": " + e.getMessage());
             }
         }
     }
+    
+    /**
+ * Convert the given paramVal into whatever type the BEAST Input expects.
+ * E.g., if the Input type is a List<Double> but paramVal is just "1.0",
+ * we can wrap it in a single-element list.
+ */
+private Object convertIfNeeded(Class<?> inputType, Object paramVal) {
+    // If nothing supplied, nothing to convert
+    if (paramVal == null) {
+        return null;
+    }
+
+    // Example: if the input expects a List and paramVal is not already a List, convert it
+    if (List.class.isAssignableFrom(inputType)) {
+        // If it's already a List, just return it
+        if (paramVal instanceof List) {
+            return paramVal;
+        }
+
+        // If it's a single number, wrap in a one-element list
+        if (paramVal instanceof Number) {
+            List<Double> singleList = new ArrayList<>();
+            singleList.add(((Number) paramVal).doubleValue());
+            return singleList;
+        }
+
+        // If it's a bracketed String like "[1.0, 2.0]", parse into a List<Double>
+        if (paramVal instanceof String) {
+            String str = ((String) paramVal).trim();
+            if (str.startsWith("[") && str.endsWith("]")) {
+                String inner = str.substring(1, str.length() - 1).trim();
+                if (inner.isEmpty()) {
+                    // e.g. "[]" => empty list
+                    return new ArrayList<Double>();
+                }
+                String[] tokens = inner.split(",");
+                List<Double> result = new ArrayList<>();
+                for (String token : tokens) {
+                    // Attempt to parse each token as a double
+                    result.add(Double.valueOf(token.trim()));
+                }
+                return result;
+            }
+        }
+        // If none of the above matched, just return paramVal unchanged
+        // (the setValue(...) might fail if it's not the correct type)
+        return paramVal;
+    }
+
+    // You could add more checks if inputType is e.g. Double[].class or RealParameter
+    // For now, if we don't need to transform anything, return as-is.
+    return paramVal;
+}
+
     
     /**
      * Find a method in a class hierarchy
@@ -357,11 +526,32 @@ public class Beast2ModelBuilderReflection {
     /**
      * Resolve the value of an expression to a Java object
      */
-    private Object resolveExpressionValue(Expression expr) throws Exception {
+    private Object resolveExpressionValue(Expression expr) {
+
         if (expr instanceof Identifier) {
             // Reference to another object
             String refName = ((Identifier) expr).getName();
-            return beastObjects.get(refName);
+            System.out.println("Resolving identifier " + refName);
+            System.out.println("Keys: " + beastObjects.keySet());
+            System.out.println("Values: " + beastObjects.values());
+            Object beastObject = null;
+
+            try {
+                beastObject = beastObjects.get(refName);
+            } catch (Exception e) {
+                System.out.println("Runtime exception trying to retrieve object from beastObjects");
+                throw new RuntimeException(e);
+            }
+
+            System.out.println("Got object " + beastObject);
+
+            if (beastObject == null) {
+                System.out.println("Keys: " + beastObjects.keySet());
+            } else {
+                System.out.println("Retrieved " + refName + ":" + beastObject);
+            }
+
+            return beastObject;
         } else if (expr instanceof Literal) {
             // Literal value
             Literal literal = (Literal) expr;
@@ -372,9 +562,25 @@ public class Beast2ModelBuilderReflection {
             String className = funcCall.getClassName();
             
             // Create the object using reflection
-            Class<?> beastClass = Class.forName(className);
-            Object nestedObject = beastClass.getDeclaredConstructor().newInstance();
-            
+            Class<?> beastClass = null;
+            try {
+                beastClass = Class.forName(className);
+            } catch (ClassNotFoundException e) {
+                throw new RuntimeException("Failed to create class " + className, e);
+            }
+            Object nestedObject = null;
+            try {
+                nestedObject = beastClass.getDeclaredConstructor().newInstance();
+            } catch (InstantiationException e) {
+                throw new RuntimeException(e);
+            } catch (IllegalAccessException e) {
+                throw new RuntimeException(e);
+            } catch (InvocationTargetException e) {
+                throw new RuntimeException(e);
+            } catch (NoSuchMethodException e) {
+                throw new RuntimeException(e);
+            }
+
             // Configure the object
             configureBeast2Object(nestedObject, funcCall);
             
@@ -533,7 +739,7 @@ public class Beast2ModelBuilderReflection {
                 value = Integer.parseInt(ctx.INTEGER_LITERAL().getText());
             } else if (ctx.FLOAT_LITERAL() != null) {
                 type = Literal.LiteralType.FLOAT;
-                value = Float.parseFloat(ctx.FLOAT_LITERAL().getText());
+                value = Double.parseDouble(ctx.FLOAT_LITERAL().getText());
             } else if (ctx.STRING_LITERAL() != null) {
                 type = Literal.LiteralType.STRING;
                 // Remove quotes from the string literal

@@ -1,8 +1,14 @@
+// Define a meanlog of birthRate lognormal prior
+beast.base.inference.parameter.RealParameter M = beast.base.inference.parameter.RealParameter(value=1.0);
+
+// Define a sdlog of birthRate lognormal prior
+beast.base.inference.parameter.RealParameter S = beast.base.inference.parameter.RealParameter(value=1.0);
+
 // Define a log-normal distribution as prior for birth rate
-beast.base.inference.distribution.ParametricDistribution lognorm = beast.base.inference.distribution.LogNormalDistributionModel(M=0.0, S=1.0);
+beast.base.inference.distribution.ParametricDistribution lognorm = beast.base.inference.distribution.LogNormalDistributionModel(M=M, S=S);
 
 // Define birth rate parameter with the log-normal prior
-beast.base.inference.parameter.RealParameter birthRate ~ Prior(distr=lognorm);
+beast.base.inference.parameter.RealParameter birthRate ~ beast.base.inference.distribution.Prior(distr=lognorm);
 
 // Define a Yule tree prior that uses the birth rate
 beast.base.evolution.tree.Tree myTree ~ beast.base.evolution.speciation.YuleModel(birthDiffRate=birthRate);
