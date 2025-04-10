@@ -224,14 +224,21 @@ private void createBeast2ObjectFromVariableDecl(VariableDeclaration varDecl) {
                                        + "' in " + implementationClassName);
         }
         Class<?> expected = in.getType();
-        if (rawValue == null || ! expected.isAssignableFrom(rawValue.getClass())) {
-            throw new RuntimeException(String.format(
-                "Type mismatch for Input '%s' on %s: expected %s but got %s",
-                name,
-                implementationClassName,
-                expected.getSimpleName(),
-                rawValue == null ? "null" : rawValue.getClass().getSimpleName()
-            ));
+        
+        // Check type compatibility only if we have an expected type and a non-null value
+        if (expected != null && rawValue != null) {
+            if (!expected.isAssignableFrom(rawValue.getClass())) {
+                throw new RuntimeException(String.format(
+                    "Type mismatch for Input '%s' on %s: expected %s but got %s",
+                    name,
+                    implementationClassName,
+                    expected.getSimpleName(),
+                    rawValue.getClass().getSimpleName()
+                ));
+            }
+        } else if (expected == null) {
+            // Log that we're skipping type checking due to null expected type
+            System.out.println("    skipping type check for '" + name + "' (unknown expected type)");
         }
         // finally, set it
         @SuppressWarnings("unchecked")
@@ -239,7 +246,21 @@ private void createBeast2ObjectFromVariableDecl(VariableDeclaration varDecl) {
         inObj.setValue(rawValue, (BEASTInterface) beastObject);
     }
 
-    // 6) Store the object
+    // 6) Call initAndValidate if it exists
+    try {
+        Method initAndValidate = implementationClass.getMethod("initAndValidate");
+        try {
+            System.out.println("Calling initAndValidate() on " + implementationClassName);
+            initAndValidate.invoke(beastObject);
+        } catch (IllegalAccessException | InvocationTargetException e) {
+            throw new RuntimeException("Failed to call initAndValidate on " + implementationClassName, e);
+        }
+    } catch (NoSuchMethodException e) {
+        // Some BEAST objects might not have this method, that's OK
+        System.out.println("Note: " + implementationClassName + " has no initAndValidate method");
+    }
+
+    // 7) Store the object
     storeObject(variableName, beastObject);
 }
 
@@ -263,9 +284,70 @@ private void createBeast2ObjectFromVariableDecl(VariableDeclaration varDecl) {
         Class<?> beastClass = Class.forName(className);
         Object beastObject  = beastClass.getDeclaredConstructor().newInstance();
         System.out.println("[DEBUG] Instantiated parameter " + className + " as '" + varName + "'");
+        
+        // 1.1) Set ID
         try {
             beastClass.getMethod("setID", String.class).invoke(beastObject, varName);
         } catch (NoSuchMethodException ignore) {}
+        
+        // 1.2) Special handling for RealParameter to ensure proper initialization
+        if (beastClass.getName().equals("beast.base.inference.parameter.RealParameter")) {
+            System.out.println("[DEBUG] Special handling for RealParameter initialization");
+            
+            // Find and set a default value for the parameter
+            try {
+                // Set a default value of 0.0 - this ensures the values array gets initialized
+                Field valuesInputField = null;
+                
+                // First look for valuesInput in the class itself
+                for (Field field : beastClass.getFields()) {
+                    if (field.getName().equals("valuesInput") && Input.class.isAssignableFrom(field.getType())) {
+                        valuesInputField = field;
+                        break;
+                    }
+                }
+                
+                // If not found, look in superclasses
+                if (valuesInputField == null) {
+                    Class<?> currentClass = beastClass.getSuperclass();
+                    while (currentClass != null && valuesInputField == null) {
+                        for (Field field : currentClass.getFields()) {
+                            if (field.getName().equals("valuesInput") && Input.class.isAssignableFrom(field.getType())) {
+                                valuesInputField = field;
+                                break;
+                            }
+                        }
+                        currentClass = currentClass.getSuperclass();
+                    }
+                }
+                
+                if (valuesInputField != null) {
+                    @SuppressWarnings("unchecked")
+                    Input<Object> valuesInput = (Input<Object>) valuesInputField.get(beastObject);
+                    
+                    // Try to set a default value (could be a Double or a List)
+                    List<Double> defaultValue = new ArrayList<>();
+                    defaultValue.add(0.0); // Default value of 0.0
+                    valuesInput.setValue(defaultValue, (BEASTInterface) beastObject);
+                    System.out.println("[DEBUG] Set default value for RealParameter: " + defaultValue);
+                    
+                    // Call initAndValidate to ensure internal arrays are initialized
+                    try {
+                        Method initMethod = beastClass.getMethod("initAndValidate");
+                        initMethod.invoke(beastObject);
+                        System.out.println("[DEBUG] Called initAndValidate on RealParameter");
+                    } catch (Exception e) {
+                        System.err.println("[ERROR] Failed to call initAndValidate: " + e.getMessage());
+                    }
+                } else {
+                    System.err.println("[ERROR] Could not find valuesInput field in RealParameter");
+                }
+            } catch (Exception e) {
+                System.err.println("[ERROR] Failed to initialize RealParameter: " + e.getMessage());
+                e.printStackTrace();
+            }
+        }
+        
         storeObject(varName, beastObject);
 
         // 2) Bail if no distribution
@@ -346,7 +428,6 @@ private void createBeast2ObjectFromVariableDecl(VariableDeclaration varDecl) {
                     + "' on distribution " + distClass.getSimpleName());
             }
             
-            // FIX: Properly handle null expected type
             // Only check compatibility if we have both an expected type and a non-null value
             if (expected != null && rawValue != null) {
                 // Check if the raw value's class is assignable to the expected type
@@ -358,10 +439,40 @@ private void createBeast2ObjectFromVariableDecl(VariableDeclaration varDecl) {
                         rawValue.getClass().getSimpleName()
                     ));
                 }
-            } else {
+            } else if (expected == null) {
                 // Log that we're skipping type checking due to null expected type
-                if (expected == null) {
-                    System.out.println("[DEBUG]    skipping type check for '" + name + "' (unknown expected type)");
+                System.out.println("[DEBUG]    skipping type check for '" + name + "' (unknown expected type)");
+                
+                // Try to determine type from generic parameter if possible
+                try {
+                    // Get the field for this input
+                    for (Field field : distClass.getFields()) {
+                        if (field.getType() == Input.class && field.get(distObject) == in) {
+                            // We found the field, now check its generic type
+                            Type genericType = field.getGenericType();
+                            if (genericType instanceof ParameterizedType) {
+                                Type[] typeArgs = ((ParameterizedType) genericType).getActualTypeArguments();
+                                if (typeArgs.length > 0 && typeArgs[0] instanceof Class) {
+                                    Class<?> typeArgClass = (Class<?>) typeArgs[0];
+                                    System.out.println("[DEBUG]    inferred expected type for '" + name + 
+                                                      "' from generic parameter: " + typeArgClass.getName());
+                                    
+                                    // Now check compatibility with inferred type
+                                    if (rawValue != null && !typeArgClass.isAssignableFrom(rawValue.getClass())) {
+                                        throw new RuntimeException(String.format(
+                                            "Type mismatch for '%s': inferred expected %s but got %s",
+                                            name,
+                                            typeArgClass.getSimpleName(),
+                                            rawValue.getClass().getSimpleName()
+                                        ));
+                                    }
+                                }
+                            }
+                            break;
+                        }
+                    }
+                } catch (Exception e) {
+                    System.out.println("[DEBUG]    could not infer type from generic parameter: " + e.getMessage());
                 }
             }
 
@@ -377,7 +488,33 @@ private void createBeast2ObjectFromVariableDecl(VariableDeclaration varDecl) {
             }
         }
 
-        // 7) Store and hook back
+        // 7) Call initAndValidate for the distribution object
+        try {
+            Method initAndValidate = distClass.getMethod("initAndValidate");
+            System.out.println("[DEBUG] Calling initAndValidate() on " + distClassName);
+            initAndValidate.invoke(distObject);
+        } catch (NoSuchMethodException e) {
+            System.out.println("[DEBUG] Note: " + distClassName + " has no initAndValidate method");
+        } catch (Exception e) {
+            System.err.println("[ERROR] Failed to call initAndValidate on " + distClassName + ": " + e.getMessage());
+            e.printStackTrace();
+            throw e;
+        }
+
+        // 8) Call initAndValidate for the parameter object if it wasn't called earlier
+        try {
+            Method initAndValidate = beastClass.getMethod("initAndValidate");
+            System.out.println("[DEBUG] Calling initAndValidate() on " + className);
+            initAndValidate.invoke(beastObject);
+        } catch (NoSuchMethodException e) {
+            System.out.println("[DEBUG] Note: " + className + " has no initAndValidate method");
+        } catch (Exception e) {
+            System.err.println("[ERROR] Failed to call initAndValidate on " + className + ": " + e.getMessage());
+            e.printStackTrace();
+            throw e;
+        }
+
+        // 9) Store and hook back
         storeObject(varName + "Prior", distObject);
         try {
             Method setDist = beastClass.getMethod("setDistribution", distClass);
@@ -409,8 +546,17 @@ private void createBeast2ObjectFromVariableDecl(VariableDeclaration varDecl) {
         
                 // 3. Set the input
                 input.setValue(convertedVal, beastIface);
-        
-                // Then call validate or initAndValidate as needed...
+            }
+            
+            // 4. Call initAndValidate after all inputs are set
+            try {
+                Method initMethod = findMethodInHierarchy(beastClass, "initAndValidate");
+                if (initMethod != null) {
+                    System.out.println("[DEBUG] Calling initAndValidate() on nested object of class " + beastClass.getName());
+                    initMethod.invoke(beastObject);
+                }
+            } catch (Exception e) {
+                System.err.println("[WARN] Could not call initAndValidate on nested object: " + e.getMessage());
             }
         }
         else {
@@ -450,6 +596,24 @@ private void createBeast2ObjectFromVariableDecl(VariableDeclaration varDecl) {
                 } catch (Exception e) {
                     System.err.println("Failed to set parameter " + paramName + " on " + beastClass.getName() + ": " + e.getMessage());
                 }
+            }
+            
+            // Call initAndValidate or similar initialization method if it exists
+            try {
+                Method initMethod = findMethodInHierarchy(beastClass, "initAndValidate");
+                if (initMethod != null) {
+                    System.out.println("[DEBUG] Calling initAndValidate() on non-BEAST object of class " + beastClass.getName());
+                    initMethod.invoke(beastObject);
+                } else {
+                    // Try initialize method as fallback
+                    Method initializeMethod = findMethodInHierarchy(beastClass, "initialize");
+                    if (initializeMethod != null) {
+                        System.out.println("[DEBUG] Calling initialize() on non-BEAST object of class " + beastClass.getName());
+                        initializeMethod.invoke(beastObject);
+                    }
+                }
+            } catch (Exception e) {
+                System.err.println("[WARN] Could not call initialization method on object: " + e.getMessage());
             }
         }
     }
