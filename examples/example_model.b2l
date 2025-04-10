@@ -1,26 +1,32 @@
-// Define a meanlog of birthRate lognormal prior
-beast.base.inference.parameter.RealParameter M = beast.base.inference.parameter.RealParameter(value=1.0);
+// Import BEAST2 packages
+import beast.base.inference.parameter.*;
+import beast.base.inference.distribution.*;
+import beast.base.evolution.tree.*;
+import beast.base.evolution.speciation.*;
+import beast.base.evolution.substitutionmodel.*;
+import beast.base.evolution.sitemodel.*;
+import beast.base.evolution.alignment.*;
+import beast.base.evolution.likelihood.*;
 
-// Define a sdlog of birthRate lognormal prior
-beast.base.inference.parameter.RealParameter S = beast.base.inference.parameter.RealParameter(value=1.0);
+// Define a meanlog and sdlog of birthRate lognormal prior
+RealParameter M = RealParameter(value=1.0);
+RealParameter S = RealParameter(value=1.0);
 
 // Define a log-normal distribution as prior for birth rate
-beast.base.inference.distribution.ParametricDistribution lognorm = beast.base.inference.distribution.LogNormalDistributionModel(M=M, S=S);
+ParametricDistribution lognorm = LogNormalDistributionModel(M=M, S=S);
 
 // Define birth rate parameter with the log-normal prior
-beast.base.inference.parameter.RealParameter birthRate ~ beast.base.inference.distribution.Prior(distr=lognorm);
+RealParameter birthRate ~ Prior(distr=lognorm);
 
 // Define a Yule tree prior that uses the birth rate
-beast.base.evolution.tree.Tree myTree ~ beast.base.evolution.speciation.YuleModel(birthDiffRate=birthRate);
+Tree myTree ~ YuleModel(birthDiffRate=birthRate);
 
 // Define a JC69 substitution model
-beast.base.evolution.substitutionmodel.JukesCantor jc = beast.base.evolution.substitutionmodel.JukesCantor();
+JukesCantor jc = JukesCantor();
 
 // Define site model with the JC69 substitution model
-beast.base.evolution.sitemodel.SiteModel siteModel = beast.base.evolution.sitemodel.SiteModel(substModel=jc);
+SiteModel siteModel = SiteModel(substModel=jc);
 
-// Create an alignment (this would typically be loaded from a file)
-beast.base.evolution.alignment.Alignment alignment = beast.base.evolution.alignment.Alignment();
-
-// Define the tree likelihood that connects the tree and alignment
-beast.base.evolution.likelihood.TreeLikelihood treeLikelihood = beast.base.evolution.likelihood.TreeLikelihood(data=alignment, tree=myTree, siteModel=siteModel);
+// Alignment sampled from TreeLikelihood
+@observed {data="primates.nex"}
+Alignment alignment ~ TreeLikelihood(tree=myTree, siteModel=siteModel);

@@ -1,15 +1,13 @@
 package org.beast2.modelLanguage.model;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 /**
- * Base interface for all statements in the Beast2 model
+ * Interface representing a statement in a Beast2 model.
  */
-public abstract class Statement extends ModelNode {
-    public Statement(String id) {
-        super(id);
-    }
+public interface Statement {
+    /**
+     * Accept a visitor for this statement
+     * 
+     * @param visitor the visitor to accept
+     */
+    void accept(StatementVisitor visitor);
 }

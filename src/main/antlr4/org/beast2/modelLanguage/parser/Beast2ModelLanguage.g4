@@ -5,12 +5,28 @@ grammar Beast2ModelLanguage;
 
 // Parser Rules
 program
-    : statement+ EOF
+    : importStatement* statement+ EOF
+    ;
+
+importStatement
+    : IMPORT qualifiedName (DOT STAR)? SEMICOLON
     ;
 
 statement
-    : variableDeclaration
-    | distributionAssignment
+    : annotation? variableDeclaration
+    | annotation? distributionAssignment
+    ;
+
+annotation
+    : AT IDENTIFIER annotationBody?
+    ;
+
+annotationBody
+    : LBRACE annotationParameter (COMMA annotationParameter)* RBRACE
+    ;
+
+annotationParameter
+    : identifier EQUALS literal
     ;
 
 variableDeclaration
@@ -45,6 +61,10 @@ argumentValue
     ;
 
 className
+    : qualifiedName
+    ;
+
+qualifiedName
     : identifier (DOT identifier)*
     ;
 
@@ -66,7 +86,12 @@ SEMICOLON   : ';';
 COMMA       : ',';
 LPAREN      : '(';
 RPAREN      : ')';
+LBRACE      : '{';
+RBRACE      : '}';
 DOT         : '.';
+AT          : '@';
+STAR        : '*';
+IMPORT      : 'import';
 
 BOOLEAN_LITERAL
     : 'true'

@@ -1,41 +1,68 @@
 package org.beast2.modelLanguage.model;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 /**
- * Represents a variable declaration with a value assignment
- * Example: beast.base.inference.distribution.ParametricDistribution lognorm = beast.base.inference.distribution.LogNormalDistributionModel(M=1, S=1);
+ * Represents a variable declaration in a Beast2 model.
  */
-public class VariableDeclaration extends Statement {
-    private String className;
-    private String variableName;
-    private Expression value;
+public class VariableDeclaration implements Statement {
+    private final String className;
+    private final String variableName;
+    private final Expression value;
     
+    /**
+     * Constructor for a variable declaration
+     * 
+     * @param className the class name
+     * @param variableName the variable name
+     * @param value the expression value
+     */
     public VariableDeclaration(String className, String variableName, Expression value) {
-        super(variableName);
         this.className = className;
         this.variableName = variableName;
         this.value = value;
     }
     
+    /**
+     * Get the class name
+     * 
+     * @return the class name
+     */
     public String getClassName() {
         return className;
     }
     
+    /**
+     * Get the variable name
+     * 
+     * @return the variable name
+     */
     public String getVariableName() {
         return variableName;
     }
     
+    /**
+     * Get the value expression
+     * 
+     * @return the value expression
+     */
     public Expression getValue() {
         return value;
     }
     
+    /**
+     * Accept a visitor for this statement
+     * 
+     * @param visitor the visitor to accept
+     */
     @Override
-    public <T> T accept(ModelVisitor<T> visitor) {
-        return visitor.visit(this);
+    public void accept(StatementVisitor visitor) {
+        visitor.visit(this);
+    }
+    
+    /**
+     * Create a string representation of this variable declaration
+     */
+    @Override
+    public String toString() {
+        return className + " " + variableName + " = " + value + ";";
     }
 }
-

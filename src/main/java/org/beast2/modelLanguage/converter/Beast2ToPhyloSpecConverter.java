@@ -5,119 +5,141 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 /**
- * Converter that transforms a Beast2Model into a PhyloSpec/ModelPhy representation
+ * Converter from Beast2 model to PhyloSpec JSON
  */
-public class Beast2ToPhyloSpecConverter implements ModelVisitor<JSONObject> {
+public class Beast2ToPhyloSpecConverter implements StatementVisitor {
+    private JSONObject phyloSpec;
+    private JSONArray variables;
+    private JSONArray distributions;
     
     /**
-     * Convert a Beast2Model to a PhyloSpec/ModelPhy JSON representation
+     * Convert a Beast2 model to PhyloSpec JSON
      * 
-     * @param model the Beast2Model to convert
-     * @return a JSONObject containing the PhyloSpec representation
+     * @param model the Beast2 model to convert
+     * @return the PhyloSpec JSON object
      */
     public JSONObject convert(Beast2Model model) {
-        return model.accept(this);
-    }
-    
-    @Override
-    public JSONObject visit(Beast2Model model) {
-        JSONObject phyloSpec = new JSONObject();
-        JSONObject modelObj = new JSONObject();
-        JSONArray components = new JSONArray();
+        // Initialize the PhyloSpec JSON structure
+        phyloSpec = new JSONObject();
+        variables = new JSONArray();
+        distributions = new JSONArray();
         
-        // Set model metadata
-        modelObj.put("id", "generated_model");
-        modelObj.put("type", "phylogenetic");
+        phyloSpec.put("variables", variables);
+        phyloSpec.put("distributions", distributions);
         
-        // Process each statement in the model
-        for (Statement statement : model.getStatements()) {
-            components.put(statement.accept(this));
-        }
-        
-        // Add components to the model
-        modelObj.put("components", components);
-        
-        // Add the model to the top-level object
-        phyloSpec.put("model", modelObj);
+        // Process all statements in the model
+        model.accept(this);
         
         return phyloSpec;
     }
     
     @Override
-    public JSONObject visit(VariableDeclaration varDecl) {
-        JSONObject component = new JSONObject();
+    public void visit(VariableDeclaration varDecl) {
+        // Convert a variable declaration to PhyloSpec
+        JSONObject variable = new JSONObject();
+        variable.put("name", varDecl.getVariableName());
+        variable.put("type", varDecl.getClassName());
         
-        // Set component properties
-        component.put("id", varDecl.getVariableName());
-        component.put("type", getSimpleTypeName(varDecl.getClassName()));
-        component.put("value", varDecl.getValue().accept(this));
-        
-        return component;
-    }
-    
-    @Override
-    public JSONObject visit(DistributionAssignment distAssign) {
-        JSONObject component = new JSONObject();
-        
-        // Set component properties
-        component.put("id", distAssign.getVariableName());
-        component.put("type", getSimpleTypeName(distAssign.getClassName()));
-        component.put("distribution", distAssign.getDistribution().accept(this));
-        
-        return component;
-    }
-    
-    @Override
-    public JSONObject visit(FunctionCall funcCall) {
-        JSONObject function = new JSONObject();
-        JSONObject parameters = new JSONObject();
-        
-        // Set function type
-        function.put("type", getSimpleTypeName(funcCall.getClassName()));
-        
-        // Process function arguments
-        for (Argument arg : funcCall.getArguments()) {
-            parameters.put(arg.getName(), arg.getValue().accept(this));
+        // Handle the value expression
+        JSONObject value = convertExpression(varDecl.getValue());
+        if (value != null) {
+            variable.put("value", value);
         }
         
-        // Add parameters to the function
-        function.put("parameters", parameters);
-        
-        return function;
+        variables.put(variable);
     }
     
     @Override
-    public JSONObject visit(Identifier identifier) {
-        JSONObject ref = new JSONObject();
-        ref.put("ref", identifier.getName());
-        return ref;
-    }
-    
-    @Override
-    public JSONObject visit(Literal literal) {
-        // For literals, just return the value directly
-        Object value = literal.getValue();
+    public void visit(DistributionAssignment distAssign) {
+        // Convert a distribution assignment to PhyloSpec
+        JSONObject distribution = new JSONObject();
+        distribution.put("variable", distAssign.getVariableName());
         
-        // If it's a string, need to wrap it in a JSONObject to maintain type info
-        if (literal.getType() == Literal.LiteralType.STRING) {
-            JSONObject stringObj = new JSONObject();
-            stringObj.put("value", value);
-            stringObj.put("type", "string");
-            return stringObj;
+        // Handle the distribution expression
+        JSONObject distValue = convertExpression(distAssign.getDistribution());
+        if (distValue != null) {
+            distribution.put("distribution", distValue);
         }
         
-        // Numbers and booleans can be directly included in JSON
-        return new JSONObject().put("value", value);
+        distributions.put(distribution);
+    }
+    
+    @Override
+    public void visit(AnnotatedStatement annotatedStmt) {
+        // Process annotations
+        Annotation annotation = annotatedStmt.getAnnotation();
+        Statement innerStmt = annotatedStmt.getStatement();
+        
+        // Special handling for @observed annotation
+        if ("observed".equals(annotation.getName()) && innerStmt instanceof DistributionAssignment) {
+            DistributionAssignment distAssign = (DistributionAssignment) innerStmt;
+            
+            // Visit the inner statement
+            visit(distAssign);
+            
+            // Mark the variable as observed in the last added distribution
+            if (distributions.length() > 0) {
+                JSONObject lastDist = distributions.getJSONObject(distributions.length() - 1);
+                lastDist.put("observed", true);
+                
+                // Add data file if available
+                if (annotation.hasParameter("data")) {
+                    lastDist.put("dataFile", annotation.getParameterAsString("data"));
+                }
+            }
+        } else {
+            // For other types of annotations, just process the inner statement
+            innerStmt.accept(this);
+        }
     }
     
     /**
-     * Extract a simple type name from a fully qualified class name
+     * Convert an expression to a PhyloSpec JSON object
      * 
-     * @param className the fully qualified class name
-     * @return the simple type name
+     * @param expr the expression to convert
+     * @return the PhyloSpec JSON object
      */
-    private String getSimpleTypeName(String className) {
-        String[] parts = className.split("\\.");
-        return parts[parts.length - 1];
+    private JSONObject convertExpression(Expression expr) {
+        if (expr instanceof FunctionCall) {
+            FunctionCall funcCall = (FunctionCall) expr;
+            JSONObject function = new JSONObject();
+            function.put("type", funcCall.getClassName());
+            
+            // Add arguments
+            JSONObject args = new JSONObject();
+            for (Argument arg : funcCall.getArguments()) {
+                JSONObject argValue;
+                if (arg.getValue() instanceof Identifier) {
+                    // Reference to another variable
+                    Identifier id = (Identifier) arg.getValue();
+                    args.put(arg.getName(), id.getName());
+                } else if (arg.getValue() instanceof FunctionCall) {
+                    // Nested function call
+                    argValue = convertExpression(arg.getValue());
+                    args.put(arg.getName(), argValue);
+                } else if (arg.getValue() instanceof Literal) {
+                    // Literal value
+                    Literal lit = (Literal) arg.getValue();
+                    args.put(arg.getName(), lit.getValue());
+                }
+            }
+            
+            function.put("args", args);
+            return function;
+        } else if (expr instanceof Identifier) {
+            // Reference to another variable
+            Identifier id = (Identifier) expr;
+            JSONObject ref = new JSONObject();
+            ref.put("$ref", id.getName());
+            return ref;
+        } else if (expr instanceof Literal) {
+            // Literal value - not typically used in PhyloSpec top-level expressions
+            Literal lit = (Literal) expr;
+            JSONObject value = new JSONObject();
+            value.put("value", lit.getValue());
+            return value;
+        }
+        
+        return null;
     }
 }

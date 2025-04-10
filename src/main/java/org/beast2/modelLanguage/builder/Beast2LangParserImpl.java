@@ -15,18 +15,12 @@ import java.util.List;
 import java.util.Stack;
 
 /**
- * Builder class that constructs a Beast2Model from an input file using ANTLR
+ * Implementation of Beast2LangParser that uses ANTLR to parse Beast2Lang syntax.
  */
-public class Beast2ModelBuilder {
+public class Beast2LangParserImpl implements Beast2LangParser {
 
-    /**
-     * Parse an input stream and build a Beast2Model
-     * 
-     * @param inputStream the input stream to parse
-     * @return the constructed Beast2Model
-     * @throws IOException if an I/O error occurs
-     */
-    public Beast2Model buildFromStream(InputStream inputStream) throws IOException {
+    @Override
+    public Beast2Model parseFromStream(InputStream inputStream) throws IOException {
         // Create lexer and parser
         Beast2ModelLanguageLexer lexer = new Beast2ModelLanguageLexer(CharStreams.fromStream(inputStream));
         CommonTokenStream tokens = new CommonTokenStream(lexer);
@@ -45,14 +39,9 @@ public class Beast2ModelBuilder {
         // Return the constructed model
         return listener.getModel();
     }
-    
-    /**
-     * Parse a string and build a Beast2Model
-     * 
-     * @param input the input string to parse
-     * @return the constructed Beast2Model
-     */
-    public Beast2Model buildFromString(String input) {
+
+    @Override
+    public Beast2Model parseFromString(String input) {
         // Create lexer and parser
         Beast2ModelLanguageLexer lexer = new Beast2ModelLanguageLexer(CharStreams.fromString(input));
         CommonTokenStream tokens = new CommonTokenStream(lexer);
@@ -71,7 +60,7 @@ public class Beast2ModelBuilder {
         // Return the constructed model
         return listener.getModel();
     }
-
+    
     /**
      * ANTLR listener that builds a Beast2Model as it traverses the parse tree
      */
