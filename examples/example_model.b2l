@@ -19,7 +19,7 @@ ParametricDistribution lognorm = LogNormalDistributionModel(M=M, S=S);
 RealParameter birthRate ~ Prior(distr=lognorm);
 
 // Define a Yule tree prior that uses the birth rate
-Tree myTree ~ YuleModel(birthDiffRate=birthRate);
+Tree tree ~ YuleModel(birthDiffRate=birthRate);
 
 // Define a JC69 substitution model
 JukesCantor jc = JukesCantor();
@@ -28,5 +28,5 @@ JukesCantor jc = JukesCantor();
 SiteModel siteModel = SiteModel(substModel=jc);
 
 // Alignment sampled from TreeLikelihood
-@observed {data="primates.nex"}
-Alignment alignment ~ TreeLikelihood(tree=myTree, siteModel=siteModel);
+@observed(data="primates.nex")
+Alignment alignment ~ TreeLikelihood(tree=tree, siteModel=siteModel);

@@ -4,6 +4,11 @@ import org.beast2.modelLanguage.builder.Beast2ModelBuilderReflection;
 import org.beast2.modelLanguage.converter.Beast2ToPhyloSpecConverter;
 import org.beast2.modelLanguage.converter.PhyloSpecToBeast2Converter;
 import org.beast2.modelLanguage.model.Beast2Model;
+import org.beast2.modelLanguage.model.Beast2Analysis;
+import org.beast2.modelLanguage.builder.Beast2AnalysisBuilder;
+import beast.base.inference.MCMC;
+
+
 import org.json.JSONObject;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
@@ -130,6 +135,9 @@ public class Beast2Lang implements Callable<Integer> {
             @Option(names = {"--to"}, description = "Target format: beast2, phylospec, xml", defaultValue = "phylospec") String toFormat,
             @Option(names = {"-o", "--output"}, description = "Output file") File outputFile,
             @Option(names = {"--debug"}, description = "Enable debug logging", defaultValue = "false") boolean debug,
+            @Option(names="--chainLength", defaultValue="10000000", description="Default MCMC chain length") long chainLength,
+            @Option(names="--logEvery", defaultValue="1000", description="Default logging interval") int logEvery,
+            @Option(names="--traceFileName", defaultValue="trace.log", description="Default trace log file name") String traceFileName,
             @Parameters(paramLabel = "FILE", description = "Input file to convert") File inputFile) {
         
         // Set debug level if requested
@@ -177,15 +185,29 @@ public class Beast2Lang implements Callable<Integer> {
                 initializeBEAST2();
                 
                 try (FileInputStream fis = new FileInputStream(inputFile)) {
-                    // Parse Beast2Lang
+                    // parse the pure model
                     Beast2Model model = reflectionBuilder.buildFromStream(fis);
+                    
+                    // wrap in analysis
+                    Beast2Analysis analysis = new Beast2Analysis(
+                        model,
+                        chainLength,      // from CLI option --chainLength
+                        logEvery,         // from CLI option --logEvery
+                        traceFileName     // from CLI option --traceFileName
+                    );
+                    
+                    // build the run
+                    Beast2AnalysisBuilder analysisBuilder =
+                        new Beast2AnalysisBuilder(reflectionBuilder);
+                    MCMC rootRun = analysisBuilder.buildRun(analysis);
+                    
+                    // generate XML
+                    String xml = generateXML(rootRun);
+                    writeOutput(outputFile, xml);
                     
                     try {
                         // Build BEAST2 objects using reflection
                         Object rootObject = reflectionBuilder.buildBeast2Objects(model);
-                        
-                        // If successful, generate XML using BEAST's XML producer
-                        String xml = null;
                         
                         try {
                             xml = generateXML(rootObject);

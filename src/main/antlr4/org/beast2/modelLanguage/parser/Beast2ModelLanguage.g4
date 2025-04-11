@@ -22,7 +22,7 @@ annotation
     ;
 
 annotationBody
-    : LBRACE annotationParameter (COMMA annotationParameter)* RBRACE
+    : LPAREN annotationParameter (COMMA annotationParameter)* RPAREN
     ;
 
 annotationParameter

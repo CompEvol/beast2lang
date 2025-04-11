@@ -1,5 +1,7 @@
 package org.beast2.modelLanguage.builder;
 
+import beast.base.inference.Distribution;
+import beast.base.inference.StateNode;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.tree.ParseTreeWalker;
@@ -10,7 +12,9 @@ import org.beast2.modelLanguage.parser.Beast2ModelLanguageParser;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Main entry point for Beast2Lang model building operations.
@@ -29,7 +33,31 @@ public class Beast2ModelBuilderReflection {
         this.parser = new Beast2LangParserImpl();
         this.objectFactory = new ReflectionBeast2ObjectFactory();
     }
-    
+
+    /**
+     * After calling buildBeast2Objects(model), this returns
+     * all of the BEAST2 objects that implement InputComponent,
+     * i.e. the things you should put in the MCMC state.
+     */
+    public List<StateNode> getCreatedStateNodes() {
+        return objectFactory.getAllObjects().values().stream()
+                .filter(o -> o instanceof StateNode)
+                .map(o -> (StateNode)o)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * After calling buildBeast2Objects(model), this returns
+     * all of the BEAST2 objects that implement Distribution,
+     * i.e. the priors, tree‐likelihood, etc.
+     */
+    public List<Distribution> getCreatedDistributions() {
+        return objectFactory.getAllObjects().values().stream()
+                .filter(o -> o instanceof Distribution)
+                .map(o -> (Distribution)o)
+                .collect(Collectors.toList());
+    }
+
     /**
      * Parse an input stream and build a Beast2Model
      * 
