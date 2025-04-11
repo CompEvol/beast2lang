@@ -4,6 +4,11 @@ import org.beast2.modelLanguage.builder.handlers.DistributionAssignmentHandler;
 import org.beast2.modelLanguage.builder.handlers.VariableDeclarationHandler;
 import org.beast2.modelLanguage.model.*;
 
+import beast.base.inference.StateNode;
+import beast.base.inference.parameter.Parameter;
+import beast.base.evolution.tree.Tree;
+
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -12,6 +17,7 @@ import java.util.logging.Logger;
 /**
  * Implementation of Beast2ObjectFactory that uses reflection to create BEAST2 objects.
  * This class uses the visitor pattern to process statements.
+ * Enhanced to better track random variables and observed variables.
  */
 public class ReflectionBeast2ObjectFactory implements Beast2ObjectFactory, StatementVisitor {
     
@@ -27,8 +33,17 @@ public class ReflectionBeast2ObjectFactory implements Beast2ObjectFactory, State
     // Map to store created BEAST2 objects by ID
     private final Map<String, Object> beastObjects;
     
+    // Map to store specifically identified StateNode objects
+    private final Map<String, StateNode> stateNodeObjects;
+    
     // Map to store data files for observed variables
     private final Map<String, String> observedDataFiles;
+    
+    // Set to track which variables are observed (not just those with data files)
+    private final List<String> observedVariables;
+    
+    // Set to track which variables are random variables (have distributions)
+    private final List<String> randomVariables;
     
     // Current annotation being processed
     private Annotation currentAnnotation = null;
@@ -41,7 +56,10 @@ public class ReflectionBeast2ObjectFactory implements Beast2ObjectFactory, State
         this.distAssignHandler = new DistributionAssignmentHandler();
         this.nameResolver = new NameResolver();
         this.beastObjects = new HashMap<>();
+        this.stateNodeObjects = new HashMap<>();
         this.observedDataFiles = new HashMap<>();
+        this.observedVariables = new ArrayList<>();
+        this.randomVariables = new ArrayList<>();
     }
 
     @Override
@@ -50,7 +68,10 @@ public class ReflectionBeast2ObjectFactory implements Beast2ObjectFactory, State
         
         // Clear any existing objects
         beastObjects.clear();
+        stateNodeObjects.clear();
         observedDataFiles.clear();
+        observedVariables.clear();
+        randomVariables.clear();
         
         // Process imports
         processImports(model.getImports());
@@ -58,13 +79,16 @@ public class ReflectionBeast2ObjectFactory implements Beast2ObjectFactory, State
         // Phase 1: Create all objects by visiting all statements
         model.accept(this);
         
-        // Phase 2: Connect objects (if needed for complex relationships)
+        // Phase 2: Identify and track StateNode objects
+        identifyStateNodes();
+        
+        // Phase 3: Connect objects (if needed for complex relationships)
         connectObjects();
         
-        // Phase 3: Create a fallback model object if needed
+        // Phase 4: Create a fallback model object if needed
         ensureMinimalModelStructure();
         
-        // Phase 4: Find and return the root object
+        // Phase 5: Find and return the root object
         return findRootObject();
     }
     
@@ -79,6 +103,26 @@ public class ReflectionBeast2ObjectFactory implements Beast2ObjectFactory, State
                 nameResolver.addExplicitImport(importStmt.getPackageName());
             }
         }
+    }
+    
+    /**
+     * Identify StateNode objects among created objects
+     */
+    private void identifyStateNodes() {
+        for (Map.Entry<String, Object> entry : beastObjects.entrySet()) {
+            Object obj = entry.getValue();
+            
+            // Check if the object is a StateNode
+            if (obj instanceof StateNode) {
+                stateNodeObjects.put(entry.getKey(), (StateNode) obj);
+                logger.info("Identified StateNode: " + entry.getKey());
+            }
+        }
+        
+        // Log the results
+        logger.info("Found " + stateNodeObjects.size() + " StateNode objects");
+        logger.info("Found " + randomVariables.size() + " random variables");
+        logger.info("Found " + observedVariables.size() + " observed variables");
     }
     
     /**
@@ -103,11 +147,30 @@ public class ReflectionBeast2ObjectFactory implements Beast2ObjectFactory, State
             // Store the object
             String variableName = resolvedVarDecl.getVariableName();
             beastObjects.put(variableName, beastObject);
+            
+            // Store all StateNode objects for reference but don't mark as random variables
+            // (only DistributionAssignments create random variables)
+            if (beastObject instanceof StateNode) {
+                stateNodeObjects.put(variableName, (StateNode) beastObject);
+                logger.info("Variable " + variableName + " is a StateNode (from VariableDeclaration)");
+            }
+            
             logger.info("Created and stored object: " + variableName);
         } catch (Exception e) {
             logger.severe("Error processing variable declaration: " + e.getMessage());
             e.printStackTrace();
         }
+    }
+    
+    /**
+     * No longer needed since we check if an object is a StateNode directly,
+     * but kept for compatibility with other methods that may call it.
+     */
+    private boolean isStateNodeClass(String className) {
+        return className.contains("parameter.") || 
+               className.contains("Parameter") || 
+               className.contains("Tree") || 
+               className.contains("StateNode");
     }
     
     /**
@@ -126,8 +189,11 @@ public class ReflectionBeast2ObjectFactory implements Beast2ObjectFactory, State
                 resolveExpressionClassNames(distAssign.getDistribution())
             );
             
-            // Check if this is an observed variable with a data file
+            // Record that this is a random variable
             String varName = resolvedDistAssign.getVariableName();
+            randomVariables.add(varName);
+            
+            // Check if this is an observed variable with a data file
             if (observedDataFiles.containsKey(varName)) {
                 // This is an observed variable, include the data file in creation
                 distAssignHandler.createObservedObjects(
@@ -135,6 +201,9 @@ public class ReflectionBeast2ObjectFactory implements Beast2ObjectFactory, State
                     beastObjects, 
                     observedDataFiles.get(varName)
                 );
+                
+                // Mark as observed
+                observedVariables.add(varName);
             } else {
                 // Regular distribution assignment
                 distAssignHandler.createObjects(resolvedDistAssign, beastObjects);
@@ -158,19 +227,26 @@ public class ReflectionBeast2ObjectFactory implements Beast2ObjectFactory, State
         // Process annotations
         if ("observed".equals(annotation.getName())) {
             // Handle @observed annotation
-            if (annotation.hasParameter("data")) {
-                String dataFile = annotation.getParameterAsString("data");
+            if (innerStmt instanceof DistributionAssignment) {
+                DistributionAssignment distAssign = (DistributionAssignment) innerStmt;
+                String varName = distAssign.getVariableName();
                 
-                if (innerStmt instanceof DistributionAssignment) {
-                    DistributionAssignment distAssign = (DistributionAssignment) innerStmt;
-                    String varName = distAssign.getVariableName();
+                // Mark as observed regardless of data file
+                observedVariables.add(varName);
+                logger.info("Marked " + varName + " as observed");
+                
+                // Handle data file if present
+                if (annotation.hasParameter("alignment")) {
+                    String dataFile = annotation.getParameterAsString("alignment");
                     observedDataFiles.put(varName, dataFile);
-                    logger.info("Marked " + varName + " as observed with data file: " + dataFile);
-                } else {
-                    logger.warning("@observed annotation only applies to distribution assignments");
+                    logger.info("Observed variable " + varName + " has alignment file: " + dataFile);
+                } else if (annotation.hasParameter("data")) {
+                    String dataFile = annotation.getParameterAsString("data");
+                    observedDataFiles.put(varName, dataFile);
+                    logger.info("Observed variable " + varName + " has data file: " + dataFile);
                 }
             } else {
-                logger.warning("@observed annotation missing data parameter");
+                logger.warning("@observed annotation only applies to distribution assignments");
             }
         } else {
             logger.warning("Unknown annotation: " + annotation.getName());
@@ -307,5 +383,70 @@ public class ReflectionBeast2ObjectFactory implements Beast2ObjectFactory, State
     @Override
     public Object getObject(String name) {
         return beastObjects.get(name);
+    }
+    
+      
+    /**
+     * Get all created state nodes that should be part of MCMC sampling.
+     * Only includes StateNodes that are random variables (have distributions)
+     * and are not observed.
+     */
+    public List<StateNode> getCreatedStateNodes() {
+        List<StateNode> stateNodes = new ArrayList<>();
+        
+        // Include only random variables (from DistributionAssignments) that are StateNodes
+        // and are not observed
+        for (String varName : randomVariables) {
+            if (!observedVariables.contains(varName)) { // Skip observed variables
+                Object obj = beastObjects.get(varName);
+                if (obj instanceof StateNode) {
+                    stateNodes.add((StateNode) obj);
+                    logger.fine("Added random variable to state nodes: " + varName);
+                } else {
+                    logger.warning("Random variable " + varName + " is not a StateNode, cannot add to state");
+                }
+            } else {
+                logger.fine("Skipped observed variable: " + varName);
+            }
+        }
+        
+        logger.info("Returning " + stateNodes.size() + " StateNode objects for state");
+        return stateNodes;
+    }
+    
+    /**
+     * Get all created distributions
+     */
+    public List<beast.base.inference.Distribution> getCreatedDistributions() {
+        List<beast.base.inference.Distribution> distributions = new ArrayList<>();
+        
+        for (Object obj : beastObjects.values()) {
+            if (obj instanceof beast.base.inference.Distribution) {
+                distributions.add((beast.base.inference.Distribution) obj);
+            }
+        }
+        
+        return distributions;
+    }
+    
+    /**
+     * Get all random variables (variables with distributions)
+     */
+    public List<String> getRandomVariables() {
+        return new ArrayList<>(randomVariables);
+    }
+    
+    /**
+     * Get all observed variables
+     */
+    public List<String> getObservedVariables() {
+        return new ArrayList<>(observedVariables);
+    }
+    
+    /**
+     * Check if a variable is observed
+     */
+    public boolean isObserved(String variableName) {
+        return observedVariables.contains(variableName);
     }
 }

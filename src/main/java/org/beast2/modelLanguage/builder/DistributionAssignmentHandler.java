@@ -2,12 +2,17 @@ package org.beast2.modelLanguage.builder.handlers;
 
 import beast.base.core.BEASTInterface;
 import beast.base.core.Input;
+
+import beast.base.parser.NexusParser;
+
 import org.beast2.modelLanguage.model.*;
 
 import java.io.File;
 import java.lang.reflect.*;
 import java.util.*;
 import java.util.logging.Logger;
+
+import java.io.IOException;
 
 /**
  * Handler for DistributionAssignment statements, responsible for creating BEAST2 objects
@@ -79,8 +84,6 @@ public class DistributionAssignmentHandler {
         // Store the distribution object
         objectRegistry.put(varName + "Prior", distObject);
         
-        // Connect the parameter to its distribution if possible
-        connectParameterToDistribution(beastObject, beastClass, distObject, distClass);
     }
     
     /**
@@ -205,6 +208,9 @@ public class DistributionAssignmentHandler {
         }
     }
     
+    /**
+     * Configure a distribution with parameter and arguments 
+     */
     private void configureDistribution(Object distObject, Class<?> distClass, FunctionCall funcCall, 
                                      Object paramObject, String paramName, Map<String, Object> objectRegistry) throws Exception {
         // Build a map of input names to Input objects
@@ -234,19 +240,59 @@ public class DistributionAssignmentHandler {
             expectedTypeMap.put(name, expectedType);
         }
         
-        // Connect parameter to 'x' input if it exists
+        // Connect parameter to appropriate input based on its type
+        boolean parameterConnected = false;
+        
+        // 1. For Prior-like distributions, connect to 'x' input
         Input<?> xInput = inputMap.get("x");
         if (xInput != null) {
             @SuppressWarnings("unchecked")
             Input<Object> typedXInput = (Input<Object>) xInput;
             typedXInput.setValue(paramObject, (BEASTInterface) distObject);
             logger.fine("Connected parameter " + paramName + " to distribution's 'x' input");
+            parameterConnected = true;
         }
         
-        // Configure other arguments
+        // 2. For tree distributions, connect to 'tree' input if parameter is a Tree
+        if (!parameterConnected && paramObject instanceof beast.base.evolution.tree.Tree) {
+            Input<?> treeInput = inputMap.get("tree");
+            if (treeInput != null) {
+                @SuppressWarnings("unchecked")
+                Input<Object> typedTreeInput = (Input<Object>) treeInput;
+                typedTreeInput.setValue(paramObject, (BEASTInterface) distObject);
+                logger.fine("Connected Tree " + paramName + " to distribution's 'tree' input");
+                parameterConnected = true;
+            }
+        }
+        
+        // 3. If we haven't connected yet, try other common input names
+        if (!parameterConnected) {
+            String[] commonInputNames = {"data", "taxonset", "network", "trait", "patterns"};
+            for (String inputName : commonInputNames) {
+                Input<?> input = inputMap.get(inputName);
+                if (input != null) {
+                    Class<?> expectedType = expectedTypeMap.get(inputName);
+                    if (expectedType != null && expectedType.isAssignableFrom(paramObject.getClass())) {
+                        @SuppressWarnings("unchecked")
+                        Input<Object> typedInput = (Input<Object>) input;
+                        typedInput.setValue(paramObject, (BEASTInterface) distObject);
+                        logger.fine("Connected parameter " + paramName + " to distribution's '" + inputName + "' input");
+                        parameterConnected = true;
+                        break;
+                    }
+                }
+            }
+        }
+        
+        // 4. Configure other arguments from the function call
         for (Argument arg : funcCall.getArguments()) {
             String name = arg.getName();
-            if ("x".equals(name)) continue; // Skip 'x' as we already handled it
+            
+            // Skip the parameter we've already connected, if any
+            if (parameterConnected && (name.equals("x") || 
+                                      (name.equals("tree") && paramObject instanceof beast.base.evolution.tree.Tree))) {
+                continue;
+            }
             
             Object rawValue = ExpressionResolver.resolveValue(arg.getValue(), objectRegistry);
             Input<?> input = inputMap.get(name);
@@ -277,6 +323,7 @@ public class DistributionAssignmentHandler {
         
         // Initialize the distribution
         callInitAndValidate(distObject, distClass);
+        
     }
     
     private void callInitAndValidate(Object object, Class<?> clazz) {
@@ -291,32 +338,6 @@ public class DistributionAssignmentHandler {
         }
     }
     
-    private void connectParameterToDistribution(Object paramObject, Class<?> paramClass, 
-                                              Object distObject, Class<?> distClass) {
-        try {
-            // Look for a setDistribution method that accepts the distribution class
-            Method setDistMethod = null;
-            for (Method method : paramClass.getMethods()) {
-                if (method.getName().equals("setDistribution") && method.getParameterCount() == 1) {
-                    Class<?> paramType = method.getParameterTypes()[0];
-                    if (paramType.isAssignableFrom(distClass)) {
-                        setDistMethod = method;
-                        break;
-                    }
-                }
-            }
-            
-            if (setDistMethod != null) {
-                setDistMethod.invoke(paramObject, distObject);
-                logger.fine("Connected distribution to parameter using setDistribution method");
-            } else {
-                logger.fine("No suitable setDistribution method found on parameter class");
-            }
-        } catch (Exception e) {
-            logger.warning("Failed to connect parameter to distribution: " + e.getMessage());
-        }
-    }
-
     /**
      * Special handling for Alignment objects due to initialization challenges
      */
@@ -367,76 +388,31 @@ public class DistributionAssignmentHandler {
         }
     }
     
-    /**
-     * Create an alignment from a data file
-     */
     private Object createAlignmentFromFile(String dataFile, String id) throws Exception {
         logger.info("Creating alignment from file: " + dataFile);
         
-        // Determine the type of file based on extension
-        String fileType = "unknown";
-        if (dataFile.toLowerCase().endsWith(".nex") || dataFile.toLowerCase().endsWith(".nexus")) {
-            fileType = "nexus";
-        } else if (dataFile.toLowerCase().endsWith(".xml")) {
-            fileType = "xml";
-        } else if (dataFile.toLowerCase().endsWith(".fasta") || dataFile.toLowerCase().endsWith(".fa")) {
-            fileType = "fasta";
+        File file = new File(dataFile);
+        if (!file.exists()) {
+            throw new IOException("Data file not found: " + dataFile);
         }
         
-        try {
-            // Try to find an appropriate BEAST loader class
-            if ("nexus".equals(fileType)) {
-                // Try Nexus importer
-                Class<?> importerClass = Class.forName("beast.base.evolution.alignment.Alignment$NexusImporter");
-                Constructor<?> constructor = importerClass.getDeclaredConstructor(File.class);
-                Object importer = constructor.newInstance(new File(dataFile));
-                
-                // Now use the importer to create an alignment
-                Class<?> alignmentClass = Class.forName("beast.base.evolution.alignment.Alignment");
-                Object alignment = alignmentClass.getDeclaredConstructor().newInstance();
-                
-                // Set the ID
-                setObjectId(alignment, alignmentClass, id);
-                
-                // Call a method to load the alignment from the importer
-                // This is a placeholder - the actual method name and signature would depend on BEAST2 implementation
-                Method loadMethod = alignmentClass.getMethod("loadNexus", importerClass);
-                loadMethod.invoke(alignment, importer);
-                
-                return alignment;
+        // For Nexus files, use NexusParser directly
+        if (dataFile.toLowerCase().endsWith(".nex") || dataFile.toLowerCase().endsWith(".nexus")) {
+            NexusParser parser = new NexusParser();
+            parser.parseFile(file);
+            
+            if (parser.m_alignment != null) {
+                // Set the ID on the alignment
+                parser.m_alignment.setID(id);
+                logger.info("Successfully loaded alignment from Nexus file: " + dataFile);
+                return parser.m_alignment;
             } else {
-                // For other file types, try to find an appropriate method
-                // This would need to be customized based on BEAST2's API
-                Class<?> alignmentClass = Class.forName("beast.base.evolution.alignment.Alignment");
-                Object alignment = alignmentClass.getDeclaredConstructor().newInstance();
-                
-                // Set the ID
-                setObjectId(alignment, alignmentClass, id);
-                
-                // Set the file input if it exists
-                for (Field field : alignmentClass.getFields()) {
-                    if (Input.class.isAssignableFrom(field.getType())) {
-                        @SuppressWarnings("unchecked")
-                        Input<?> input = (Input<?>) field.get(alignment);
-                        if ("file".equals(input.getName())) {
-                            @SuppressWarnings("unchecked")
-                            Input<Object> fileInput = (Input<Object>) input;
-                            fileInput.setValue(new File(dataFile), (BEASTInterface) alignment);
-                            logger.info("Set file input on alignment");
-                            break;
-                        }
-                    }
-                }
-                
-                // Call initAndValidate to load the file
-                callInitAndValidate(alignment, alignmentClass);
-                
-                return alignment;
+                throw new IOException("NexusParser did not create an alignment from " + dataFile);
             }
-        } catch (Exception e) {
-            logger.warning("Failed to load alignment from file: " + e.getMessage());
-            throw e;
         }
+        
+        // Handle other file types if needed...
+        throw new IOException("Unsupported file type: " + dataFile);
     }
     
     /**
@@ -481,8 +457,6 @@ public class DistributionAssignmentHandler {
                     objectRegistry.put(varName + "Prior", distObject);
                     logger.info("Created " + distClassName + " for Tree: " + varName);
                     
-                    // Connect tree to distribution if possible
-                    connectParameterToDistribution(treeObject, treeClass, distObject, distClass);
                 } catch (Exception e) {
                     logger.warning("Could not create distribution for Tree: " + e.getMessage());
                 }
@@ -528,14 +502,16 @@ public class DistributionAssignmentHandler {
                 logger.fine("Connected " + varName + " to TreeLikelihood's 'x' input");
             }
             
-            // Alternatively, try to find the 'data' input
+            // Connect the data object to the appropriate input
             Input<?> dataInput = inputMap.get("data");
             if (dataInput != null) {
                 @SuppressWarnings("unchecked")
                 Input<Object> typedInput = (Input<Object>) dataInput;
                 typedInput.setValue(dataObject, (BEASTInterface) treeLikelihood);
                 logger.fine("Connected " + varName + " to TreeLikelihood's 'data' input");
-            }
+            } else {
+                logger.warning("Could not find 'data' input on TreeLikelihood");
+            }            
             
             // Configure function call arguments
             for (Argument arg : funcCall.getArguments()) {

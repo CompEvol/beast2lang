@@ -90,7 +90,7 @@ public class Beast2ModelBuilderReflectionTest {
         Object rootObject = builder.buildBeast2Objects(model);
         
         // Verify beast objects were created
-        Map<String, Object> beastObjects = builder.getBeastObjects();
+        Map<String, Object> beastObjects = builder.getAllObjects();
         assertNotNull("Beast objects map should not be null", beastObjects);
         assertTrue("Beast objects map should not be empty", !beastObjects.isEmpty());
         
@@ -206,7 +206,7 @@ public class Beast2ModelBuilderReflectionTest {
             Object rootObject = builder.buildBeast2Objects(model);
             
             // Verify beast objects were created
-            Map<String, Object> beastObjects = builder.getBeastObjects();
+            Map<String, Object> beastObjects = builder.getAllObjects();
             assertNotNull("Beast objects map should not be null", beastObjects);
             assertTrue("Beast objects map should contain at least 4 objects", beastObjects.size() >= 4);
             

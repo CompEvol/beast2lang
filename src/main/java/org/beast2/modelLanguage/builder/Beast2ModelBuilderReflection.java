@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 /**
@@ -23,8 +24,10 @@ import java.util.stream.Collectors;
  */
 public class Beast2ModelBuilderReflection {
     
+    private static final Logger logger = Logger.getLogger(Beast2ModelBuilderReflection.class.getName());
+    
     private final Beast2LangParser parser;
-    private final Beast2ObjectFactory objectFactory;
+    private final ReflectionBeast2ObjectFactory objectFactory;
     
     /**
      * Constructor that initializes the parser and object factory.
@@ -36,14 +39,22 @@ public class Beast2ModelBuilderReflection {
 
     /**
      * After calling buildBeast2Objects(model), this returns
-     * all of the BEAST2 objects that implement InputComponent,
-     * i.e. the things you should put in the MCMC state.
+     * all of the BEAST2 objects that implement StateNode
+     * and are random variables (i.e., have distributions),
+     * excluding those that are observed.
+     * These are the things that should be in the MCMC state.
      */
     public List<StateNode> getCreatedStateNodes() {
-        return objectFactory.getAllObjects().values().stream()
-                .filter(o -> o instanceof StateNode)
-                .map(o -> (StateNode)o)
-                .collect(Collectors.toList());
+        // Get only the state nodes that are random variables and not observed
+        List<String> randomVars = objectFactory.getRandomVariables();
+        List<String> observedVars = objectFactory.getObservedVariables();
+        
+        return randomVars.stream()
+            .filter(varName -> !observedVars.contains(varName))
+            .map(varName -> objectFactory.getObject(varName))
+            .filter(obj -> obj instanceof StateNode)
+            .map(obj -> (StateNode) obj)
+            .collect(Collectors.toList());
     }
 
     /**
@@ -93,14 +104,35 @@ public class Beast2ModelBuilderReflection {
     /**
      * Get all created BEAST2 objects
      */
-    public Map<String, Object> getBeastObjects() {
+    public Map<String, Object> getAllObjects() {
         return objectFactory.getAllObjects();
     }
     
     /**
      * Get a specific BEAST2 object by name
      */
-    public Object getBeastObject(String name) {
+    public Object getObject(String name) {
         return objectFactory.getObject(name);
+    }
+    
+    /**
+     * Get all random variables (variables with distributions)
+     */
+    public List<String> getRandomVariables() {
+        return objectFactory.getRandomVariables();
+    }
+    
+    /**
+     * Get all observed variables
+     */
+    public List<String> getObservedVariables() {
+        return objectFactory.getObservedVariables();
+    }
+    
+    /**
+     * Check if a variable is observed
+     */
+    public boolean isObserved(String variableName) {
+        return objectFactory.getObservedVariables().contains(variableName);
     }
 }
