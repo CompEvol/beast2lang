@@ -1,5 +1,6 @@
 package org.beast2.modelLanguage;
 
+import beast.base.parser.XMLProducer;
 import org.beast2.modelLanguage.builder.Beast2ModelBuilderReflection;
 import org.beast2.modelLanguage.converter.Beast2ToPhyloSpecConverter;
 import org.beast2.modelLanguage.converter.PhyloSpecToBeast2Converter;
@@ -22,8 +23,12 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Collection;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -41,7 +46,7 @@ public class Beast2Lang implements Callable<Integer> {
     
     // Flag to track BEAST2 initialization status
     private static boolean beast2Initialized = false;
-
+    
     /**
      * Initialize BEAST2 classes and environment
      */
@@ -49,23 +54,23 @@ public class Beast2Lang implements Callable<Integer> {
         if (beast2Initialized) {
             return;
         }
-        
+
         try {
             // Set program name for BEAST
             Class<?> programStatusClass = Class.forName("beast.base.core.ProgramStatus");
             java.lang.reflect.Field nameField = programStatusClass.getField("name");
             nameField.set(null, "Beast2Lang");
-            
+
             // Set BEAST2 directory to ensure resources are loaded properly
             try {
                 System.out.println("Looking for BEAST2 installation directory...");
-                
+
                 // Try common environment variables
                 String beastHome = System.getenv("BEAST_HOME");
                 if (beastHome == null || beastHome.isEmpty()) {
                     beastHome = System.getenv("BEAST2_HOME");
                 }
-                
+
                 // If found, set it as a system property
                 if (beastHome != null && !beastHome.isEmpty()) {
                     System.out.println("Found BEAST installation at: " + beastHome);
@@ -76,7 +81,53 @@ public class Beast2Lang implements Callable<Integer> {
             } catch (Exception e) {
                 System.out.println("Warning: Could not set BEAST2 directory: " + e.getMessage());
             }
-            
+
+            // Initialize BEASTClassLoader and its service loading mechanism
+            try {
+                // Get the BEASTClassLoader class
+                Class<?> loaderClass = Class.forName("beast.base.core.BEASTClassLoader");
+
+                // First try to initialize the registry explicitly
+                try {
+                    Method initRegistryMethod = loaderClass.getMethod("initServices");
+                    initRegistryMethod.invoke(null);
+                    logger.info("Explicitly initialized BEAST service registry");
+                } catch (NoSuchMethodException e) {
+                    // If that method doesn't exist, try to load services directly
+                    logger.info("No initServices method found, trying to initialize services indirectly");
+                }
+
+                // Pre-load and register key data types
+                Class<?> dataTypeClass = Class.forName("beast.base.evolution.datatype.DataType");
+
+                // Try to access the registry to see if it's working
+                try {
+                    Method loadServiceMethod = loaderClass.getMethod("loadService", Class.class);
+                    Set<?> services = (Set<?>) loadServiceMethod.invoke(null, dataTypeClass);
+
+                    if (services != null) {
+                        logger.info("DataType service registry working, found " + services.size() + " services");
+                    } else {
+                        logger.warning("DataType service registry returned null");
+
+                        // Try to manually register key data types
+                        try {
+                            Method registerClassMethod = loaderClass.getMethod("registerClass", Class.class);
+                            registerClassMethod.invoke(null, Class.forName("beast.base.evolution.datatype.Nucleotide"));
+                            registerClassMethod.invoke(null, Class.forName("beast.base.evolution.datatype.Amino"));
+                            registerClassMethod.invoke(null, Class.forName("beast.base.evolution.datatype.StandardData"));
+                            logger.info("Manually registered key data types");
+                        } catch (Exception ex) {
+                            logger.warning("Failed to manually register data types: " + ex.getMessage());
+                        }
+                    }
+                } catch (Exception e) {
+                    logger.warning("Could not access service registry: " + e.getMessage());
+                }
+            } catch (Exception e) {
+                logger.warning("Could not initialize BEAST service loader: " + e.getMessage());
+            }
+
             // Initialize key BEAST2 classes that might need special handling
             try {
                 // Force load some key classes to ensure they're properly initialized
@@ -86,20 +137,20 @@ public class Beast2Lang implements Callable<Integer> {
             } catch (Exception e) {
                 logger.warning("Could not preload some BEAST2 classes: " + e.getMessage());
             }
-            
+
             // Load BEAST packages
             try {
                 Class<?> packageManagerClass = Class.forName("beast.pkgmgmt.PackageManager");
                 System.out.println("Loading package     ");
-                java.lang.reflect.Method loadExternalJarsMethod = 
-                    packageManagerClass.getMethod("loadExternalJars");
+                java.lang.reflect.Method loadExternalJarsMethod =
+                        packageManagerClass.getMethod("loadExternalJars");
                 loadExternalJarsMethod.invoke(null);
                 logger.info("BEAST2 packages initialized successfully");
             } catch (Exception e) {
                 // Log but continue - core functionality should still work
                 logger.warning("Could not load some external packages: " + e.getMessage());
             }
-            
+
             // Log success
             logger.info("BEAST2 environment initialized");
             beast2Initialized = true;
@@ -199,46 +250,27 @@ public class Beast2Lang implements Callable<Integer> {
                     // build the run
                     Beast2AnalysisBuilder analysisBuilder =
                         new Beast2AnalysisBuilder(reflectionBuilder);
+
+                    String xml;
                     MCMC rootRun = analysisBuilder.buildRun(analysis);
-                    
-                    // generate XML
-                    String xml = generateXML(rootRun);
-                    writeOutput(outputFile, xml);
-                    
+
+                    // Add this before generating XML
                     try {
-                        // Build BEAST2 objects using reflection
-                        Object rootObject = reflectionBuilder.buildBeast2Objects(model);
-                        
-                        try {
-                            xml = generateXML(rootObject);
-                        } catch (Exception e) {
-                            logger.severe("Error generating XML: " + e.getMessage());
-                            xml = generateFallbackXML();
-                        }
-                        
-                        if (xml != null) {
-                            writeOutput(outputFile, xml);
-                            return 0;
-                        } else {
-                            System.err.println("Error building BEAST2 objects: Unable to generate XML");
-                            return 1;
-                        }
+                        System.out.println("\nDumping model structure before XML generation...");
+                        dumpModelStructure(reflectionBuilder.getAllObjects());
                     } catch (Exception e) {
-                        System.err.println("Error building BEAST2 objects: " + e.getMessage());
-                        if (debug) {
-                            e.printStackTrace();
-                        }
-                        
-                        // Try to generate a fallback XML
-                        String fallbackXml = generateFallbackXML();
-                        if (fallbackXml != null) {
-                            System.out.println("Generated fallback XML model");
-                            writeOutput(outputFile, fallbackXml);
-                            return 0;
-                        }
-                        
-                        return 1;
+                        System.out.println("Error dumping model structure: " + e.getMessage());
                     }
+
+// Then continue with XML generation
+                    try {
+                        xml = generateXML(rootRun);
+                        // generate XML
+                        writeOutput(outputFile, xml);
+                    } catch (Exception e) {
+                        throw new RuntimeException("XML generation failure!", e);
+                    }
+                    return 0;
                 }
             } else {
                 System.err.println("Unsupported conversion: " + fromFormat + " to " + toFormat);
@@ -258,6 +290,142 @@ public class Beast2Lang implements Callable<Integer> {
             }
             
             return 1;
+        }
+    }
+
+    private void dumpModelStructure(Map<String, Object> objects) {
+        System.out.println("\n----- MODEL STRUCTURE DUMP -----");
+
+        // Print all objects
+        System.out.println("\nObjects:");
+        for (Map.Entry<String, Object> entry : objects.entrySet()) {
+            String id = entry.getKey();
+            Object obj = entry.getValue();
+            String className = obj.getClass().getName();
+
+            System.out.println(id + " (" + className + ")");
+        }
+
+        // Print connections (inputs)
+        System.out.println("\nConnections:");
+        for (Map.Entry<String, Object> entry : objects.entrySet()) {
+            String id = entry.getKey();
+            Object obj = entry.getValue();
+
+            // Only process BEAST objects with inputs
+            if (obj instanceof beast.base.core.BEASTInterface) {
+                beast.base.core.BEASTInterface beastObj = (beast.base.core.BEASTInterface) obj;
+                System.out.println("\n" + id + " (" + obj.getClass().getSimpleName() + ") connections:");
+
+                // Print all inputs and their values
+                for (String inputName : beastObj.getInputs().keySet()) {
+                    try {
+                        beast.base.core.Input<?> input = beastObj.getInput(inputName);
+                        Object value = input.get();
+
+                        // Format the value based on its type
+                        String valueStr;
+                        if (value == null) {
+                            valueStr = "null";
+                        } else if (value instanceof beast.base.core.BEASTInterface) {
+                            valueStr = ((beast.base.core.BEASTInterface) value).getID()
+                                    + " (" + value.getClass().getSimpleName() + ")";
+                        } else if (value instanceof Collection) {
+                            valueStr = formatCollection((Collection<?>) value);
+                        } else {
+                            valueStr = value.toString();
+                        }
+
+                        System.out.println("  " + inputName + " = " + valueStr);
+                    } catch (Exception e) {
+                        System.out.println("  " + inputName + " = [Error: " + e.getMessage() + "]");
+                    }
+                }
+            }
+        }
+
+        // Check for obvious issues
+        System.out.println("\nPotential Issues:");
+        checkForIssues(objects);
+
+        System.out.println("\n----- END MODEL STRUCTURE DUMP -----\n");
+    }
+
+    private String formatCollection(Collection<?> collection) {
+        StringBuilder sb = new StringBuilder("[");
+        boolean first = true;
+
+        for (Object item : collection) {
+            if (!first) {
+                sb.append(", ");
+            }
+
+            if (item instanceof beast.base.core.BEASTInterface) {
+                beast.base.core.BEASTInterface beastItem = (beast.base.core.BEASTInterface) item;
+                sb.append(beastItem.getID())
+                        .append(" (")
+                        .append(item.getClass().getSimpleName())
+                        .append(")");
+            } else {
+                sb.append(item.toString());
+            }
+
+            first = false;
+        }
+
+        sb.append("]");
+        return sb.toString();
+    }
+
+    private void checkForIssues(Map<String, Object> objects) {
+        // Check for missing connections in TreeLikelihood
+        for (Object obj : objects.values()) {
+            if (obj instanceof beast.base.evolution.likelihood.TreeLikelihood) {
+                beast.base.evolution.likelihood.TreeLikelihood likelihood =
+                        (beast.base.evolution.likelihood.TreeLikelihood) obj;
+
+                // Check data input
+                try {
+                    Object data = likelihood.getInput("data").get();
+                    if (data == null) {
+                        System.out.println("WARNING: TreeLikelihood has null data input");
+                    } else if (!(data instanceof beast.base.evolution.alignment.Alignment)) {
+                        System.out.println("WARNING: TreeLikelihood has non-Alignment data input: "
+                                + data.getClass().getName());
+                    }
+                } catch (Exception e) {
+                    System.out.println("WARNING: Unable to check TreeLikelihood data input: " + e.getMessage());
+                }
+
+                // Check tree input
+                try {
+                    Object tree = likelihood.getInput("tree").get();
+                    if (tree == null) {
+                        System.out.println("WARNING: TreeLikelihood has null tree input");
+                    }
+                } catch (Exception e) {
+                    System.out.println("WARNING: Unable to check TreeLikelihood tree input: " + e.getMessage());
+                }
+
+                // Check siteModel input
+                try {
+                    Object siteModel = likelihood.getInput("siteModel").get();
+                    if (siteModel == null) {
+                        System.out.println("WARNING: TreeLikelihood has null siteModel input");
+                    }
+                } catch (Exception e) {
+                    System.out.println("WARNING: Unable to check TreeLikelihood siteModel input: " + e.getMessage());
+                }
+            }
+        }
+
+        // Check for DummyBEASTObjects being used where real objects are expected
+        for (Object obj : objects.values()) {
+            if (obj != null && obj.getClass().getSimpleName().contains("Dummy")) {
+                System.out.println("WARNING: Using stub/dummy object: " +
+                        (obj instanceof beast.base.core.BEASTInterface ?
+                                ((beast.base.core.BEASTInterface)obj).getID() : obj));
+            }
         }
     }
 
@@ -285,75 +453,24 @@ public class Beast2Lang implements Callable<Integer> {
         
         try {
             // Use reflection to invoke BEAST2's XMLProducer
-            Class<?> xmlProducerClass = Class.forName("beast.base.parser.XMLProducer");
-            Object xmlProducer = xmlProducerClass.getDeclaredConstructor().newInstance();
-            
-            // Check if we need to skip checking for the root object
-            try {
-                java.lang.reflect.Field skippingRuleCheckingField = xmlProducerClass.getDeclaredField("skipRuleChecking");
-                if (skippingRuleCheckingField != null) {
-                    skippingRuleCheckingField.setAccessible(true);
-                    skippingRuleCheckingField.set(xmlProducer, true);
-                    logger.info("Disabled XML rule checking");
-                }
-            } catch (NoSuchFieldException e) {
-                // Field might not exist in this BEAST version, which is fine
-                logger.fine("No skipRuleChecking field found in XMLProducer");
-            }
+            XMLProducer xmlProducer = new XMLProducer();
             
             // Try to add XML metadata for version and namespace
             StringBuilder xml = new StringBuilder();
-            xml.append("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n");
-            xml.append("<beast namespace=\"beast.core:beast.evolution.alignment:beast.evolution.tree.coalescent:" +
-                      "beast.core.util:beast.evolution.nuc:beast.evolution.operators:beast.evolution.sitemodel:" +
-                      "beast.evolution.substitutionmodel:beast.evolution.likelihood\" version=\"2.7\">\n\n");
-            
             // Invoke toXML method
-            java.lang.reflect.Method toXMLMethod = xmlProducerClass.getMethod("toXML", Object.class);
-            String objectXml = (String) toXMLMethod.invoke(xmlProducer, beastObject);
-            
+            String objectXml = xmlProducer.toXML(beastObject);
+
             // Add the object XML and closing tag
             if (objectXml != null) {
                 xml.append(objectXml).append("\n</beast>");
                 return xml.toString();
             } else {
-                return generateFallbackXML();
+                throw new RuntimeException("Failed to generate XML");
             }
         } catch (Exception e) {
             logger.severe("Error generating XML: " + e.getMessage());
-            e.printStackTrace();
-            
-            return generateFallbackXML();
+            throw e;
         }
-    }
-    
-    /**
-     * Generate a fallback XML file when normal XML generation fails
-     */
-    private String generateFallbackXML() {
-        // Create a minimal empty BEAST2 XML file
-        StringBuilder xml = new StringBuilder();
-        xml.append("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n");
-        xml.append("<beast namespace=\"beast.core:beast.evolution.alignment:beast.evolution.tree.coalescent:" +
-                  "beast.core.util:beast.evolution.nuc:beast.evolution.operators:beast.evolution.sitemodel:" +
-                  "beast.evolution.substitutionmodel:beast.evolution.likelihood\" version=\"2.7\">\n\n");
-        
-        // Add a simple run element
-        xml.append("    <run id=\"mcmc\" spec=\"MCMC\" chainLength=\"1000000\">\n");
-        xml.append("        <state id=\"state\">\n");
-        xml.append("            <!-- No state nodes yet -->\n");
-        xml.append("        </state>\n");
-        xml.append("        <distribution id=\"posterior\" spec=\"util.CompoundDistribution\">\n");
-        xml.append("            <!-- No distributions yet -->\n");
-        xml.append("        </distribution>\n");
-        xml.append("        <logger id=\"tracelog\" fileName=\"$(filebase).log\" logEvery=\"1000\">\n");
-        xml.append("            <!-- No logged items yet -->\n");
-        xml.append("        </logger>\n");
-        xml.append("    </run>\n\n");
-        
-        xml.append("</beast>");
-        
-        return xml.toString();
     }
     
     /**

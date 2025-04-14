@@ -29,7 +29,23 @@ public class ModelBuilderListener extends Beast2ModelLanguageBaseListener {
     public Beast2Model getModel() {
         return model;
     }
-    
+
+
+    @Override
+    public void enterProgram(Beast2ModelLanguageParser.ProgramContext ctx) {
+        System.out.println("DEBUG - Entering program");
+    }
+
+    @Override
+    public void enterStatement(Beast2ModelLanguageParser.StatementContext ctx) {
+        System.out.println("DEBUG - Entering statement");
+    }
+
+    @Override
+    public void enterAnnotation(Beast2ModelLanguageParser.AnnotationContext ctx) {
+        System.out.println("DEBUG - Entering annotation: @" + ctx.IDENTIFIER().getText());
+    }
+
     @Override
     public void exitImportStatement(Beast2ModelLanguageParser.ImportStatementContext ctx) {
         // Check if it's a wildcard import
@@ -47,23 +63,27 @@ public class ModelBuilderListener extends Beast2ModelLanguageBaseListener {
     
     @Override
     public void exitAnnotation(Beast2ModelLanguageParser.AnnotationContext ctx) {
+        System.out.println("DEBUG - Parsing annotation: @" + ctx.IDENTIFIER().getText());
+
         String name = ctx.IDENTIFIER().getText();
         Map<String, Object> parameters = new HashMap<>();
-        
+
         // If there's an annotation body, process its parameters
         if (ctx.annotationBody() != null) {
+            System.out.println("DEBUG - Annotation has parameters");
             Beast2ModelLanguageParser.AnnotationBodyContext bodyCtx = ctx.annotationBody();
             for (Beast2ModelLanguageParser.AnnotationParameterContext paramCtx : bodyCtx.annotationParameter()) {
                 String paramName = paramCtx.identifier().getText();
                 Object paramValue = getLiteralValue(paramCtx.literal());
                 parameters.put(paramName, paramValue);
+                System.out.println("DEBUG - Parameter: " + paramName + " = " + paramValue);
             }
         }
-        
+
         // Create the annotation
         currentAnnotation = new Annotation(name, parameters);
+        System.out.println("DEBUG - Created annotation: " + currentAnnotation);
     }
-    
     @Override
     public void exitVariableDeclaration(Beast2ModelLanguageParser.VariableDeclarationContext ctx) {
         // Get the expression from the stack
@@ -92,22 +112,24 @@ public class ModelBuilderListener extends Beast2ModelLanguageBaseListener {
     public void exitDistributionAssignment(Beast2ModelLanguageParser.DistributionAssignmentContext ctx) {
         // Get the expression from the stack
         Expression expression = (Expression) stack.pop();
-        
+
         // Get class name and variable name
         String className = ctx.className().getText();
         String variableName = ctx.identifier().getText();
-        
-        logger.fine("Creating distribution assignment: " + className + " " + variableName);
-        
+
+        System.out.println("DEBUG - Creating distribution assignment: " + className + " " + variableName);
+
         // Create distribution assignment
         DistributionAssignment distAssign = new DistributionAssignment(className, variableName, expression);
-        
+
         // If there's an annotation, wrap it in an AnnotatedStatement
         if (currentAnnotation != null) {
+            System.out.println("DEBUG - Attaching annotation to distribution assignment: " + currentAnnotation.getName());
             AnnotatedStatement annotatedStmt = new AnnotatedStatement(currentAnnotation, distAssign);
             model.addStatement(annotatedStmt);
             currentAnnotation = null;
         } else {
+            System.out.println("DEBUG - No annotation for distribution assignment");
             model.addStatement(distAssign);
         }
     }

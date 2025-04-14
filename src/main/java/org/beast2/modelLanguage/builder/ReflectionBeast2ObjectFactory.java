@@ -219,41 +219,69 @@ public class ReflectionBeast2ObjectFactory implements Beast2ObjectFactory, State
     /**
      * Handle AnnotatedStatement statements
      */
-    @Override
     public void visit(AnnotatedStatement annotatedStmt) {
         Annotation annotation = annotatedStmt.getAnnotation();
         Statement innerStmt = annotatedStmt.getStatement();
-        
+
+        System.out.println("Visit AnnotatedStatement: " + annotation.getName());
+        System.out.println("  - Inner statement type: " + innerStmt.getClass().getSimpleName());
+
+        // Debug all annotation parameters
+        System.out.println("  - Annotation parameters:");
+        for (String paramName : annotation.getParameters().keySet()) {
+            System.out.println("    - " + paramName + " = " + annotation.getParameterAsString(paramName));
+        }
+
+        // Check if it's a distribution assignment
+        if (innerStmt instanceof DistributionAssignment) {
+            DistributionAssignment distAssign = (DistributionAssignment) innerStmt;
+            System.out.println("  - Variable name: " + distAssign.getVariableName());
+            System.out.println("  - Class name: " + distAssign.getClassName());
+        }
+
         // Process annotations
         if ("observed".equals(annotation.getName())) {
             // Handle @observed annotation
             if (innerStmt instanceof DistributionAssignment) {
                 DistributionAssignment distAssign = (DistributionAssignment) innerStmt;
                 String varName = distAssign.getVariableName();
-                
+
                 // Mark as observed regardless of data file
                 observedVariables.add(varName);
+                System.out.println("  ✅ Marked " + varName + " as observed");
                 logger.info("Marked " + varName + " as observed");
-                
+
                 // Handle data file if present
                 if (annotation.hasParameter("alignment")) {
                     String dataFile = annotation.getParameterAsString("alignment");
                     observedDataFiles.put(varName, dataFile);
+                    System.out.println("  ✅ Added alignment file: " + dataFile);
                     logger.info("Observed variable " + varName + " has alignment file: " + dataFile);
                 } else if (annotation.hasParameter("data")) {
                     String dataFile = annotation.getParameterAsString("data");
                     observedDataFiles.put(varName, dataFile);
+                    System.out.println("  ✅ Added data file: " + dataFile);
                     logger.info("Observed variable " + varName + " has data file: " + dataFile);
+                } else {
+                    System.out.println("  ❌ No data or alignment parameter found!");
                 }
+
+                // Debug the maps after update
+                System.out.println("  - observedVariables size: " + observedVariables.size());
+                System.out.println("  - observedDataFiles size: " + observedDataFiles.size());
             } else {
+                System.out.println("  ❌ @observed annotation only applies to distribution assignments");
                 logger.warning("@observed annotation only applies to distribution assignments");
             }
         } else {
+            System.out.println("  ❌ Unknown annotation: " + annotation.getName());
             logger.warning("Unknown annotation: " + annotation.getName());
         }
-        
+
         // Process the inner statement
+        System.out.println("  - Now visiting inner statement...");
         innerStmt.accept(this);
+        System.out.println("  - Finished visiting inner statement");
     }
     
     /**
