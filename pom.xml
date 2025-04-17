@@ -24,21 +24,22 @@
             <artifactId>antlr4-runtime</artifactId>
             <version>${antlr4.version}</version>
         </dependency>
-        
+
         <!-- JSON library -->
         <dependency>
             <groupId>org.json</groupId>
             <artifactId>json</artifactId>
-            <version>[20231013,)</version>
+            <version>20231013</version>
+            <scope>provided</scope> <!-- This will prevent it from being included in the final jar -->
         </dependency>
-        
+
         <!-- Command line parsing -->
         <dependency>
             <groupId>info.picocli</groupId>
             <artifactId>picocli</artifactId>
             <version>4.7.4</version>
         </dependency>
-        
+
         <!-- Testing -->
         <dependency>
             <groupId>junit</groupId>
@@ -46,7 +47,7 @@
             <version>4.13.2</version>
             <scope>test</scope>
         </dependency>
-    
+
     <dependency>
         <groupId>beast2</groupId>
         <artifactId>beast-base</artifactId>
@@ -67,7 +68,7 @@
 
     <build>
         <plugins>
-        
+
         <!-- Plugin to generate the command-line script -->
 <plugin>
     <groupId>org.apache.maven.plugins</groupId>
@@ -111,7 +112,7 @@ if [ -z "$BEAST" ]; then
             BEAST="$BEAST_DIR"
         fi
     fi
-    
+
     # Home Applications directory - look for any BEAST 2.7.x
     if [ -z "$BEAST" ] &amp;&amp; [ -d "$HOME/Applications" ]; then
         BEAST_DIR=$(find $HOME/Applications -maxdepth 1 -type d -name "BEAST 2.7*" | sort -r | head -n 1)
@@ -119,7 +120,7 @@ if [ -z "$BEAST" ]; then
             BEAST="$BEAST_DIR"
         fi
     fi
-    
+
     # Check specific version as fallback
     if [ -z "$BEAST" ]; then
         if [ -d "/Applications/BEAST 2.7.5" ]; then
@@ -138,7 +139,7 @@ if [ -z "$BEAST" ]; then
             fi
         fi
     fi
-    
+
     # If we still can't find BEAST 2.7.x, try to fall back to bundled dependencies
     if [ -z "$BEAST" ]; then
         echo "BEAST 2.7.x installation not found. Using bundled dependencies."
@@ -229,7 +230,7 @@ fi
             </configuration>
         </execution>
     </executions>
-</plugin>            
+</plugin>
             <!-- Maven Compiler Plugin -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -239,7 +240,7 @@ fi
                     <release>${maven.compiler.release}</release>
                 </configuration>
             </plugin>
-            
+
             <!-- Maven Shade Plugin for creating executable jar -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -261,7 +262,7 @@ fi
                     </execution>
                 </executions>
             </plugin>
-            
+
             <!-- Maven Surefire Plugin for running tests -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

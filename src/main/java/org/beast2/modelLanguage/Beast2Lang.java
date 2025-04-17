@@ -207,6 +207,90 @@ public class Beast2Lang implements Callable<Integer> {
         }
     }
 
+    @Command(name = "run", description = "Run a Beast2 model after conversion")
+    public Integer runModel(
+            @Option(names = {"-i", "--input"}, description = "Input Beast2Lang file", required = true) File inputFile,
+            @Option(names = {"--chainLength"}, defaultValue = "10000000", description = "MCMC chain length") long chainLength,
+            @Option(names = {"--logEvery"}, defaultValue = "1000", description = "Logging interval") int logEvery,
+            @Option(names = {"--traceFileName"}, defaultValue = "trace.log", description = "Trace log file name") String traceFileName,
+            @Option(names = {"--treeFileName"}, defaultValue = "tree.trees", description = "Tree log file name") String treeFileName,
+            @Option(names = {"--debug"}, description = "Enable debug logging", defaultValue = "false") boolean debug,
+            @Option(names = {"--seed"}, description = "Random seed for MCMC run") Long seed,
+            @Option(names = {"--threads"}, defaultValue = "1", description = "Number of threads") int threads,
+            @Option(names = {"--resume"}, description = "Resume from previous run", defaultValue = "false") boolean resume) {
+
+        // Set debug level if requested
+        if (debug) {
+            java.util.logging.Logger rootLogger = java.util.logging.Logger.getLogger("");
+            rootLogger.setLevel(Level.FINE);
+            for (java.util.logging.Handler handler : rootLogger.getHandlers()) {
+                handler.setLevel(Level.FINE);
+            }
+        }
+
+        try {
+            System.out.println("Running Beast2 model from file: " + inputFile.getPath());
+
+            // Initialize BEAST2 environment
+            initializeBEAST2();
+
+            // First convert the model to BEAST2 objects
+            Beast2ModelBuilderReflection reflectionBuilder = new Beast2ModelBuilderReflection();
+            try (FileInputStream fis = new FileInputStream(inputFile)) {
+                // Parse the model
+                Beast2Model model = reflectionBuilder.buildFromStream(fis);
+
+                // Create analysis parameters
+                Beast2Analysis analysis = new Beast2Analysis(
+                        model,
+                        chainLength,
+                        logEvery,
+                        traceFileName
+                );
+
+                // Set additional parameters
+                analysis.setTreeLogFileName(treeFileName);
+                if (seed != null) {
+                    analysis.setSeed(seed);
+                }
+                analysis.setThreadCount(threads);
+
+                // Build the MCMC run object
+                Beast2AnalysisBuilder analysisBuilder = new Beast2AnalysisBuilder(reflectionBuilder);
+                MCMC mcmc = analysisBuilder.buildRun(analysis);
+
+                // Before running, dump the model structure for debugging
+                if (debug) {
+                    System.out.println("\nDumping model structure before running...");
+                    dumpModelStructure(reflectionBuilder.getAllObjects());
+                }
+
+                // Run the MCMC
+                System.out.println("Starting MCMC run...");
+
+                // Execute the MCMC
+                mcmc.run();
+
+                System.out.println("MCMC run completed successfully.");
+                return 0;
+            }
+        } catch (Exception e) {
+            System.err.println("Error running BEAST2 model: " + e.getMessage());
+
+            if (debug) {
+                e.printStackTrace();
+            } else {
+                // Print a more useful stack trace
+                StringWriter sw = new StringWriter();
+                PrintWriter pw = new PrintWriter(sw);
+                e.printStackTrace(pw);
+                logger.severe("Detailed error: " + sw.toString());
+            }
+
+            return 1;
+        }
+    }
+
     @Command(name = "validate", description = "Validate a Beast2Lang file")
     public Integer validate(
             @Parameters(paramLabel = "FILE", description = "Beast2Lang file to validate") File file) {
