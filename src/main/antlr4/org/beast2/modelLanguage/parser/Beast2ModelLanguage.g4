@@ -18,7 +18,11 @@ statement
     ;
 
 annotation
-    : AT IDENTIFIER annotationBody?
+    : AT annotationName annotationBody?
+    ;
+
+annotationName
+    : IDENTIFIER
     ;
 
 annotationBody
@@ -26,7 +30,7 @@ annotationBody
     ;
 
 annotationParameter
-    : identifier EQUALS literal
+    : identifier EQUALS (literal | identifier)
     ;
 
 variableDeclaration

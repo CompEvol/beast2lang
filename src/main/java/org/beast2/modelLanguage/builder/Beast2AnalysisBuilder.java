@@ -52,7 +52,7 @@ public class Beast2AnalysisBuilder {
 
     private final Beast2ModelBuilderReflection modelBuilder;
     private final Map<String, Object> operatorCache = new HashMap<>();
-    
+
     public Beast2AnalysisBuilder(Beast2ModelBuilderReflection builder) {
         this.modelBuilder = builder;
     }
@@ -63,29 +63,29 @@ public class Beast2AnalysisBuilder {
     public MCMC buildRun(Beast2Analysis analysis) throws Exception {
         // Build the BEAST2 objects if not already done
         if (modelBuilder.getAllObjects().isEmpty()) {
-            modelBuilder.buildBeast2Objects(analysis.getModel());
+            modelBuilder.buildModel(analysis.getModel());
         }
 
         // Initialize trees with basic topology first
         initializeTrees();
-        
+
         // Set up the core components
         State state = setupState();
-        
+
         // Initialize state nodes using their distributions
         initializeStateNodes(state);
-        
+
         List<Distribution> dists = modelBuilder.getCreatedDistributions();
         List<TreeLikelihood> likelihoods = filterTreeLikelihoods(dists);
-        
+
         // Set up distributions
         CompoundDistribution prior = setupPrior(likelihoods);
         CompoundDistribution likelihood = setupLikelihood(likelihoods);
         CompoundDistribution posterior = setupPosterior(prior, likelihood);
-        
+
         // Set up operators
         List<Operator> operators = setupOperators();
-        
+
         // Create the MCMC object
         MCMC mcmc = setupMCMC(analysis, posterior, state, operators);
         return mcmc;
@@ -100,35 +100,35 @@ public class Beast2AnalysisBuilder {
             for (Map.Entry<String, Object> entry : objects.entrySet()) {
                 if (entry.getValue() instanceof Tree) {
                     Tree tree = (Tree) entry.getValue();
-                    
+
                     // Skip if tree already has a root node
                     if (tree.getRoot() != null) {
                         continue;
                     }
-                    
+
                     // Create a simple 2-taxon tree
                     try {
                         logger.info("Initializing tree with basic topology: " + entry.getKey());
-                        
+
                         // Create root node and two child nodes
                         Node rootNode = new Node();
                         rootNode.setHeight(1.0);
-                        
+
                         Node leftChild = new Node();
                         leftChild.setHeight(0.0);
                         leftChild.setID(entry.getKey() + ".taxon1");
-                        
+
                         Node rightChild = new Node();
                         rightChild.setHeight(0.0);
                         rightChild.setID(entry.getKey() + ".taxon2");
-                        
+
                         // Connect nodes
                         rootNode.addChild(leftChild);
                         rootNode.addChild(rightChild);
-                        
+
                         // Set the root node of the tree
                         tree.setRoot(rootNode);
-                        
+
                         logger.info("Successfully initialized tree with basic topology");
                     } catch (Exception e) {
                         logger.warning("Could not initialize tree with basic topology: " + e.getMessage());
@@ -145,9 +145,9 @@ public class Beast2AnalysisBuilder {
      */
     private List<TreeLikelihood> filterTreeLikelihoods(List<Distribution> dists) {
         return dists.stream()
-            .filter(d -> d instanceof TreeLikelihood)
-            .map(d -> (TreeLikelihood) d)
-            .collect(Collectors.toList());
+                .filter(d -> d instanceof TreeLikelihood)
+                .map(d -> (TreeLikelihood) d)
+                .collect(Collectors.toList());
     }
 
     /**
@@ -160,7 +160,7 @@ public class Beast2AnalysisBuilder {
 
         // Get state nodes from the model builder
         List<StateNode> stateNodes = modelBuilder.getCreatedStateNodes();
-        
+
         if (stateNodes.isEmpty()) {
             logger.warning("No state nodes found! The analysis may not run correctly.");
         } else {
@@ -170,7 +170,7 @@ public class Beast2AnalysisBuilder {
         state.initByName(INPUT_STATE_NODE, stateNodes);
         return state;
     }
-    
+
     /**
      * Initialize state nodes using distribution sampling
      * Only calls sample on "leaf" distributions to avoid redundant sampling
@@ -179,10 +179,10 @@ public class Beast2AnalysisBuilder {
         try {
             // Create a random number generator
             java.util.Random random = new java.util.Random();
-            
+
             // Get all distributions
             List<Distribution> allDistributions = modelBuilder.getCreatedDistributions();
-            
+
             // Create a set of distributions that are inputs to other distributions
             Set<Distribution> usedAsInputs = new HashSet<>();
             for (Distribution dist : allDistributions) {
@@ -200,7 +200,7 @@ public class Beast2AnalysisBuilder {
                     }
                 }
             }
-            
+
             // Find leaf distributions (those that aren't inputs to any other distribution)
             List<Distribution> leafDistributions = new ArrayList<>();
             for (Distribution dist : allDistributions) {
@@ -208,12 +208,12 @@ public class Beast2AnalysisBuilder {
                     leafDistributions.add(dist);
                 }
             }
-            
+
             // If no leaf distributions found, use all distributions
             if (leafDistributions.isEmpty()) {
                 leafDistributions = allDistributions;
             }
-            
+
             // Sample from leaf distributions
             logger.info("Found " + leafDistributions.size() + " leaf distributions for sampling");
             for (Distribution dist : leafDistributions) {
@@ -224,7 +224,7 @@ public class Beast2AnalysisBuilder {
                     logger.warning("Could not sample from " + dist.getID() + ": " + e.getMessage());
                 }
             }
-            
+
             logger.info("State nodes initialized via distribution sampling");
         } catch (Exception e) {
             logger.warning("Could not initialize state nodes: " + e.getMessage());
@@ -265,7 +265,7 @@ public class Beast2AnalysisBuilder {
         // Get parameter log interval from analysis
         int logInterval = analysis.getLogEvery();
         String traceFileName = analysis.getTraceFileName();
-        
+
         if (traceFileName == null || traceFileName.isEmpty()) {
             traceFileName = "model.log";
         }
@@ -285,14 +285,14 @@ public class Beast2AnalysisBuilder {
         // Add items to log for file
         List<BEASTInterface> fileLogItems = new ArrayList<>();
         fileLogItems.add(posterior); // Always log the posterior
-        
+
         // Add all parameters to log
         for (Object obj : modelBuilder.getAllObjects().values()) {
             if (obj instanceof Parameter && !(obj instanceof Tree)) {
                 fileLogItems.add((BEASTInterface) obj);
             }
         }
-        
+
         fileLogger.initByName(
                 INPUT_FILE_NAME, traceFileName,
                 INPUT_LOG_EVERY, logInterval,
@@ -305,21 +305,21 @@ public class Beast2AnalysisBuilder {
         treeLogger.setID(ID_TREE_LOGGER);
         // Add trees to log
         List<BEASTInterface> treeLogItems = new ArrayList<>();
-        
+
         // Find trees to log
         for (Object obj : modelBuilder.getAllObjects().values()) {
             if (obj instanceof Tree) {
                 treeLogItems.add((BEASTInterface) obj);
             }
         }
-        
+
         // Only add tree logger if we have trees to log
         if (!treeLogItems.isEmpty()) {
             String treeFileName = traceFileName.replace(".log", ".trees");
             if (treeFileName.equals(traceFileName)) {
                 treeFileName = "model.trees";
             }
-            
+
             treeLogger.initByName(
                     INPUT_FILE_NAME, treeFileName,
                     INPUT_LOG_EVERY, logInterval,
@@ -339,18 +339,18 @@ public class Beast2AnalysisBuilder {
     private List<Operator> setupOperators() {
         List<Operator> operators = new ArrayList<>();
         operatorCache.clear();
-        
+
         // Get state nodes actually in the MCMC state
         List<StateNode> stateNodes = modelBuilder.getCreatedStateNodes();
         Set<StateNode> stateNodeSet = new HashSet<>(stateNodes);
-        
+
         // Create operators only for state nodes that are in the state
         for (StateNode stateNode : stateNodes) {
             try {
                 if (stateNode instanceof Parameter && !(stateNode instanceof Tree)) {
                     Parameter param = (Parameter) stateNode;
                     addParameterOperators(operators, param);
-                    
+
                 } else if (stateNode instanceof Tree) {
                     Tree tree = (Tree) stateNode;
                     addTreeOperators(operators, tree);
@@ -359,21 +359,21 @@ public class Beast2AnalysisBuilder {
                 logger.warning("Could not create operators for " + stateNode.getID() + ": " + e.getMessage());
             }
         }
-        
+
         return operators;
-    }  
-    
+    }
+
     /**
      * Add appropriate operators for a parameter.
      */
     private void addParameterOperators(List<Operator> operators, Parameter param) {
         String paramID = param.getID();
-        
+
         // Skip if we've already created operators for this parameter
         if (operatorCache.containsKey(paramID + "Operator")) {
             return;
         }
-        
+
         try {
             if (param.getDimension() > 1) {
                 // Use Delta Exchange operator for multidimensional parameters
@@ -396,18 +396,18 @@ public class Beast2AnalysisBuilder {
             logger.warning("Could not create operator for " + paramID + ": " + e.getMessage());
         }
     }
-    
+
     /**
      * Add appropriate operators for a tree.
      */
     private void addTreeOperators(List<Operator> operators, Tree tree) {
         String treeID = tree.getID();
-        
+
         // Skip if we've already created operators for this tree
         if (operatorCache.containsKey(treeID + "SubtreeSlide")) {
             return;
         }
-        
+
         try {
             // SubtreeSlide operator
             SubtreeSlide subtreeSlide = new SubtreeSlide();
@@ -447,8 +447,8 @@ public class Beast2AnalysisBuilder {
             // Root Height Scaler operator
             ScaleOperator rootHeightScaler = new ScaleOperator();
             rootHeightScaler.setID(treeID + "RootHeightScaler");
-            rootHeightScaler.initByName(INPUT_TREE, tree, INPUT_WEIGHT, 3.0, 
-                                       "scaleFactor", 0.95, "rootOnly", true);
+            rootHeightScaler.initByName(INPUT_TREE, tree, INPUT_WEIGHT, 3.0,
+                    "scaleFactor", 0.95, "rootOnly", true);
             operators.add(rootHeightScaler);
             operatorCache.put(treeID + "RootHeightScaler", rootHeightScaler);
 
@@ -458,7 +458,7 @@ public class Beast2AnalysisBuilder {
             uniform.initByName(INPUT_TREE, tree, INPUT_WEIGHT, 30.0);
             operators.add(uniform);
             operatorCache.put(treeID + "Uniform", uniform);
-            
+
             logger.fine("Added 7 operators for tree " + treeID);
         } catch (Exception e) {
             logger.warning("Could not create operators for " + treeID + ": " + e.getMessage());
@@ -498,13 +498,13 @@ public class Beast2AnalysisBuilder {
             if (treeLikelihoods.contains(dist)) {
                 continue;
             }
-            
+
             // Skip if it's the likelihood or posterior compound distribution
             String id = dist.getID();
             if (id != null && (id.equals(ID_LIKELIHOOD) || id.equals(ID_POSTERIOR))) {
                 continue;
             }
-            
+
             // Add it to the prior
             priors.add(dist);
         }

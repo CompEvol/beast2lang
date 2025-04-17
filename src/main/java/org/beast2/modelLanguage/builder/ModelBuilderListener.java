@@ -8,21 +8,19 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Stack;
 import java.util.logging.Logger;
 
 /**
- * ANTLR listener that builds a Beast2Model as it traverses the parse tree
+ * ANTLR listener for building a Beast2Model from a parse tree.
+ * This implementation supports the @data and @observed annotations.
  */
 public class ModelBuilderListener extends Beast2ModelLanguageBaseListener {
+
     private static final Logger logger = Logger.getLogger(ModelBuilderListener.class.getName());
-    
-    private Beast2Model model = new Beast2Model();
-    private Stack<Object> stack = new Stack<>();
-    
-    // Current annotation being built
+
+    private final Beast2Model model = new Beast2Model();
     private Annotation currentAnnotation = null;
-    
+
     /**
      * Get the constructed model
      */
@@ -30,203 +28,173 @@ public class ModelBuilderListener extends Beast2ModelLanguageBaseListener {
         return model;
     }
 
-
-    @Override
-    public void enterProgram(Beast2ModelLanguageParser.ProgramContext ctx) {
-        System.out.println("DEBUG - Entering program");
-    }
-
-    @Override
-    public void enterStatement(Beast2ModelLanguageParser.StatementContext ctx) {
-        System.out.println("DEBUG - Entering statement");
-    }
-
-    @Override
-    public void enterAnnotation(Beast2ModelLanguageParser.AnnotationContext ctx) {
-        System.out.println("DEBUG - Entering annotation: @" + ctx.IDENTIFIER().getText());
-    }
-
+    /**
+     * Handle import statements
+     */
     @Override
     public void exitImportStatement(Beast2ModelLanguageParser.ImportStatementContext ctx) {
-        // Check if it's a wildcard import
-        boolean isWildcard = ctx.DOT() != null && ctx.STAR() != null;
-        
-        // Get the qualified name
         String packageName = ctx.qualifiedName().getText();
-        
-        logger.fine("Processing import: " + packageName + (isWildcard ? ".*" : ""));
-        
-        // Create and add the import statement
-        ImportStatement importStatement = new ImportStatement(packageName, isWildcard);
-        model.addImport(importStatement);
+        boolean isWildcard = ctx.STAR() != null;
+
+        ImportStatement importStmt = new ImportStatement(packageName, isWildcard);
+        model.addImport(importStmt);
+
+        logger.fine("Added import: " + importStmt);
     }
-    
+
+    /**
+     * Handle annotations
+     */
     @Override
-    public void exitAnnotation(Beast2ModelLanguageParser.AnnotationContext ctx) {
-        System.out.println("DEBUG - Parsing annotation: @" + ctx.IDENTIFIER().getText());
+    public void enterAnnotation(Beast2ModelLanguageParser.AnnotationContext ctx) {
+        // Get annotation type from annotationName
+        String type = ctx.annotationName().getText();
 
-        String name = ctx.IDENTIFIER().getText();
-        Map<String, Object> parameters = new HashMap<>();
+        logger.info("Processing annotation: @" + type);
 
-        // If there's an annotation body, process its parameters
+        // Create a map for parameters
+        Map<String, Object> params = new HashMap<>();
+
+        // Process annotation parameters if present
         if (ctx.annotationBody() != null) {
-            System.out.println("DEBUG - Annotation has parameters");
-            Beast2ModelLanguageParser.AnnotationBodyContext bodyCtx = ctx.annotationBody();
-            for (Beast2ModelLanguageParser.AnnotationParameterContext paramCtx : bodyCtx.annotationParameter()) {
-                String paramName = paramCtx.identifier().getText();
-                Object paramValue = getLiteralValue(paramCtx.literal());
-                parameters.put(paramName, paramValue);
-                System.out.println("DEBUG - Parameter: " + paramName + " = " + paramValue);
+            for (Beast2ModelLanguageParser.AnnotationParameterContext paramCtx :
+                    ctx.annotationBody().annotationParameter()) {
+                String name = paramCtx.identifier(0).getText();
+                Object value;
+
+                // Parameter value can be either a literal or an identifier
+                if (paramCtx.literal() != null) {
+                    value = getLiteralValue(paramCtx.literal());
+                } else if (paramCtx.identifier(1) != null) {
+                    // For identifier, just use the identifier name as a string
+                    value = paramCtx.identifier(1).getText();
+                } else {
+                    throw new IllegalArgumentException("Invalid annotation parameter value");
+                }
+
+                params.put(name, value);
+                logger.info("Added parameter: " + name + " = " + value);
             }
         }
 
         // Create the annotation
-        currentAnnotation = new Annotation(name, parameters);
-        System.out.println("DEBUG - Created annotation: " + currentAnnotation);
+        currentAnnotation = new Annotation(type, params);
+        logger.fine("Created annotation: " + currentAnnotation);
     }
+
+    /**
+     * Handle statements with annotations
+     */
     @Override
-    public void exitVariableDeclaration(Beast2ModelLanguageParser.VariableDeclarationContext ctx) {
-        // Get the expression from the stack
-        Expression expression = (Expression) stack.pop();
-        
-        // Get class name and variable name
+    public void exitStatement(Beast2ModelLanguageParser.StatementContext ctx) {
+        Statement statement;
+
+        // Create the appropriate statement type
+        if (ctx.variableDeclaration() != null) {
+            statement = createVariableDeclaration(ctx.variableDeclaration());
+        } else if (ctx.distributionAssignment() != null) {
+            statement = createDistributionAssignment(ctx.distributionAssignment());
+        } else {
+            throw new IllegalStateException("Unknown statement type");
+        }
+
+        // If we have an annotation, wrap the statement
+        if (currentAnnotation != null) {
+            statement = new AnnotatedStatement(currentAnnotation, statement);
+            logger.fine("Created annotated statement: " + statement);
+            currentAnnotation = null; // Reset for next statement
+        }
+
+        // Add the statement to the model
+        model.addStatement(statement);
+    }
+
+    /**
+     * Create a VariableDeclaration from its context
+     */
+    private VariableDeclaration createVariableDeclaration(Beast2ModelLanguageParser.VariableDeclarationContext ctx) {
         String className = ctx.className().getText();
         String variableName = ctx.identifier().getText();
-        
-        logger.fine("Creating variable declaration: " + className + " " + variableName);
-        
-        // Create variable declaration
-        VariableDeclaration varDecl = new VariableDeclaration(className, variableName, expression);
-        
-        // If there's an annotation, wrap it in an AnnotatedStatement
-        if (currentAnnotation != null) {
-            AnnotatedStatement annotatedStmt = new AnnotatedStatement(currentAnnotation, varDecl);
-            model.addStatement(annotatedStmt);
-            currentAnnotation = null;
-        } else {
-            model.addStatement(varDecl);
-        }
-    }
-    
-    @Override
-    public void exitDistributionAssignment(Beast2ModelLanguageParser.DistributionAssignmentContext ctx) {
-        // Get the expression from the stack
-        Expression expression = (Expression) stack.pop();
+        Expression expression = createExpression(ctx.expression());
 
-        // Get class name and variable name
+        return new VariableDeclaration(className, variableName, expression);
+    }
+
+    /**
+     * Create a DistributionAssignment from its context
+     */
+    private DistributionAssignment createDistributionAssignment(Beast2ModelLanguageParser.DistributionAssignmentContext ctx) {
         String className = ctx.className().getText();
         String variableName = ctx.identifier().getText();
+        Expression distribution = createExpression(ctx.expression());
 
-        System.out.println("DEBUG - Creating distribution assignment: " + className + " " + variableName);
+        return new DistributionAssignment(className, variableName, distribution);
+    }
 
-        // Create distribution assignment
-        DistributionAssignment distAssign = new DistributionAssignment(className, variableName, expression);
-
-        // If there's an annotation, wrap it in an AnnotatedStatement
-        if (currentAnnotation != null) {
-            System.out.println("DEBUG - Attaching annotation to distribution assignment: " + currentAnnotation.getName());
-            AnnotatedStatement annotatedStmt = new AnnotatedStatement(currentAnnotation, distAssign);
-            model.addStatement(annotatedStmt);
-            currentAnnotation = null;
+    /**
+     * Create an Expression from its context
+     */
+    private Expression createExpression(Beast2ModelLanguageParser.ExpressionContext ctx) {
+        if (ctx instanceof Beast2ModelLanguageParser.FunctionCallExprContext) {
+            Beast2ModelLanguageParser.FunctionCallContext funcCtx =
+                    ((Beast2ModelLanguageParser.FunctionCallExprContext) ctx).functionCall();
+            return createFunctionCall(funcCtx);
+        } else if (ctx instanceof Beast2ModelLanguageParser.IdentifierExprContext) {
+            String name = ((Beast2ModelLanguageParser.IdentifierExprContext) ctx).identifier().getText();
+            return new Identifier(name);
+        } else if (ctx instanceof Beast2ModelLanguageParser.LiteralExprContext) {
+            Object value = getLiteralValue(((Beast2ModelLanguageParser.LiteralExprContext) ctx).literal());
+            return createLiteral(value);
         } else {
-            System.out.println("DEBUG - No annotation for distribution assignment");
-            model.addStatement(distAssign);
+            throw new IllegalStateException("Unknown expression type: " + ctx.getClass().getName());
         }
     }
-    
-    @Override
-    public void exitFunctionCallExpr(Beast2ModelLanguageParser.FunctionCallExprContext ctx) {
-        // Function call expression is already on the stack from exitFunctionCall
-    }
-    
-    @Override
-    public void exitIdentifierExpr(Beast2ModelLanguageParser.IdentifierExprContext ctx) {
-        // Create identifier expression and push to stack
-        String name = ctx.identifier().getText();
-        Identifier identifier = new Identifier(name);
-        stack.push(identifier);
-    }
-    
-    @Override
-    public void exitLiteralExpr(Beast2ModelLanguageParser.LiteralExprContext ctx) {
-        // Literal is already on the stack from exitLiteral
-    }
-    
-    @Override
-    public void exitFunctionCall(Beast2ModelLanguageParser.FunctionCallContext ctx) {
+
+    /**
+     * Create a FunctionCall from its context
+     */
+    private FunctionCall createFunctionCall(Beast2ModelLanguageParser.FunctionCallContext ctx) {
+        String className = ctx.className().getText();
         List<Argument> arguments = new ArrayList<>();
-        
-        // If there are arguments, get them from the stack
+
+        // Add arguments if present
         if (ctx.argumentList() != null) {
-            int argCount = ctx.argumentList().argument().size();
-            for (int i = 0; i < argCount; i++) {
-                arguments.add(0, (Argument) stack.pop()); // Reverse order to maintain correct order
+            for (Beast2ModelLanguageParser.ArgumentContext argCtx : ctx.argumentList().argument()) {
+                String name = argCtx.identifier().getText();
+                Expression value = createExpression(argCtx.argumentValue().expression());
+                arguments.add(new Argument(name, value));
             }
         }
-        
-        // Get class name
-        String className = ctx.className().getText();
-        
-        // Create function call and push to stack
-        FunctionCall functionCall = new FunctionCall(className, arguments);
-        stack.push(functionCall);
+
+        return new FunctionCall(className, arguments);
     }
-    
-    @Override
-    public void exitArgument(Beast2ModelLanguageParser.ArgumentContext ctx) {
-        // Get the argument value from the stack
-        Object value = stack.pop();
-        Expression expr = null;
-        
-        // Convert the value to an Expression if it's not already
-        if (value instanceof Expression) {
-            expr = (Expression) value;
-        } else if (value instanceof Literal) {
-            expr = (Expression) value;
-        } else {
-            throw new IllegalStateException("Unexpected argument value type: " + value.getClass().getName());
-        }
-        
-        // Get argument name
-        String name = ctx.identifier().getText();
-        
-        // Create argument and push to stack
-        Argument argument = new Argument(name, expr);
-        stack.push(argument);
-    }
-    
-    @Override
-    public void exitLiteral(Beast2ModelLanguageParser.LiteralContext ctx) {
-        Literal.LiteralType type;
-        Object value = getLiteralValue(ctx);
-        
-        if (ctx.INTEGER_LITERAL() != null) {
-            type = Literal.LiteralType.INTEGER;
-        } else if (ctx.FLOAT_LITERAL() != null) {
-            type = Literal.LiteralType.FLOAT;
-        } else if (ctx.STRING_LITERAL() != null) {
-            type = Literal.LiteralType.STRING;
-        } else if (ctx.BOOLEAN_LITERAL() != null) {
-            type = Literal.LiteralType.BOOLEAN;
-        } else {
-            throw new IllegalStateException("Unknown literal type");
-        }
-        
-        // Create literal and push to stack
-        Literal literal = new Literal(value, type);
-        stack.push(literal);
-    }
-    
+
     /**
-     * Extract the raw value from a literal context
+     * Create a Literal with the appropriate LiteralType
+     */
+    private Literal createLiteral(Object value) {
+        if (value instanceof Double) {
+            return new Literal(value, Literal.LiteralType.FLOAT);
+        } else if (value instanceof Integer) {
+            return new Literal(value, Literal.LiteralType.INTEGER);
+        } else if (value instanceof Boolean) {
+            return new Literal(value, Literal.LiteralType.BOOLEAN);
+        } else {
+            // Default to string for other types
+            return new Literal(value, Literal.LiteralType.STRING);
+        }
+    }
+
+    /**
+     * Get a value from a literal context
      */
     private Object getLiteralValue(Beast2ModelLanguageParser.LiteralContext ctx) {
-        if (ctx.INTEGER_LITERAL() != null) {
-            return Integer.parseInt(ctx.INTEGER_LITERAL().getText());
-        } else if (ctx.FLOAT_LITERAL() != null) {
+        if (ctx.FLOAT_LITERAL() != null) {
             return Double.parseDouble(ctx.FLOAT_LITERAL().getText());
+        } else if (ctx.INTEGER_LITERAL() != null) {
+            return Integer.parseInt(ctx.INTEGER_LITERAL().getText());
         } else if (ctx.STRING_LITERAL() != null) {
-            // Remove quotes from the string literal
+            // Remove surrounding quotes
             String text = ctx.STRING_LITERAL().getText();
             return text.substring(1, text.length() - 1);
         } else if (ctx.BOOLEAN_LITERAL() != null) {

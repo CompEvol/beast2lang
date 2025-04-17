@@ -3,20 +3,18 @@ package org.beast2.modelLanguage.builder.handlers;
 import beast.base.core.BEASTInterface;
 import beast.base.core.Input;
 
-import beast.base.parser.NexusParser;
-
+import org.beast2.modelLanguage.data.NexusAlignment;
 import org.beast2.modelLanguage.model.*;
 
-import java.io.File;
 import java.lang.reflect.*;
 import java.util.*;
 import java.util.logging.Logger;
 
-import java.io.IOException;
-
 /**
  * Handler for DistributionAssignment statements, responsible for creating BEAST2 objects
  * with associated distributions.
+ * This implementation supports the @observed annotation with data references and
+ * flexibly handles inputs that should be set on random variables rather than distributions.
  */
 public class DistributionAssignmentHandler {
 
@@ -35,15 +33,6 @@ public class DistributionAssignmentHandler {
         Expression distribution = distAssign.getDistribution();
 
         logger.info("Creating random variable: " + varName);
-
-        // Special handling for problematic classes
-        if (className.equals("beast.base.evolution.alignment.Alignment")) {
-            handleAlignmentCreation(varName, distribution, objectRegistry, null);
-            return;
-        } else if (className.equals("beast.base.evolution.tree.Tree") && varName.equals("myTree")) {
-            handleTreeCreation(varName, distribution, objectRegistry);
-            return;
-        }
 
         // Create the parameter object
         Class<?> beastClass = Class.forName(className);
@@ -70,7 +59,7 @@ public class DistributionAssignmentHandler {
 
         // Special handling for TreeLikelihood
         if (distClassName.equals("beast.base.evolution.likelihood.TreeLikelihood")) {
-            handleTreeLikelihoodCreation(varName, funcCall, beastObject, objectRegistry);
+            createTreeLikelihood(varName, funcCall, beastObject, objectRegistry);
             return;
         }
 
@@ -78,40 +67,383 @@ public class DistributionAssignmentHandler {
         Object distObject = distClass.getDeclaredConstructor().newInstance();
         setObjectId(distObject, distClass, varName + "Prior");
 
-        // Configure the distribution
-        configureDistribution(distObject, distClass, funcCall, beastObject, varName, objectRegistry);
+        // Configure the distribution and parameter object with function call arguments
+        configureObjects(distObject, beastObject, funcCall, objectRegistry);
 
         // Store the distribution object
         objectRegistry.put(varName + "Prior", distObject);
-
     }
 
     /**
-     * Create BEAST2 objects from a distribution assignment with observed data
+     * Create BEAST2 objects from a distribution assignment with observed data reference
      *
      * @param distAssign     the distribution assignment to process
      * @param objectRegistry registry of created objects for reference resolution
-     * @param dataFile       path to the data file for observed data
+     * @param dataRef        the name of the variable annotated with @data
+     * @throws Exception if object creation fails
      */
-    public void createObservedObjects(DistributionAssignment distAssign, Map<String, Object> objectRegistry, String dataFile) {
+    public void createObservedObjects(DistributionAssignment distAssign, Map<String, Object> objectRegistry, String dataRef) throws Exception {
         String className = distAssign.getClassName();
         String varName = distAssign.getVariableName();
         Expression distribution = distAssign.getDistribution();
 
-        logger.info("Creating observed random variable: " + varName + " with data: " + dataFile);
+        logger.info("Creating observed random variable: " + varName + " with data reference: " + dataRef);
 
-        // Special handling for observed alignment
-        if (className.equals("beast.base.evolution.alignment.Alignment")) {
-            handleAlignmentCreation(varName, distribution, objectRegistry, dataFile);
-        } else {
-            // For now, don't support other types of observed objects
-            throw new UnsupportedOperationException(
-                    "Observed objects of type " + className + " are not currently supported. " +
-                            "Only alignment observations are implemented."
+        // Get the referenced data object
+        Object dataObject = objectRegistry.get(dataRef);
+        if (dataObject == null) {
+            throw new IllegalArgumentException("Data reference '" + dataRef + "' not found in object registry");
+        }
+
+        // Check that the data object is type-compatible with the declaration
+        Class<?> expectedClass = Class.forName(className);
+        if (!expectedClass.isInstance(dataObject)) {
+            throw new IllegalArgumentException(
+                    "Data reference '" + dataRef + "' of type " + dataObject.getClass().getName() +
+                            " is not compatible with expected type " + className
             );
+        }
+
+        // Use the same data object for the observed variable
+        objectRegistry.put(varName, dataObject);
+        logger.info("Using data object " + dataRef + " for observed variable " + varName);
+
+        // If no distribution is specified, we're done
+        if (!(distribution instanceof FunctionCall)) {
+            logger.info("No distribution specified for observed variable " + varName);
+            return;
+        }
+
+        // Create and configure the likelihood object
+        FunctionCall funcCall = (FunctionCall) distribution;
+        String likelihoodClassName = funcCall.getClassName();
+
+        // Use special handling for TreeLikelihood
+        if (likelihoodClassName.equals("beast.base.evolution.likelihood.TreeLikelihood")) {
+            createTreeLikelihood(varName, funcCall, dataObject, objectRegistry);
+        } else {
+            // General case for other likelihoods
+            createLikelihood(likelihoodClassName, varName, funcCall, dataObject, objectRegistry);
         }
     }
 
+    /**
+     * Create a TreeLikelihood object and configure it
+     */
+    private void createTreeLikelihood(String varName, FunctionCall funcCall, Object dataObject, Map<String, Object> objectRegistry) throws Exception {
+        logger.info("Creating TreeLikelihood for: " + varName);
+
+        // Create the TreeLikelihood object
+        Class<?> treeLikelihoodClass = Class.forName("beast.base.evolution.likelihood.TreeLikelihood");
+        Object treeLikelihood = treeLikelihoodClass.getDeclaredConstructor().newInstance();
+
+        // Set the ID
+        setObjectId(treeLikelihood, treeLikelihoodClass, varName + "Likelihood");
+
+        // Build input maps
+        Map<String, Input<?>> likelihoodInputMap = buildInputMap(treeLikelihood, treeLikelihoodClass);
+        Map<String, Input<?>> dataInputMap = null;
+        if (dataObject instanceof BEASTInterface) {
+            dataInputMap = buildInputMap(dataObject, dataObject.getClass());
+        }
+
+        // Connect the data object to the appropriate input
+        Input<?> dataInput = likelihoodInputMap.get("data");
+        if (dataInput != null) {
+            @SuppressWarnings("unchecked")
+            Input<Object> typedInput = (Input<Object>) dataInput;
+            typedInput.setValue(dataObject, (BEASTInterface) treeLikelihood);
+            logger.fine("Connected " + varName + " to TreeLikelihood's 'data' input");
+        } else {
+            logger.warning("Could not find 'data' input on TreeLikelihood");
+        }
+
+        // Configure function call arguments
+        for (Argument arg : funcCall.getArguments()) {
+            String name = arg.getName();
+            if ("data".equals(name)) continue; // Skip 'data' as we've already handled it
+
+            try {
+                Object argValue = ExpressionResolver.resolveValue(arg.getValue(), objectRegistry);
+                Input<?> likelihoodInput = likelihoodInputMap.get(name);
+
+                if (likelihoodInput != null) {
+                    // Set input on likelihood object
+                    @SuppressWarnings("unchecked")
+                    Input<Object> typedInput = (Input<Object>) likelihoodInput;
+                    typedInput.setValue(argValue, (BEASTInterface) treeLikelihood);
+                    logger.fine("Set TreeLikelihood input '" + name + "' to " + argValue);
+                } else if (dataInputMap != null) {
+                    // Try to set input on data object if not found in likelihood
+                    Input<?> dataObjectInput = dataInputMap.get(name);
+                    if (dataObjectInput != null) {
+                        @SuppressWarnings("unchecked")
+                        Input<Object> typedInput = (Input<Object>) dataObjectInput;
+                        typedInput.setValue(argValue, (BEASTInterface) dataObject);
+                        logger.fine("Set data object input '" + name + "' to " + argValue);
+                    } else {
+                        logger.warning("Input '" + name + "' not found in TreeLikelihood or data object");
+                    }
+                } else {
+                    logger.warning("Input '" + name + "' not found in TreeLikelihood");
+                }
+            } catch (Exception e) {
+                logger.warning("Could not set input '" + name + "': " + e.getMessage());
+            }
+        }
+
+        // Initialize both objects
+        callInitAndValidate(treeLikelihood, treeLikelihoodClass);
+        if (dataObject instanceof BEASTInterface) {
+            callInitAndValidate(dataObject, dataObject.getClass());
+        }
+
+        // Store the TreeLikelihood
+        objectRegistry.put(varName + "Likelihood", treeLikelihood);
+        logger.info("Created and stored TreeLikelihood for: " + varName);
+    }
+
+    /**
+     * Create a general likelihood object
+     */
+    private void createLikelihood(String className, String varName, FunctionCall funcCall,
+                                  Object dataObject, Map<String, Object> objectRegistry) throws Exception {
+        Class<?> likelihoodClass = Class.forName(className);
+        Object likelihoodObject = likelihoodClass.getDeclaredConstructor().newInstance();
+
+        // Set ID
+        setObjectId(likelihoodObject, likelihoodClass, varName + "Likelihood");
+
+        // Build input maps
+        Map<String, Input<?>> likelihoodInputMap = buildInputMap(likelihoodObject, likelihoodClass);
+        Map<String, Input<?>> dataInputMap = null;
+        if (dataObject instanceof BEASTInterface) {
+            dataInputMap = buildInputMap(dataObject, dataObject.getClass());
+        }
+
+        // Connect data object to the likelihood
+        boolean dataConnected = connectDataToLikelihood(dataObject, likelihoodObject, likelihoodInputMap);
+
+        // Configure other arguments from function call
+        for (Argument arg : funcCall.getArguments()) {
+            String name = arg.getName();
+
+            // Skip data inputs we've already handled
+            if (dataConnected && isDataInputName(name)) {
+                continue;
+            }
+
+            Object argValue = ExpressionResolver.resolveValue(arg.getValue(), objectRegistry);
+            Input<?> likelihoodInput = likelihoodInputMap.get(name);
+
+            if (likelihoodInput != null) {
+                // Set input on likelihood
+                @SuppressWarnings("unchecked")
+                Input<Object> typedInput = (Input<Object>) likelihoodInput;
+                typedInput.setValue(argValue, (BEASTInterface) likelihoodObject);
+                logger.fine("Set likelihood input '" + name + "' to " + argValue);
+            } else if (dataInputMap != null) {
+                // Try to set on data object if not found in likelihood
+                Input<?> dataObjectInput = dataInputMap.get(name);
+                if (dataObjectInput != null) {
+                    @SuppressWarnings("unchecked")
+                    Input<Object> typedInput = (Input<Object>) dataObjectInput;
+                    typedInput.setValue(argValue, (BEASTInterface) dataObject);
+                    logger.fine("Set data object input '" + name + "' to " + argValue);
+                } else {
+                    logger.warning("Input '" + name + "' not found in likelihood or data object");
+                }
+            } else {
+                logger.warning("Input '" + name + "' not found in " + className);
+            }
+        }
+
+        // Initialize both objects
+        callInitAndValidate(likelihoodObject, likelihoodClass);
+        if (dataObject instanceof BEASTInterface) {
+            callInitAndValidate(dataObject, dataObject.getClass());
+        }
+
+        // Store the likelihood object
+        objectRegistry.put(varName + "Likelihood", likelihoodObject);
+        logger.info("Created and stored likelihood " + varName + "Likelihood");
+    }
+
+    /**
+     * Connect data object to likelihood using common input names
+     */
+    private boolean connectDataToLikelihood(Object dataObject, Object likelihoodObject, Map<String, Input<?>> inputMap) {
+        // Try common input names for data objects
+        String[] dataInputNames = {"data", "patterns", "alignment", "x"};
+        for (String inputName : dataInputNames) {
+            Input<?> input = inputMap.get(inputName);
+            if (input != null) {
+                try {
+                    @SuppressWarnings("unchecked")
+                    Input<Object> typedInput = (Input<Object>) input;
+                    typedInput.setValue(dataObject, (BEASTInterface) likelihoodObject);
+                    logger.fine("Connected data object to likelihood's '" + inputName + "' input");
+                    return true;
+                } catch (Exception e) {
+                    logger.warning("Failed to connect data to input '" + inputName + "': " + e.getMessage());
+                }
+            }
+        }
+
+        logger.warning("Could not find appropriate input for data object");
+        return false;
+    }
+
+    /**
+     * Check if an input name is commonly used for data objects
+     */
+    private boolean isDataInputName(String name) {
+        return name.equals("data") || name.equals("patterns") ||
+                name.equals("alignment") || name.equals("x");
+    }
+
+    /**
+     * Configure distribution and parameter objects with function call arguments
+     */
+    private void configureObjects(Object distObject, Object paramObject, FunctionCall funcCall,
+                                  Map<String, Object> objectRegistry) throws Exception {
+        // Build input maps for both objects
+        Map<String, Input<?>> distInputMap = buildInputMap(distObject, distObject.getClass());
+        Map<String, Input<?>> paramInputMap = null;
+        if (paramObject instanceof BEASTInterface) {
+            paramInputMap = buildInputMap(paramObject, paramObject.getClass());
+        }
+
+        // Connect parameter to appropriate input in distribution
+        boolean parameterConnected = connectParameterToDistribution(paramObject, distObject, distInputMap);
+
+        // Process all function call arguments
+        for (Argument arg : funcCall.getArguments()) {
+            String name = arg.getName();
+
+            // Skip parameter inputs we've already handled
+            if (parameterConnected && isParameterInputName(name, paramObject)) {
+                continue;
+            }
+
+            Object argValue = ExpressionResolver.resolveValue(arg.getValue(), objectRegistry);
+
+            // Try to set input on distribution first
+            Input<?> distInput = distInputMap.get(name);
+            if (distInput != null) {
+                try {
+                    @SuppressWarnings("unchecked")
+                    Input<Object> typedInput = (Input<Object>) distInput;
+                    typedInput.setValue(argValue, (BEASTInterface) distObject);
+                    logger.fine("Set distribution input '" + name + "' to " + argValue);
+                    continue;  // Successfully set on distribution, proceed to next argument
+                } catch (Exception e) {
+                    logger.warning("Failed to set input '" + name + "' on distribution: " + e.getMessage());
+                }
+            }
+
+            // If setting on distribution failed or input not found, try parameter object
+            if (paramInputMap != null) {
+                Input<?> paramInput = paramInputMap.get(name);
+                if (paramInput != null) {
+                    try {
+                        @SuppressWarnings("unchecked")
+                        Input<Object> typedInput = (Input<Object>) paramInput;
+                        typedInput.setValue(argValue, (BEASTInterface) paramObject);
+                        logger.fine("Set parameter input '" + name + "' to " + argValue);
+                        continue;  // Successfully set on parameter, proceed to next argument
+                    } catch (Exception e) {
+                        logger.warning("Failed to set input '" + name + "' on parameter: " + e.getMessage());
+                    }
+                }
+            }
+
+            // If we get here, the input wasn't found or couldn't be set on either object
+            logger.warning("Input '" + name + "' not found in distribution or parameter object");
+        }
+
+        // Initialize both objects
+        callInitAndValidate(distObject, distObject.getClass());
+        if (paramObject instanceof BEASTInterface) {
+            callInitAndValidate(paramObject, paramObject.getClass());
+        }
+    }
+
+    /**
+     * Connect parameter object to the appropriate input in the distribution
+     */
+    private boolean connectParameterToDistribution(Object paramObject, Object distObject,
+                                                   Map<String, Input<?>> distInputMap) {
+        // 1. For Prior-like distributions, connect to 'x' input
+        Input<?> xInput = distInputMap.get("x");
+        if (xInput != null) {
+            try {
+                @SuppressWarnings("unchecked")
+                Input<Object> typedXInput = (Input<Object>) xInput;
+                typedXInput.setValue(paramObject, (BEASTInterface) distObject);
+                logger.fine("Connected parameter to distribution's 'x' input");
+                return true;
+            } catch (Exception e) {
+                logger.warning("Failed to connect to 'x' input: " + e.getMessage());
+            }
+        }
+
+        // 2. For tree distributions, connect to 'tree' input if parameter is a Tree
+        if (paramObject instanceof beast.base.evolution.tree.Tree) {
+            Input<?> treeInput = distInputMap.get("tree");
+            if (treeInput != null) {
+                try {
+                    @SuppressWarnings("unchecked")
+                    Input<Object> typedTreeInput = (Input<Object>) treeInput;
+                    typedTreeInput.setValue(paramObject, (BEASTInterface) distObject);
+                    logger.fine("Connected Tree to distribution's 'tree' input");
+                    return true;
+                } catch (Exception e) {
+                    logger.warning("Failed to connect to 'tree' input: " + e.getMessage());
+                }
+            }
+        }
+
+        // 3. Try other common input names
+        String[] commonInputNames = {"data", "taxonset", "network", "trait", "patterns"};
+        for (String inputName : commonInputNames) {
+            Input<?> input = distInputMap.get(inputName);
+            if (input != null) {
+                try {
+                    @SuppressWarnings("unchecked")
+                    Input<Object> typedInput = (Input<Object>) input;
+                    typedInput.setValue(paramObject, (BEASTInterface) distObject);
+                    logger.fine("Connected parameter to distribution's '" + inputName + "' input");
+                    return true;
+                } catch (Exception e) {
+                    // Continue to next input name
+                }
+            }
+        }
+
+        logger.warning("Could not find appropriate input for parameter in distribution");
+        return false;
+    }
+
+    /**
+     * Check if an input name is commonly used for parameter objects
+     */
+    private boolean isParameterInputName(String name, Object paramObject) {
+        if (name.equals("x") || name.equals("parameter")) {
+            return true;
+        }
+
+        if (paramObject instanceof beast.base.evolution.tree.Tree &&
+                (name.equals("tree") || name.equals("treeModel"))) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Set object ID
+     */
     private void setObjectId(Object object, Class<?> clazz, String id) {
         try {
             Method setId = clazz.getMethod("setID", String.class);
@@ -123,6 +455,9 @@ public class DistributionAssignmentHandler {
         }
     }
 
+    /**
+     * Initialize a RealParameter with default values
+     */
     private void initializeRealParameter(Object paramObject, Class<?> paramClass) {
         try {
             // Find the valuesInput field
@@ -147,6 +482,9 @@ public class DistributionAssignmentHandler {
         }
     }
 
+    /**
+     * Find a field by name, including in superclasses
+     */
     private Field findField(Class<?> clazz, String fieldName) {
         // Look in the class itself
         try {
@@ -162,123 +500,42 @@ public class DistributionAssignmentHandler {
     }
 
     /**
-     * Configure a distribution with parameter and arguments
+     * Build a map of input names to Input objects
      */
-    private void configureDistribution(Object distObject, Class<?> distClass, FunctionCall funcCall,
-                                       Object paramObject, String paramName, Map<String, Object> objectRegistry) throws Exception {
-        // Build a map of input names to Input objects
+    private Map<String, Input<?>> buildInputMap(Object object, Class<?> clazz) {
         Map<String, Input<?>> inputMap = new HashMap<>();
-        Map<String, Class<?>> expectedTypeMap = new HashMap<>();
 
-        for (Field field : distClass.getFields()) {
-            if (!Input.class.isAssignableFrom(field.getType())) continue;
+        // Get all fields from this class and superclasses
+        List<Field> fields = new ArrayList<>();
+        Class<?> currentClass = clazz;
 
-            @SuppressWarnings("unchecked")
-            Input<?> input = (Input<?>) field.get(distObject);
-            String name = input.getName();
-            inputMap.put(name, input);
+        while (currentClass != null) {
+            fields.addAll(Arrays.asList(currentClass.getFields()));
+            currentClass = currentClass.getSuperclass();
+        }
 
-            // Determine expected type
-            Class<?> expectedType = input.getType();
-            if (expectedType == null) {
-                // Try to infer from generic type
-                Type genericType = field.getGenericType();
-                if (genericType instanceof ParameterizedType) {
-                    Type[] typeArgs = ((ParameterizedType) genericType).getActualTypeArguments();
-                    if (typeArgs.length > 0 && typeArgs[0] instanceof Class) {
-                        expectedType = (Class<?>) typeArgs[0];
+        // Extract Input objects
+        for (Field field : fields) {
+            if (Input.class.isAssignableFrom(field.getType())) {
+                try {
+                    field.setAccessible(true);
+                    @SuppressWarnings("unchecked")
+                    Input<?> input = (Input<?>) field.get(object);
+                    if (input != null) {
+                        inputMap.put(input.getName(), input);
                     }
-                }
-            }
-            expectedTypeMap.put(name, expectedType);
-        }
-
-        // Connect parameter to appropriate input based on its type
-        boolean parameterConnected = false;
-
-        // 1. For Prior-like distributions, connect to 'x' input
-        Input<?> xInput = inputMap.get("x");
-        if (xInput != null) {
-            @SuppressWarnings("unchecked")
-            Input<Object> typedXInput = (Input<Object>) xInput;
-            typedXInput.setValue(paramObject, (BEASTInterface) distObject);
-            logger.fine("Connected parameter " + paramName + " to distribution's 'x' input");
-            parameterConnected = true;
-        }
-
-        // 2. For tree distributions, connect to 'tree' input if parameter is a Tree
-        if (!parameterConnected && paramObject instanceof beast.base.evolution.tree.Tree) {
-            Input<?> treeInput = inputMap.get("tree");
-            if (treeInput != null) {
-                @SuppressWarnings("unchecked")
-                Input<Object> typedTreeInput = (Input<Object>) treeInput;
-                typedTreeInput.setValue(paramObject, (BEASTInterface) distObject);
-                logger.fine("Connected Tree " + paramName + " to distribution's 'tree' input");
-                parameterConnected = true;
-            }
-        }
-
-        // 3. If we haven't connected yet, try other common input names
-        if (!parameterConnected) {
-            String[] commonInputNames = {"data", "taxonset", "network", "trait", "patterns"};
-            for (String inputName : commonInputNames) {
-                Input<?> input = inputMap.get(inputName);
-                if (input != null) {
-                    Class<?> expectedType = expectedTypeMap.get(inputName);
-                    if (expectedType != null && expectedType.isAssignableFrom(paramObject.getClass())) {
-                        @SuppressWarnings("unchecked")
-                        Input<Object> typedInput = (Input<Object>) input;
-                        typedInput.setValue(paramObject, (BEASTInterface) distObject);
-                        logger.fine("Connected parameter " + paramName + " to distribution's '" + inputName + "' input");
-                        parameterConnected = true;
-                        break;
-                    }
+                } catch (IllegalAccessException e) {
+                    logger.warning("Failed to access Input field: " + field.getName());
                 }
             }
         }
 
-        // 4. Configure other arguments from the function call
-        for (Argument arg : funcCall.getArguments()) {
-            String name = arg.getName();
-
-            // Skip the parameter we've already connected, if any
-            if (parameterConnected && (name.equals("x") ||
-                    (name.equals("tree") && paramObject instanceof beast.base.evolution.tree.Tree))) {
-                continue;
-            }
-
-            Object rawValue = ExpressionResolver.resolveValue(arg.getValue(), objectRegistry);
-            Input<?> input = inputMap.get(name);
-
-            if (input == null) {
-                throw new RuntimeException("No Input named '" + name + "' in distribution " + distClass.getName());
-            }
-
-            // Type check if we have both expected type and non-null value
-            Class<?> expectedType = expectedTypeMap.get(name);
-            if (expectedType != null && rawValue != null) {
-                if (!expectedType.isAssignableFrom(rawValue.getClass())) {
-                    throw new RuntimeException(String.format(
-                            "Type mismatch for '%s': expected %s but got %s",
-                            name,
-                            expectedType.getSimpleName(),
-                            rawValue.getClass().getSimpleName()
-                    ));
-                }
-            }
-
-            // Set the input value
-            @SuppressWarnings("unchecked")
-            Input<Object> typedInput = (Input<Object>) input;
-            typedInput.setValue(rawValue, (BEASTInterface) distObject);
-            logger.fine("Set input '" + name + "' to " + rawValue);
-        }
-
-        // Initialize the distribution
-        callInitAndValidate(distObject, distClass);
-
+        return inputMap;
     }
 
+    /**
+     * Call initAndValidate method on object if it exists
+     */
     private void callInitAndValidate(Object object, Class<?> clazz) {
         try {
             Method initMethod = clazz.getMethod("initAndValidate");
@@ -288,260 +545,6 @@ public class DistributionAssignmentHandler {
             // Some classes might not have initAndValidate, which is fine
         } catch (Exception e) {
             logger.warning("Failed to call initAndValidate on " + clazz.getName() + ": " + e.getMessage());
-        }
-    }
-
-    /**
-     * Special handling for Alignment objects due to initialization challenges
-     */
-    private void handleAlignmentCreation(String varName, Expression distribution, Map<String, Object> objectRegistry, String dataFile) {
-        try {
-            logger.info("Special handling for Alignment class" + (dataFile != null ? " with data file: " + dataFile : ""));
-
-            // Create an alignment object - use appropriate approach based on dataFile
-            Object alignmentObject = null;
-
-            if (dataFile != null) {
-                // Create alignment from a data file
-                alignmentObject = createAlignmentFromFile(dataFile, varName);
-            } else {
-                try {
-                    // Create an empty alignment if no data file specified
-                    Class<?> alignmentClass = Class.forName("beast.base.evolution.alignment.Alignment");
-                    alignmentObject = alignmentClass.getDeclaredConstructor().newInstance();
-
-                    // Set the ID
-                    setObjectId(alignmentObject, alignmentClass, varName);
-
-                } catch (ExceptionInInitializerError e) {
-                    // If the static initialization fails, use a stub object
-                    logger.warning("Static initialization of Alignment failed, using stub: " + e.getMessage());
-                    alignmentObject = new DummyBEASTObject(varName, "Alignment");
-                }
-            }
-
-            // Store the alignment object
-            objectRegistry.put(varName, alignmentObject);
-            logger.info("Successfully created and stored Alignment: " + varName);
-
-            // If there's a distribution function call, create that too (typically TreeLikelihood)
-            if (distribution instanceof FunctionCall) {
-                FunctionCall funcCall = (FunctionCall) distribution;
-                String distClassName = funcCall.getClassName();
-
-                if (distClassName.equals("beast.base.evolution.likelihood.TreeLikelihood")) {
-                    handleTreeLikelihoodCreation(varName, funcCall, alignmentObject, objectRegistry);
-                }
-            }
-        } catch (Exception e) {
-            // Create a stub object if all else fails
-            logger.warning("Failed to create Alignment, using generic fallback: " + e.getMessage());
-            DummyBEASTObject dummy = new DummyBEASTObject(varName, "Alignment");
-            objectRegistry.put(varName, dummy);
-        }
-    }
-
-    private Object createAlignmentFromFile(String dataFile, String id) throws Exception {
-        logger.info("Creating alignment from file: " + dataFile);
-
-        File file = new File(dataFile);
-        if (!file.exists()) {
-            throw new IOException("Data file not found: " + dataFile);
-        }
-
-        // For Nexus files, use NexusParser directly
-        if (dataFile.toLowerCase().endsWith(".nex") || dataFile.toLowerCase().endsWith(".nexus")) {
-            try {
-                NexusParser parser = new NexusParser();
-
-                parser.parseFile(file);
-
-                if (parser.m_alignment != null) {
-                    // Set the ID on the alignment
-                    parser.m_alignment.setID(id);
-                    logger.info("Successfully loaded alignment from Nexus file: " + dataFile);
-                    return parser.m_alignment;
-                } else {
-                    throw new IOException("NexusParser did not create an alignment from " + dataFile);
-                }
-            } catch (ExceptionInInitializerError e) {
-                logger.severe("Failed to initialize NexusParser: " + e.getMessage());
-                if (e.getCause() != null) {
-                    logger.severe("Root cause: " + e.getCause().getMessage());
-                    e.getCause().printStackTrace();
-                }
-                // Continue with fallback...
-            } catch (NoClassDefFoundError e) {
-                logger.severe("Missing class dependency: " + e.getMessage());
-                // Continue with fallback...
-            }
-        }
-
-        // Handle other file types if needed...
-        throw new IOException("Unsupported file type: " + dataFile);
-    }
-
-    /**
-     * Special handling for Tree objects
-     */
-    private void handleTreeCreation(String varName, Expression distribution, Map<String, Object> objectRegistry) {
-        try {
-            logger.info("Special handling for Tree class: " + varName);
-
-            // Create a tree object
-            Class<?> treeClass = Class.forName("beast.base.evolution.tree.Tree");
-            Object treeObject = treeClass.getDeclaredConstructor().newInstance();
-
-            // Set the ID
-            try {
-                Method setIDMethod = treeClass.getMethod("setID", String.class);
-                setIDMethod.invoke(treeObject, varName);
-                logger.info("Set ID for Tree: " + varName);
-            } catch (Exception e) {
-                logger.warning("Could not set ID on Tree: " + e.getMessage());
-            }
-
-            // Store the tree object
-            objectRegistry.put(varName, treeObject);
-
-            // If there's a distribution, create and configure it
-            if (distribution instanceof FunctionCall) {
-                FunctionCall funcCall = (FunctionCall) distribution;
-                String distClassName = funcCall.getClassName();
-
-                try {
-                    Class<?> distClass = Class.forName(distClassName);
-                    Object distObject = distClass.getDeclaredConstructor().newInstance();
-
-                    // Set ID
-                    setObjectId(distObject, distClass, varName + "Prior");
-
-                    // Configure distribution (skip problematic parameters)
-                    configureDistribution(distObject, distClass, funcCall, treeObject, varName, objectRegistry);
-
-                    // Store the distribution
-                    objectRegistry.put(varName + "Prior", distObject);
-                    logger.info("Created " + distClassName + " for Tree: " + varName);
-
-                } catch (Exception e) {
-                    logger.warning("Could not create distribution for Tree: " + e.getMessage());
-                }
-            }
-        } catch (Exception e) {
-            logger.warning("Failed to create Tree, using fallback: " + e.getMessage());
-            DummyBEASTObject dummy = new DummyBEASTObject(varName, "Tree");
-            objectRegistry.put(varName, dummy);
-        }
-    }
-
-    /**
-     * Special handling for TreeLikelihood objects
-     */
-    private void handleTreeLikelihoodCreation(String varName, FunctionCall funcCall, Object dataObject,
-                                              Map<String, Object> objectRegistry) {
-        try {
-            logger.info("Special handling for TreeLikelihood for: " + varName);
-
-            // Create the TreeLikelihood object
-            Class<?> treeLikelihoodClass = Class.forName("beast.base.evolution.likelihood.TreeLikelihood");
-            Object treeLikelihood = treeLikelihoodClass.getDeclaredConstructor().newInstance();
-
-            // Set the ID
-            setObjectId(treeLikelihood, treeLikelihoodClass, varName + "Likelihood");
-
-            // Build input map
-            Map<String, Input<?>> inputMap = new HashMap<>();
-            for (Field field : treeLikelihoodClass.getFields()) {
-                if (Input.class.isAssignableFrom(field.getType())) {
-                    @SuppressWarnings("unchecked")
-                    Input<?> input = (Input<?>) field.get(treeLikelihood);
-                    inputMap.put(input.getName(), input);
-                }
-            }
-
-            // Connect the data object to the 'x' input if it exists
-            Input<?> xInput = inputMap.get("x");
-            if (xInput != null) {
-                @SuppressWarnings("unchecked")
-                Input<Object> typedInput = (Input<Object>) xInput;
-                typedInput.setValue(dataObject, (BEASTInterface) treeLikelihood);
-                logger.fine("Connected " + varName + " to TreeLikelihood's 'x' input");
-            }
-
-            // Connect the data object to the appropriate input
-            Input<?> dataInput = inputMap.get("data");
-            if (dataInput != null) {
-                @SuppressWarnings("unchecked")
-                Input<Object> typedInput = (Input<Object>) dataInput;
-                typedInput.setValue(dataObject, (BEASTInterface) treeLikelihood);
-                logger.fine("Connected " + varName + " to TreeLikelihood's 'data' input");
-            } else {
-                logger.warning("Could not find 'data' input on TreeLikelihood");
-            }
-
-            // Configure function call arguments
-            for (Argument arg : funcCall.getArguments()) {
-                String name = arg.getName();
-                if ("x".equals(name) || "data".equals(name))
-                    continue; // Skip 'x' and 'data' as we've already handled them
-
-                try {
-                    Object argValue = ExpressionResolver.resolveValue(arg.getValue(), objectRegistry);
-                    Input<?> input = inputMap.get(name);
-
-                    if (input != null && argValue != null) {
-                        @SuppressWarnings("unchecked")
-                        Input<Object> typedInput = (Input<Object>) input;
-                        typedInput.setValue(argValue, (BEASTInterface) treeLikelihood);
-                        logger.fine("Set TreeLikelihood input '" + name + "' to " + argValue);
-                    }
-                } catch (Exception e) {
-                    logger.warning("Could not set TreeLikelihood input '" + name + "': " + e.getMessage());
-                }
-            }
-
-            // Store the TreeLikelihood
-            objectRegistry.put(varName + "Likelihood", treeLikelihood);
-            logger.info("Created and stored TreeLikelihood for: " + varName);
-
-            // Try to initialize, but continue even if it fails
-            try {
-                Method initMethod = treeLikelihoodClass.getMethod("initAndValidate");
-                initMethod.invoke(treeLikelihood);
-                logger.info("Successfully initialized TreeLikelihood");
-            } catch (Exception e) {
-                logger.warning("Could not initialize TreeLikelihood, continuing anyway: " + e.getMessage());
-            }
-        } catch (Exception e) {
-            logger.warning("Failed to create TreeLikelihood, using stub: " + e.getMessage());
-            DummyBEASTObject dummy = new DummyBEASTObject(varName + "Likelihood", "TreeLikelihood");
-            objectRegistry.put(varName + "Likelihood", dummy);
-        }
-    }
-
-    /**
-     * A stub implementation to stand in for BEAST objects when they can't be created properly
-     */
-    private class DummyBEASTObject {
-        private String id;
-        private String type;
-
-        public DummyBEASTObject(String id, String type) {
-            this.id = id;
-            this.type = type;
-        }
-
-        public String getID() {
-            return id;
-        }
-
-        public void setID(String id) {
-            this.id = id;
-        }
-
-        @Override
-        public String toString() {
-            return "Dummy" + type + "(" + id + ")";
         }
     }
 }

@@ -26,9 +26,7 @@ import java.io.StringWriter;
 import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.Collection;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -156,6 +154,55 @@ public class Beast2Lang implements Callable<Integer> {
             beast2Initialized = true;
         } catch (Exception e) {
             logger.severe("Error initializing BEAST2: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        fixDataTypeRegistration();
+    }
+
+    private static void fixDataTypeRegistration() {
+        try {
+            // Get the BEASTClassLoader class
+            Class<?> beastClassLoaderClass = Class.forName("beast.pkgmgmt.BEASTClassLoader");
+
+            // Access its services field (the map that stores services)
+            java.lang.reflect.Field servicesField = beastClassLoaderClass.getDeclaredField("services");
+            servicesField.setAccessible(true);
+            Map<String, Set<String>> services = (Map<String, Set<String>>) servicesField.get(null);
+
+            // Check if services map exists
+            if (services == null) {
+                services = new HashMap<>();
+                servicesField.set(null, services);
+                logger.info("Created services map in BEASTClassLoader");
+            }
+
+            // Check if DataType entry exists
+            String dataTypeClass = "beast.base.evolution.datatype.DataType";
+            if (!services.containsKey(dataTypeClass)) {
+                services.put(dataTypeClass, new HashSet<>());
+                logger.info("Created DataType entry in services map");
+            }
+
+            // Add data type class names as strings
+            Set<String> dataTypes = services.get(dataTypeClass);
+            dataTypes.add("beast.base.evolution.datatype.Nucleotide");
+            dataTypes.add("beast.base.evolution.datatype.StandardData");
+            dataTypes.add("beast.base.evolution.datatype.UserDataType");
+            logger.info("Added data type class names to services");
+
+            // Now manually load the actual data type classes
+            try {
+                Class.forName("beast.base.evolution.datatype.Nucleotide");
+                Class.forName("beast.base.evolution.datatype.StandardData");
+                Class.forName("beast.base.evolution.datatype.UserDataType");
+                logger.info("Loaded data type classes");
+            } catch (Exception e) {
+                logger.warning("Could not load data type classes: " + e.getMessage());
+            }
+
+        } catch (Exception e) {
+            logger.warning("Could not fix data type registration: " + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -455,15 +502,12 @@ public class Beast2Lang implements Callable<Integer> {
             // Use reflection to invoke BEAST2's XMLProducer
             XMLProducer xmlProducer = new XMLProducer();
             
-            // Try to add XML metadata for version and namespace
-            StringBuilder xml = new StringBuilder();
             // Invoke toXML method
             String objectXml = xmlProducer.toXML(beastObject);
 
             // Add the object XML and closing tag
             if (objectXml != null) {
-                xml.append(objectXml).append("\n</beast>");
-                return xml.toString();
+                return objectXml;
             } else {
                 throw new RuntimeException("Failed to generate XML");
             }
