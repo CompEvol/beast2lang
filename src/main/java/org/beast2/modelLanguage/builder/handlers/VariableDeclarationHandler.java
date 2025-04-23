@@ -27,16 +27,22 @@ public class VariableDeclarationHandler {
      * @throws Exception if object creation fails
      */
     public Object createObject(VariableDeclaration varDecl, Map<String, Object> objectRegistry) throws Exception {
-        String declaredTypeName = varDecl.getClassName();   // e.g. "beast.base.inference.parameter.RealParameter"
-        String variableName = varDecl.getVariableName(); 
-        Expression value = varDecl.getValue();       // should be a FunctionCall
+        String declaredTypeName = varDecl.getClassName();
+        String variableName = varDecl.getVariableName();
+        Expression value = varDecl.getValue();
 
-        logger.info("Creating object with name: " + variableName 
-                   + " of declared type: " + declaredTypeName);
+        logger.info("Creating object with name: " + variableName + " of declared type: " + declaredTypeName);
 
-        if (!(value instanceof FunctionCall)) {
-            throw new IllegalArgumentException("Right side of variable declaration must be a function call");
+        // Handle autoboxing for literals when the declared type is a Parameter
+        if (value instanceof Literal && isParameterType(declaredTypeName)) {
+            return ParameterAutoboxer.literalToParameter((Literal) value, variableName);
         }
+
+        // Continue with existing implementation for function calls
+        if (!(value instanceof FunctionCall)) {
+            throw new IllegalArgumentException("Right side of variable declaration must be a function call or a literal value for Parameters");
+        }
+
         FunctionCall funcCall = (FunctionCall) value;
         String implementationClassName = funcCall.getClassName();
 
@@ -68,6 +74,15 @@ public class VariableDeclarationHandler {
         callInitAndValidate(beastObject, implementationClass);
 
         return beastObject;
+    }
+
+    /**
+     * Check if the declared type is a Parameter type that supports autoboxing
+     */
+    private boolean isParameterType(String typeName) {
+        return typeName.endsWith("RealParameter") ||
+                typeName.endsWith("IntegerParameter") ||
+                typeName.endsWith("BooleanParameter");
     }
     
     private Class<?> loadClass(String className) throws ClassNotFoundException {

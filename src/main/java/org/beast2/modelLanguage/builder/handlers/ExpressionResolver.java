@@ -1,9 +1,15 @@
 package org.beast2.modelLanguage.builder.handlers;
 
 import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
 
+import beast.base.inference.parameter.BooleanParameter;
+import beast.base.inference.parameter.IntegerParameter;
+import beast.base.inference.parameter.Parameter;
+import beast.base.inference.parameter.RealParameter;
 import org.beast2.modelLanguage.model.*;
 
 import beast.base.core.BEASTInterface;
@@ -16,54 +22,73 @@ public class ExpressionResolver {
     private static final Logger logger = Logger.getLogger(ExpressionResolver.class.getName());
 
     /**
-     * Resolve an Expression to its actual Java object value
-     * 
+     * Resolve an Expression to its corresponding value
+     *
      * @param expr the expression to resolve
      * @param objectRegistry registry of created objects for reference resolution
-     * @return the resolved Java object
+     * @return the resolved value
      */
     public static Object resolveValue(Expression expr, Map<String, Object> objectRegistry) {
         if (expr instanceof Identifier) {
             // Reference to another object
             String refName = ((Identifier) expr).getName();
             logger.fine("Resolving identifier: " + refName);
-            
+
             Object beastObject = objectRegistry.get(refName);
             if (beastObject == null) {
                 logger.warning("Failed to resolve reference: " + refName);
                 logger.fine("Available objects: " + objectRegistry.keySet());
             }
             return beastObject;
-            
+
         } else if (expr instanceof Literal) {
             // Literal value
             return ((Literal) expr).getValue();
-            
+
         } else if (expr instanceof FunctionCall) {
             // Nested function call - create a new object
             return createNestedObject((FunctionCall) expr, objectRegistry);
         }
-        
+
         return null;
     }
-    
+
+    /**
+     * Resolve an Expression with potential autoboxing to Parameter types based on expected type
+     *
+     * @param expr the expression to resolve
+     * @param objectRegistry registry of created objects for reference resolution
+     * @param expectedType the expected type for the resolved value (used for autoboxing)
+     * @return the resolved value, potentially autoboxed to a Parameter
+     */
+    public static Object resolveValueWithAutoboxing(Expression expr, Map<String, Object> objectRegistry, Class<?> expectedType) {
+        // Handle autoboxing for literals when the expected type is a Parameter
+        if (expr instanceof Literal && expectedType != null && Parameter.class.isAssignableFrom(expectedType)) {
+            logger.fine("Autoboxing literal to " + expectedType.getSimpleName());
+            return ParameterAutoboxer.literalToParameter((Literal) expr, null, expectedType);
+        }
+
+        // Standard resolution without autoboxing
+        return resolveValue(expr, objectRegistry);
+    }
+
     /**
      * Create a nested object from a FunctionCall expression
      */
     private static Object createNestedObject(FunctionCall funcCall, Map<String, Object> objectRegistry) {
         String className = funcCall.getClassName();
-        
+
         try {
             // Load the class
             Class<?> beastClass = Class.forName(className);
-            
+
             // Instantiate the object
             Object nestedObject = beastClass.getDeclaredConstructor().newInstance();
             logger.fine("Created nested object of class " + className);
-            
+
             // Configure the object
             configureObject(nestedObject, beastClass, funcCall, objectRegistry);
-            
+
             return nestedObject;
         } catch (Exception e) {
             logger.severe("Failed to create nested object of class " + className + ": " + e.getMessage());

@@ -15,6 +15,7 @@ import java.util.logging.Logger;
  * with associated distributions.
  * This implementation supports the @observed annotation with data references and
  * flexibly handles inputs that should be set on random variables rather than distributions.
+ * Enhanced with parameter autoboxing support.
  */
 public class DistributionAssignmentHandler {
 
@@ -164,8 +165,21 @@ public class DistributionAssignmentHandler {
             if ("data".equals(name)) continue; // Skip 'data' as we've already handled it
 
             try {
-                Object argValue = ExpressionResolver.resolveValue(arg.getValue(), objectRegistry);
+                // Get expected type for potential autoboxing
+                Class<?> expectedType = null;
                 Input<?> likelihoodInput = likelihoodInputMap.get(name);
+                if (likelihoodInput != null) {
+                    expectedType = likelihoodInput.getType();
+                } else if (dataInputMap != null) {
+                    Input<?> dataObjectInput = dataInputMap.get(name);
+                    if (dataObjectInput != null) {
+                        expectedType = dataObjectInput.getType();
+                    }
+                }
+
+                // Resolve value with possible autoboxing
+                Object argValue = ExpressionResolver.resolveValueWithAutoboxing(
+                        arg.getValue(), objectRegistry, expectedType);
 
                 if (likelihoodInput != null) {
                     // Set input on likelihood object
@@ -233,8 +247,21 @@ public class DistributionAssignmentHandler {
                 continue;
             }
 
-            Object argValue = ExpressionResolver.resolveValue(arg.getValue(), objectRegistry);
+            // Get expected type for potential autoboxing
+            Class<?> expectedType = null;
             Input<?> likelihoodInput = likelihoodInputMap.get(name);
+            if (likelihoodInput != null) {
+                expectedType = likelihoodInput.getType();
+            } else if (dataInputMap != null) {
+                Input<?> dataObjectInput = dataInputMap.get(name);
+                if (dataObjectInput != null) {
+                    expectedType = dataObjectInput.getType();
+                }
+            }
+
+            // Resolve value with possible autoboxing
+            Object argValue = ExpressionResolver.resolveValueWithAutoboxing(
+                    arg.getValue(), objectRegistry, expectedType);
 
             if (likelihoodInput != null) {
                 // Set input on likelihood
@@ -326,10 +353,23 @@ public class DistributionAssignmentHandler {
                 continue;
             }
 
-            Object argValue = ExpressionResolver.resolveValue(arg.getValue(), objectRegistry);
+            // Get expected type for potential autoboxing
+            Class<?> expectedType = null;
+            Input<?> distInput = distInputMap.get(name);
+            if (distInput != null) {
+                expectedType = distInput.getType();
+            } else if (paramInputMap != null) {
+                Input<?> paramInput = paramInputMap.get(name);
+                if (paramInput != null) {
+                    expectedType = paramInput.getType();
+                }
+            }
+
+            // Resolve value with possible autoboxing
+            Object argValue = ExpressionResolver.resolveValueWithAutoboxing(
+                    arg.getValue(), objectRegistry, expectedType);
 
             // Try to set input on distribution first
-            Input<?> distInput = distInputMap.get(name);
             if (distInput != null) {
                 try {
                     @SuppressWarnings("unchecked")
