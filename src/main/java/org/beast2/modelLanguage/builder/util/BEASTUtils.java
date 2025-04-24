@@ -6,7 +6,9 @@ import beast.base.inference.parameter.BooleanParameter;
 import beast.base.inference.parameter.IntegerParameter;
 import beast.base.inference.parameter.RealParameter;
 import beast.base.inference.parameter.Parameter;
-import org.beast2.modelLanguage.builder.handlers.ExpressionResolver;
+import beast.base.inference.distribution.Prior;
+import beast.base.evolution.likelihood.TreeLikelihood;
+import beast.base.evolution.speciation.SpeciesTreeDistribution;
 import org.beast2.modelLanguage.model.Argument;
 import org.beast2.modelLanguage.model.Expression;
 import org.beast2.modelLanguage.model.FunctionCall;
@@ -21,11 +23,16 @@ import java.util.logging.Logger;
 
 /**
  * Utility class for common BEAST2 operations.
- * Centralizes functionality previously duplicated across multiple handlers.
+ * Centralized with minimal dependencies on BEAST2 specific knowledge.
  */
 public class BEASTUtils {
 
     private static final Logger logger = Logger.getLogger(BEASTUtils.class.getName());
+
+    // Essential input names for connecting random variables to distributions
+    private static final String PRIOR_PARAMETER_INPUT = "x";
+    private static final String TREE_DISTRIBUTION_INPUT = "tree";
+    private static final String TREE_LIKELIHOOD_DATA_INPUT = "data";
 
     /**
      * Set the ID on a BEAST object
@@ -34,34 +41,18 @@ public class BEASTUtils {
         try {
             Method setId = clazz.getMethod("setID", String.class);
             setId.invoke(object, id);
-        } catch (NoSuchMethodException e) {
-            // Some classes might not have setID, which is fine
-            logger.fine("No setID method found for " + clazz.getName());
         } catch (Exception e) {
             logger.warning("Failed to set ID on " + clazz.getName() + ": " + e.getMessage());
         }
     }
 
     /**
-     * Call initAndValidate method on a BEAST object if it exists
+     * Call initAndValidate method on a BEAST object
      */
     public static void callInitAndValidate(Object object, Class<?> clazz) {
         try {
             Method initMethod = clazz.getMethod("initAndValidate");
-            logger.fine("Calling initAndValidate() on " + clazz.getName());
             initMethod.invoke(object);
-        } catch (NoSuchMethodException e) {
-            // Try initialize as fallback
-            try {
-                Method initMethod = clazz.getMethod("initialize");
-                initMethod.invoke(object);
-                logger.fine("Called initialize() on " + clazz.getName());
-            } catch (NoSuchMethodException e2) {
-                // No initialization method, which is fine for some objects
-                logger.fine("No initialization method found for " + clazz.getName());
-            } catch (Exception e2) {
-                logger.warning("Failed to call initialize on " + clazz.getName() + ": " + e2.getMessage());
-            }
         } catch (Exception e) {
             logger.warning("Failed to call initAndValidate on " + clazz.getName() + ": " + e.getMessage());
         }
@@ -76,10 +67,8 @@ public class BEASTUtils {
         for (Field field : clazz.getFields()) {
             if (Input.class.isAssignableFrom(field.getType())) {
                 try {
-                    @SuppressWarnings("unchecked")
                     Input<?> input = (Input<?>) field.get(object);
                     inputMap.put(input.getName(), input);
-                    logger.fine("Found Input: " + input.getName() + " in " + clazz.getName());
                 } catch (IllegalAccessException e) {
                     logger.warning("Failed to access Input field: " + field.getName());
                 }
@@ -94,8 +83,7 @@ public class BEASTUtils {
      */
     public static boolean isParameterType(Class<?> type) {
         if (type == null) return false;
-        return Parameter.class.isAssignableFrom(type) ||
-                type.getName().contains("Parameter");
+        return Parameter.class.isAssignableFrom(type);
     }
 
     /**
@@ -103,10 +91,12 @@ public class BEASTUtils {
      */
     public static boolean isParameterType(String typeName) {
         if (typeName == null) return false;
-        return typeName.endsWith("RealParameter") ||
-                typeName.endsWith("IntegerParameter") ||
-                typeName.endsWith("BooleanParameter") ||
-                typeName.endsWith("Parameter");
+        try {
+            Class<?> clazz = Class.forName(typeName);
+            return Parameter.class.isAssignableFrom(clazz);
+        } catch (ClassNotFoundException e) {
+            return false;
+        }
     }
 
     /**
@@ -223,7 +213,6 @@ public class BEASTUtils {
                 return Integer.parseInt((String) value);
             } catch (NumberFormatException e) {
                 try {
-                    // Try parsing as double then convert to int
                     return (int) Double.parseDouble((String) value);
                 } catch (NumberFormatException e2) {
                     logger.warning("Cannot convert string '" + value + "' to integer, using 0");
@@ -258,41 +247,6 @@ public class BEASTUtils {
     }
 
     /**
-     * Check if a string can be parsed as an integer
-     */
-    public static boolean isInteger(String str) {
-        if (str == null) return false;
-        try {
-            Integer.parseInt(str);
-            return true;
-        } catch (NumberFormatException e) {
-            return false;
-        }
-    }
-
-    /**
-     * Check if a string can be parsed as a number
-     */
-    public static boolean isNumeric(String str) {
-        if (str == null) return false;
-        try {
-            Double.parseDouble(str);
-            return true;
-        } catch (NumberFormatException e) {
-            return false;
-        }
-    }
-
-    /**
-     * Check if a string represents a boolean value
-     */
-    public static boolean isBoolean(String str) {
-        if (str == null) return false;
-        String lowerStr = str.toLowerCase();
-        return lowerStr.equals("true") || lowerStr.equals("false");
-    }
-
-    /**
      * Set an input value on a BEAST object
      */
     public static void setInputValue(Input<?> input, Object value, BEASTInterface beastObject) {
@@ -307,17 +261,13 @@ public class BEASTUtils {
         }
     }
 
-    // Add these methods to BEASTUtils.java
-
     /**
      * Find a field by name, including in superclasses
      */
     public static Field findField(Class<?> clazz, String fieldName) {
-        // Look in the class itself
         try {
             return clazz.getField(fieldName);
         } catch (NoSuchFieldException e) {
-            // Look in superclasses
             Class<?> superClass = clazz.getSuperclass();
             if (superClass != null) {
                 return findField(superClass, fieldName);
@@ -337,7 +287,6 @@ public class BEASTUtils {
         }
 
         BEASTInterface beastObject = (BEASTInterface) object;
-        Logger logger = Logger.getLogger(BEASTUtils.class.getName());
 
         for (Argument arg : funcCall.getArguments()) {
             String name = arg.getName();
@@ -352,7 +301,7 @@ public class BEASTUtils {
             Class<?> expectedType = input.getType();
 
             // Resolve value with potential autoboxing
-            Object argValue = ExpressionResolver.resolveValueWithAutoboxing(
+            Object argValue = resolveValueWithAutoboxing(
                     arg.getValue(), objectRegistry, expectedType);
 
             try {
@@ -364,15 +313,13 @@ public class BEASTUtils {
     }
 
     /**
-     * Connect an object to target using first available input from a list of names
+     * Connect a random variable to its distribution
      */
     public static boolean connectToFirstMatchingInput(Object source, BEASTInterface target,
                                                       String[] inputNames) {
-        Logger logger = Logger.getLogger(BEASTUtils.class.getName());
-
         for (String inputName : inputNames) {
             try {
-                beast.base.core.Input<?> input = target.getInput(inputName);
+                Input<?> input = target.getInput(inputName);
                 if (input != null) {
                     setInputValue(input, source, target);
                     logger.fine("Connected object to '" + inputName + "' input");
@@ -388,7 +335,6 @@ public class BEASTUtils {
     }
 
     /**
-     * Add to BEASTUtils:
      * Resolve a value according to an expected input type, with appropriate conversion
      */
     public static Object resolveValueForInput(Expression expr, Map<String, Object> objectRegistry,
@@ -398,15 +344,14 @@ public class BEASTUtils {
 
         // Resolve with autoboxing if we have type information
         if (expectedType != null) {
-            resolvedValue = ExpressionResolver.resolveValueWithAutoboxing(expr, objectRegistry, expectedType);
+            resolvedValue = resolveValueWithAutoboxing(expr, objectRegistry, expectedType);
         } else {
-            resolvedValue = ExpressionResolver.resolveValue(expr, objectRegistry);
+            resolvedValue = resolveValue(expr, objectRegistry);
         }
 
         // If value is null or resolution failed
         if (resolvedValue == null) {
-            Logger.getLogger(BEASTUtils.class.getName())
-                    .warning("Failed to resolve value for input: " + inputName);
+            logger.warning("Failed to resolve value for input: " + inputName);
             return null;
         }
 
@@ -414,7 +359,6 @@ public class BEASTUtils {
     }
 
     /**
-     * Add to BEASTUtils:
      * Create the most appropriate Parameter type based on an expected type
      */
     public static Parameter<?> createParameterForType(Object value, Class<?> expectedType) {
@@ -423,32 +367,34 @@ public class BEASTUtils {
         }
 
         try {
-            boolean isReal = expectedType == null ||
-                    RealParameter.class.isAssignableFrom(expectedType) ||
-                    expectedType.getName().contains("RealParameter");
-
-            boolean isInteger = IntegerParameter.class.isAssignableFrom(expectedType) ||
-                    expectedType.getName().contains("IntegerParameter");
-
-            boolean isBoolean = BooleanParameter.class.isAssignableFrom(expectedType) ||
-                    expectedType.getName().contains("BooleanParameter");
+            if (expectedType != null) {
+                if (IntegerParameter.class.isAssignableFrom(expectedType)) {
+                    return createIntegerParameter(convertToInteger(value));
+                } else if (BooleanParameter.class.isAssignableFrom(expectedType)) {
+                    return createBooleanParameter(convertToBoolean(value));
+                } else if (RealParameter.class.isAssignableFrom(expectedType)) {
+                    return createRealParameter(convertToDouble(value));
+                }
+            }
 
             // Default to RealParameter if no specific type is identified
-            if (!isReal && !isInteger && !isBoolean) {
-                isReal = true;
-            }
-
-            if (isInteger) {
-                return createIntegerParameter(convertToInteger(value));
-            } else if (isBoolean) {
-                return createBooleanParameter(convertToBoolean(value));
-            } else {
-                return createRealParameter(convertToDouble(value));
-            }
+            return createRealParameter(convertToDouble(value));
         } catch (Exception e) {
-            Logger.getLogger(BEASTUtils.class.getName())
-                    .warning("Error creating parameter: " + e.getMessage());
+            logger.warning("Error creating parameter: " + e.getMessage());
             return createRealParameter(0.0);
         }
+    }
+
+    /**
+     * Placeholder methods that will need implementations from ExpressionResolver
+     */
+    public static Object resolveValueWithAutoboxing(Expression expr, Map<String, Object> objectRegistry, Class<?> expectedType) {
+        // This would be implemented in ExpressionResolver
+        return null;
+    }
+
+    public static Object resolveValue(Expression expr, Map<String, Object> objectRegistry) {
+        // This would be implemented in ExpressionResolver
+        return null;
     }
 }

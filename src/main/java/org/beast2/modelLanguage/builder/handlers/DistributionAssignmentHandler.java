@@ -2,6 +2,10 @@ package org.beast2.modelLanguage.builder.handlers;
 
 import beast.base.core.BEASTInterface;
 import beast.base.core.Input;
+import beast.base.evolution.likelihood.TreeLikelihood;
+import beast.base.evolution.tree.Tree;
+import beast.base.inference.distribution.Prior;
+import beast.base.evolution.speciation.SpeciesTreeDistribution;
 
 import org.beast2.modelLanguage.builder.util.BEASTUtils;
 import org.beast2.modelLanguage.model.*;
@@ -16,17 +20,10 @@ import java.util.*;
  */
 public class DistributionAssignmentHandler extends BaseHandler {
 
-    // Common input names for data objects
-    private static final String[] DATA_INPUT_NAMES = {"data", "patterns", "alignment", "x"};
-
-    // Common input names for parameter objects
-    private static final String[] PARAMETER_INPUT_NAMES = {"x", "parameter"};
-
-    // Common input names for tree objects
-    private static final String[] TREE_INPUT_NAMES = {"tree", "treeModel"};
-
-    // Common input names for other objects
-    private static final String[] COMMON_INPUT_NAMES = {"data", "taxonset", "network", "trait", "patterns"};
+    // Define only the essential input names
+    private static final String PRIOR_PARAMETER_INPUT = "x";
+    private static final String TREE_DISTRIBUTION_INPUT = "tree";
+    private static final String TREE_LIKELIHOOD_DATA_INPUT = "data";
 
     /**
      * Constructor
@@ -69,12 +66,6 @@ public class DistributionAssignmentHandler extends BaseHandler {
         // Create the distribution object
         FunctionCall funcCall = (FunctionCall) distribution;
         String distClassName = funcCall.getClassName();
-
-        // Special handling for TreeLikelihood
-        if (distClassName.equals("beast.base.evolution.likelihood.TreeLikelihood")) {
-            createLikelihood(distClassName, varName, funcCall, beastObject, objectRegistry, true);
-            return;
-        }
 
         // Create distribution object
         Object distObject = createBEASTObject(distClassName, varName + "Prior");
@@ -130,19 +121,15 @@ public class DistributionAssignmentHandler extends BaseHandler {
         FunctionCall funcCall = (FunctionCall) distribution;
         String likelihoodClassName = funcCall.getClassName();
 
-        // Create likelihood object with special handling for TreeLikelihood
-        boolean isTreeLikelihood = likelihoodClassName.equals("beast.base.evolution.likelihood.TreeLikelihood");
-        createLikelihood(likelihoodClassName, varName, funcCall, dataObject, objectRegistry, isTreeLikelihood);
+        // Create likelihood object
+        createLikelihood(likelihoodClassName, varName, funcCall, dataObject, objectRegistry);
     }
 
     /**
      * Create a likelihood object and configure it
      */
     private void createLikelihood(String className, String varName, FunctionCall funcCall,
-                                  Object dataObject, Map<String, Object> objectRegistry,
-                                  boolean isTreeLikelihood) throws Exception {
-        logger.info("Creating " + (isTreeLikelihood ? "TreeLikelihood" : "Likelihood") + " for: " + varName);
-
+                                  Object dataObject, Map<String, Object> objectRegistry) throws Exception {
         // Create the likelihood object
         Object likelihoodObject = createBEASTObject(className, varName + "Likelihood");
 
@@ -153,28 +140,24 @@ public class DistributionAssignmentHandler extends BaseHandler {
             dataInputMap = BEASTUtils.buildInputMap(dataObject, dataObject.getClass());
         }
 
-        // Connect data to likelihood (using specific method for TreeLikelihood if needed)
-        boolean dataConnected;
-        if (isTreeLikelihood) {
-            Input<?> dataInput = likelihoodInputMap.get("data");
-            if (dataInput != null) {
+        // Connect data to likelihood
+        boolean dataConnected = false;
+        Input<?> dataInput = likelihoodInputMap.get(TREE_LIKELIHOOD_DATA_INPUT);
+        if (dataInput != null) {
+            try {
                 BEASTUtils.setInputValue(dataInput, dataObject, (BEASTInterface) likelihoodObject);
-                logger.fine("Connected " + varName + " to TreeLikelihood's 'data' input");
                 dataConnected = true;
-            } else {
-                logger.warning("Could not find 'data' input on TreeLikelihood");
-                dataConnected = false;
+            } catch (Exception e) {
+                logger.warning("Failed to connect data to " + TREE_LIKELIHOOD_DATA_INPUT + " input: " + e.getMessage());
             }
-        } else {
-            dataConnected = connectDataToLikelihood(dataObject, likelihoodObject, likelihoodInputMap);
         }
 
         // Configure function call arguments
         for (Argument arg : funcCall.getArguments()) {
             String name = arg.getName();
 
-            // Skip data inputs we've already handled
-            if (dataConnected && (name.equals("data") || isDataInputName(name))) {
+            // Skip data input if we've already handled it
+            if (dataConnected && name.equals(TREE_LIKELIHOOD_DATA_INPUT)) {
                 continue;
             }
 
@@ -190,7 +173,6 @@ public class DistributionAssignmentHandler extends BaseHandler {
 
         // Store the likelihood object
         objectRegistry.put(varName + "Likelihood", likelihoodObject);
-        logger.info("Created and stored likelihood " + varName + "Likelihood");
     }
 
     /**
@@ -212,8 +194,10 @@ public class DistributionAssignmentHandler extends BaseHandler {
         for (Argument arg : funcCall.getArguments()) {
             String name = arg.getName();
 
-            // Skip parameter inputs we've already handled
-            if (parameterConnected && isParameterInputName(name, paramObject)) {
+            // Skip parameter input if we've already handled it
+            if (parameterConnected &&
+                    (name.equals(PRIOR_PARAMETER_INPUT) ||
+                            (name.equals(TREE_DISTRIBUTION_INPUT) && paramObject instanceof Tree))) {
                 continue;
             }
 
@@ -229,62 +213,39 @@ public class DistributionAssignmentHandler extends BaseHandler {
     }
 
     /**
-     * Connect data object to likelihood using common input names
-     */
-    private boolean connectDataToLikelihood(Object dataObject, Object likelihoodObject, Map<String, Input<?>> inputMap) {
-        return connectToInput(dataObject, likelihoodObject, inputMap, DATA_INPUT_NAMES);
-    }
-
-    /**
      * Connect parameter object to the appropriate input in the distribution
      */
     private boolean connectParameterToDistribution(Object paramObject, Object distObject,
                                                    Map<String, Input<?>> distInputMap) {
-        // 1. For Prior-like distributions, connect to 'x' input
-        if (connectToInput(paramObject, distObject, distInputMap, PARAMETER_INPUT_NAMES)) {
-            return true;
+        if (!(distObject instanceof BEASTInterface)) {
+            return false;
         }
 
-        // 2. For tree distributions, connect to 'tree' input if parameter is a Tree
-        if (paramObject instanceof beast.base.evolution.tree.Tree) {
-            if (connectToInput(paramObject, distObject, distInputMap, TREE_INPUT_NAMES)) {
-                return true;
-            }
-        }
+        BEASTInterface beastDist = (BEASTInterface) distObject;
 
-        // 3. Try other common input names
-        return connectToInput(paramObject, distObject, distInputMap, COMMON_INPUT_NAMES);
-    }
-
-    /**
-     * Check if an input name is commonly used for data objects
-     */
-    private boolean isDataInputName(String name) {
-        for (String dataInput : DATA_INPUT_NAMES) {
-            if (dataInput.equals(name)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
-     * Check if an input name is commonly used for parameter objects
-     */
-    private boolean isParameterInputName(String name, Object paramObject) {
-        // Check general parameter names
-        for (String paramName : PARAMETER_INPUT_NAMES) {
-            if (paramName.equals(name)) {
-                return true;
-            }
-        }
-
-        // Check tree-specific names if applicable
-        if (paramObject instanceof beast.base.evolution.tree.Tree) {
-            for (String treeName : TREE_INPUT_NAMES) {
-                if (treeName.equals(name)) {
+        // For Prior distributions
+        if (distObject instanceof Prior) {
+            try {
+                Input<?> input = beastDist.getInput(PRIOR_PARAMETER_INPUT);
+                if (input != null) {
+                    BEASTUtils.setInputValue(input, paramObject, beastDist);
                     return true;
                 }
+            } catch (Exception e) {
+                logger.warning("Failed to connect parameter to Prior: " + e.getMessage());
+            }
+        }
+
+        // For tree distributions when parameter is a Tree
+        if (distObject instanceof SpeciesTreeDistribution && paramObject instanceof Tree) {
+            try {
+                Input<?> input = beastDist.getInput(TREE_DISTRIBUTION_INPUT);
+                if (input != null) {
+                    BEASTUtils.setInputValue(input, paramObject, beastDist);
+                    return true;
+                }
+            } catch (Exception e) {
+                logger.warning("Failed to connect tree to TreeDistribution: " + e.getMessage());
             }
         }
 
