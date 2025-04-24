@@ -147,23 +147,7 @@ public class BEASTUtils {
         double doubleValue = convertToDouble(value);
         return createRealParameter(doubleValue);
     }
-
-    /**
-     * Create an IntegerParameter from any value with appropriate type conversion
-     */
-    public static IntegerParameter createIntegerParameter(Object value) {
-        int intValue = convertToInteger(value);
-        return createIntegerParameter(intValue);
-    }
-
-    /**
-     * Create a BooleanParameter from any value with appropriate type conversion
-     */
-    public static BooleanParameter createBooleanParameter(Object value) {
-        boolean boolValue = convertToBoolean(value);
-        return createBooleanParameter(boolValue);
-    }
-
+    
     /**
      * Convert any value to a double
      */
