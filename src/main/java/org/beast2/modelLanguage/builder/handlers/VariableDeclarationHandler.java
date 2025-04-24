@@ -2,6 +2,7 @@ package org.beast2.modelLanguage.builder.handlers;
 
 import beast.base.core.BEASTInterface;
 import beast.base.core.Input;
+import beast.base.inference.parameter.Parameter;
 import org.beast2.modelLanguage.builder.util.BEASTUtils;
 import org.beast2.modelLanguage.model.*;
 
@@ -9,7 +10,6 @@ import java.util.Map;
 
 /**
  * Handler for VariableDeclaration statements, responsible for creating BEAST2 objects.
- * Refactored to use centralized utility methods.
  */
 public class VariableDeclarationHandler extends BaseHandler {
 
@@ -33,22 +33,27 @@ public class VariableDeclarationHandler extends BaseHandler {
         String variableName = varDecl.getVariableName();
         Expression value = varDecl.getValue();
 
-        logger.info("Creating object with name: " + variableName + " of declared type: " + declaredTypeName);
-
-        // Handle autoboxing for literals when the declared type is a Parameter
-        if (value instanceof Literal && BEASTUtils.isParameterType(declaredTypeName)) {
-            return ParameterAutoboxer.literalToParameter((Literal) value, variableName);
+        // Handle literal values for Parameter types
+        if (value instanceof Literal) {
+            try {
+                Class<?> declaredType = loadClass(declaredTypeName);
+                if (Parameter.class.isAssignableFrom(declaredType)) {
+                    return ParameterAutoboxer.literalToParameter((Literal) value, variableName);
+                }
+            } catch (ClassNotFoundException e) {
+                // If class not found, continue with normal processing
+            }
         }
 
-        // Continue with existing implementation for function calls
+        // Handle function calls
         if (!(value instanceof FunctionCall)) {
-            throw new IllegalArgumentException("Right side of variable declaration must be a function call or a literal value for Parameters");
+            throw new IllegalArgumentException("Value must be a function call or a literal for Parameter types");
         }
 
         FunctionCall funcCall = (FunctionCall) value;
         String implementationClassName = funcCall.getClassName();
 
-        // 1) Load classes
+        // Load and check classes
         Class<?> declaredType = loadClass(declaredTypeName);
         Class<?> implementationClass = loadClass(implementationClassName);
 
@@ -58,20 +63,11 @@ public class VariableDeclarationHandler extends BaseHandler {
             );
         }
 
-        // 2) Instantiate
+        // Create and configure the object
         Object beastObject = instantiateClass(implementationClass);
-        logger.info("Successfully instantiated " + implementationClassName);
-
-        // 3) setID if present
         BEASTUtils.setObjectId(beastObject, implementationClass, variableName);
-
-        // 4) Build input map
         Map<String, Input<?>> inputMap = BEASTUtils.buildInputMap(beastObject, implementationClass);
-
-        // 5) CONFIGURE all arguments
         configureInputs(beastObject, funcCall, inputMap, objectRegistry);
-
-        // 6) Call initAndValidate
         BEASTUtils.callInitAndValidate(beastObject, implementationClass);
 
         return beastObject;
@@ -82,65 +78,59 @@ public class VariableDeclarationHandler extends BaseHandler {
      */
     private void configureInputs(Object object, FunctionCall funcCall, Map<String, Input<?>> inputMap,
                                  Map<String, Object> objectRegistry) throws Exception {
-        // Print information about all inputs for debugging
-        logger.info("Available inputs for " + object.getClass().getName() + ":");
-        for (Map.Entry<String, Input<?>> entry : inputMap.entrySet()) {
-            Class<?> type = entry.getValue().getType();
-            logger.info("  Input: " + entry.getKey() + " Type: " + (type != null ? type.getName() : "null"));
+        if (!(object instanceof BEASTInterface)) {
+            return;
         }
+
+        BEASTInterface beastObject = (BEASTInterface) object;
 
         for (Argument arg : funcCall.getArguments()) {
             String name = arg.getName();
-
             Input<?> input = inputMap.get(name);
+
             if (input == null) {
-                throw new RuntimeException("No Input named '" + name + "' found");
+                throw new RuntimeException("No input named '" + name + "' found");
             }
 
-            // Get the expected type from the Input
+            // Get expected type
             Class<?> expectedType = input.getType();
-            logger.info("Processing input " + name + " with expected type: " + (expectedType != null ? expectedType.getName() : "null"));
 
-            // Handle literal values that need to be converted to Parameter objects
-            Object rawValue;
-            if (arg.getValue() instanceof Literal && expectedType != null) {
-                Literal literal = (Literal) arg.getValue();
-                Object literalValue = literal.getValue();
-                logger.info("Converting literal value: " + literalValue + " to expected type: " + expectedType.getName());
+            // Resolve the value based on the expected type
+            Object resolvedValue = resolveValueForInput(arg.getValue(), objectRegistry, expectedType);
 
-                // Check if input expects a Parameter type
-                if (BEASTUtils.isParameterType(expectedType)) {
-                    rawValue = BEASTUtils.createParameterForType(literalValue, expectedType);
-                    logger.info("Created Parameter for input " + name);
-                } else {
-                    // For other expected types, just pass the literal value
-                    rawValue = literalValue;
-                }
-            } else {
-                // Use standard resolver for non-literals or when expected type is unknown
-                rawValue = ExpressionResolver.resolveValue(arg.getValue(), objectRegistry);
-            }
-
-            logger.fine("Setting input " + name + " to " + rawValue);
-
-            // Set the input value - this is where the type mismatch can occur
+            // Set the input value
             try {
-                BEASTUtils.setInputValue(input, rawValue, (BEASTInterface) object);
+                BEASTUtils.setInputValue(input, resolvedValue, beastObject);
             } catch (Exception e) {
-                logger.warning("Error setting input " + name + ": " + e.getMessage());
-                // If this is a type mismatch and we have a raw value, try creating a Parameter
-                if (e.getMessage() != null && e.getMessage().contains("type mismatch") && rawValue != null) {
-                    logger.info("Trying to convert " + rawValue + " to Parameter for input " + name);
-
-                    // Try to create a Parameter object as a last resort
-                    Object paramValue = BEASTUtils.createRealParameter(rawValue);
-                    BEASTUtils.setInputValue(input, paramValue, (BEASTInterface) object);
-                    logger.info("Successfully set input " + name + " using Parameter conversion");
+                // Try parameter conversion as fallback for type mismatches
+                if (resolvedValue != null) {
+                    Object paramValue = BEASTUtils.createRealParameter(resolvedValue);
+                    BEASTUtils.setInputValue(input, paramValue, beastObject);
                 } else {
-                    // Re-throw if we can't handle it
                     throw e;
                 }
             }
         }
+    }
+
+    /**
+     * Resolve a value based on its expression and expected type
+     */
+    private Object resolveValueForInput(Expression expr, Map<String, Object> objectRegistry,
+                                        Class<?> expectedType) {
+        // Handle literal values that need conversion
+        if (expr instanceof Literal && expectedType != null) {
+            Literal literal = (Literal) expr;
+            Object value = literal.getValue();
+
+            if (BEASTUtils.isParameterType(expectedType)) {
+                return BEASTUtils.createParameterForType(value, expectedType);
+            }
+
+            return value;
+        }
+
+        // Use standard resolver for other cases
+        return ExpressionResolver.resolveValue(expr, objectRegistry);
     }
 }

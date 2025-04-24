@@ -29,11 +29,6 @@ public class BEASTUtils {
 
     private static final Logger logger = Logger.getLogger(BEASTUtils.class.getName());
 
-    // Essential input names for connecting random variables to distributions
-    private static final String PRIOR_PARAMETER_INPUT = "x";
-    private static final String TREE_DISTRIBUTION_INPUT = "tree";
-    private static final String TREE_LIKELIHOOD_DATA_INPUT = "data";
-
     /**
      * Set the ID on a BEAST object
      */
