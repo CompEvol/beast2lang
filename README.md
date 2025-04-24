@@ -63,6 +63,22 @@ import beast.package.name.*;
 - `@data`: Marks variables that represent data loaded from files
 - `@observed(data=dataVariable)`: Indicates that a random variable is observed, using the referenced data
 
+## Implementation Details
+
+The language implementation manages connections between random variables and their distributions through a careful mapping between the language syntax and BEAST2's internal structure. This mapping relies on knowledge of specific BEAST2 input parameter names:
+
+### Distribution Argument Input Names
+
+When a random variable is declared with the `~` syntax, BEAST2Lang needs to connect it to the appropriate input parameter of the distribution object. The language relies on the following hard-coded mappings:
+
+| Distribution Class | Argument Input Name | Description |
+|--------------------|---------------------|-------------|
+| `Prior` | `"x"` | The parameter to which the prior distribution applies |
+| `SpeciesTreeDistribution` | `"tree"` | The tree parameter for tree distributions |
+| `TreeLikelihood` | `"data"` | The observed data for likelihood calculations |
+
+These mappings are centralized in the implementation to minimize hard-coded dependencies while enabling the language to automatically establish the correct connections between random variables and their distributions.
+
 ## Example Model
 
 ```
