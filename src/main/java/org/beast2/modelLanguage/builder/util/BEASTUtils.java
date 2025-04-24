@@ -6,9 +6,7 @@ import beast.base.inference.parameter.BooleanParameter;
 import beast.base.inference.parameter.IntegerParameter;
 import beast.base.inference.parameter.RealParameter;
 import beast.base.inference.parameter.Parameter;
-import beast.base.inference.distribution.Prior;
-import beast.base.evolution.likelihood.TreeLikelihood;
-import beast.base.evolution.speciation.SpeciesTreeDistribution;
+import org.beast2.modelLanguage.builder.handlers.ExpressionResolver;
 import org.beast2.modelLanguage.model.Argument;
 import org.beast2.modelLanguage.model.Expression;
 import org.beast2.modelLanguage.model.FunctionCall;
@@ -384,12 +382,10 @@ public class BEASTUtils {
      * Placeholder methods that will need implementations from ExpressionResolver
      */
     public static Object resolveValueWithAutoboxing(Expression expr, Map<String, Object> objectRegistry, Class<?> expectedType) {
-        // This would be implemented in ExpressionResolver
-        return null;
+        return ExpressionResolver.resolveValueWithAutoboxing(expr,objectRegistry,expectedType);
     }
 
     public static Object resolveValue(Expression expr, Map<String, Object> objectRegistry) {
-        // This would be implemented in ExpressionResolver
-        return null;
+        return ExpressionResolver.resolveValue(expr,objectRegistry);
     }
 }

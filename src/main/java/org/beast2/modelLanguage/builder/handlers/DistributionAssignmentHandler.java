@@ -3,7 +3,6 @@ package org.beast2.modelLanguage.builder.handlers;
 import beast.base.core.BEASTInterface;
 import beast.base.core.Input;
 import beast.base.evolution.likelihood.TreeLikelihood;
-import beast.base.evolution.tree.Tree;
 import beast.base.inference.distribution.Prior;
 import beast.base.evolution.speciation.SpeciesTreeDistribution;
 
