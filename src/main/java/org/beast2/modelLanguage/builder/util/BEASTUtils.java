@@ -147,7 +147,7 @@ public class BEASTUtils {
         double doubleValue = convertToDouble(value);
         return createRealParameter(doubleValue);
     }
-    
+
     /**
      * Convert any value to a double
      */

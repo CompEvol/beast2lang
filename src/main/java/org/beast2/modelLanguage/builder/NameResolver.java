@@ -15,23 +15,6 @@ import java.util.logging.Logger;
  */
 public class NameResolver {
 
-
-    // In NameResolver.java
-    static {
-        // Preload necessary classes with special initialization handling
-        try {
-            // Make sure the core datatype classes are loaded first
-            Class.forName("beast.base.evolution.datatype.DataType");
-            Class.forName("beast.base.evolution.datatype.Nucleotide");
-            Class.forName("beast.base.evolution.datatype.Amino");
-            Class.forName("beast.base.evolution.datatype.StandardData");
-
-            // Then load Alignment with a controlled approach
-            ClassLoader.getSystemClassLoader().loadClass("beast.base.evolution.alignment.Alignment");
-        } catch (Exception e) {
-            System.err.println("Warning: Could not preload core BEAST2 classes: " + e.getMessage());
-        }
-    }
     private static final Logger logger = Logger.getLogger(NameResolver.class.getName());
     
     // Classes known to have problematic static initializers

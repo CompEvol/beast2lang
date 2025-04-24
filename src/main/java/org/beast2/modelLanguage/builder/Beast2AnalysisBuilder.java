@@ -23,10 +23,6 @@ public class Beast2AnalysisBuilder {
     private static final Logger logger = Logger.getLogger(Beast2AnalysisBuilder.class.getName());
 
     // BEAST2 object IDs
-    public static final String ID_TREE_LIKELIHOOD = "treeLikelihood";
-    public static final String ID_SITE_MODEL = "siteModel";
-    public static final String ID_CLOCK_MODEL = "clockModel";
-    public static final String ID_GAMMA_SHAPE = "gammaShape";
     public static final String ID_PRIOR = "prior";
     public static final String ID_LIKELIHOOD = "likelihood";
     public static final String ID_POSTERIOR = "posterior";
@@ -87,8 +83,7 @@ public class Beast2AnalysisBuilder {
         List<Operator> operators = setupOperators();
 
         // Create the MCMC object
-        MCMC mcmc = setupMCMC(analysis, posterior, state, operators);
-        return mcmc;
+        return setupMCMC(analysis, posterior, state, operators);
     }
 
     /**
@@ -246,7 +241,7 @@ public class Beast2AnalysisBuilder {
 
         // Set up chainLength, state, operators, and posterior using BEAST2 API
         mcmc.initByName(
-                INPUT_CHAIN_LENGTH, Long.valueOf(analysis.getChainLength()),
+                INPUT_CHAIN_LENGTH, analysis.getChainLength(),
                 INPUT_STATE, state,
                 INPUT_DISTRIBUTION, posterior,
                 INPUT_OPERATOR, operators,
@@ -288,7 +283,7 @@ public class Beast2AnalysisBuilder {
 
         // Add all parameters to log
         for (Object obj : modelBuilder.getAllObjects().values()) {
-            if (obj instanceof Parameter && !(obj instanceof Tree)) {
+            if ((obj instanceof Parameter) && !(obj instanceof Tree)) {
                 fileLogItems.add((BEASTInterface) obj);
             }
         }
@@ -342,7 +337,6 @@ public class Beast2AnalysisBuilder {
 
         // Get state nodes actually in the MCMC state
         List<StateNode> stateNodes = modelBuilder.getCreatedStateNodes();
-        Set<StateNode> stateNodeSet = new HashSet<>(stateNodes);
 
         // Create operators only for state nodes that are in the state
         for (StateNode stateNode : stateNodes) {

@@ -1,7 +1,6 @@
 package org.beast2.modelLanguage.builder;
 
 import org.antlr.v4.runtime.*;
-import org.antlr.v4.runtime.atn.ATN;
 import org.antlr.v4.runtime.tree.ParseTreeWalker;
 import org.beast2.modelLanguage.model.*;
 import org.beast2.modelLanguage.parser.Beast2ModelLanguageLexer;
@@ -10,7 +9,6 @@ import org.beast2.modelLanguage.parser.Beast2ModelLanguageParser;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 import java.util.logging.Logger;
 
 /**

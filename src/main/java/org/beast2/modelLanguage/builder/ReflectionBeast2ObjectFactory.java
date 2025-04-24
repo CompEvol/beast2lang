@@ -6,8 +6,6 @@ import org.beast2.modelLanguage.model.*;
 import org.beast2.modelLanguage.data.NexusAlignment;
 
 import beast.base.inference.StateNode;
-import beast.base.inference.parameter.Parameter;
-import beast.base.evolution.tree.Tree;
 
 import java.util.ArrayList;
 import java.util.HashMap;
