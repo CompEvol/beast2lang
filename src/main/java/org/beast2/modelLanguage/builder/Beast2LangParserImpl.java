@@ -54,19 +54,6 @@ public class Beast2LangParserImpl implements Beast2LangParser {
 
         // Create token stream and ensure all tokens are buffered immediately
         CommonTokenStream tokens = new CommonTokenStream(lexer);
-        tokens.fill();
-
-        // Debug: print all tokens to see what's happening
-        logger.info("========= TOKENS ===========");
-        for (int i = 0; i < tokens.size(); i++) {
-            Token token = tokens.get(i);
-            logger.info(String.format("Token[%d]: type=%d, text='%s', line=%d, pos=%d",
-                    i, token.getType(), token.getText(), token.getLine(), token.getCharPositionInLine()));
-        }
-        logger.info("===========================");
-
-        // Reset token stream position
-        tokens.seek(0);
 
         // Create parser with explicit error reporting
         Beast2ModelLanguageParser parser = new Beast2ModelLanguageParser(tokens);

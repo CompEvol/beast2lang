@@ -1,4 +1,4 @@
-package org.beast2.modelLanguage.util;
+package org.beast2.modelLanguage.builder.util;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
