@@ -12,6 +12,7 @@ Key features:
 - Support for observed data and latent parameters
 - Direct integration with BEAST2's Java objects
 - Import mechanism for BEAST2 packages and classes
+- Support for PhyloSpec-compatible syntax
 
 ## Philosophy
 
@@ -32,17 +33,25 @@ BEAST2Lang follows these core principles:
 ## Syntax Highlights
 
 ### Deterministic Variable Declarations
-Used for deterministic functions of parameters (like substitution and site model components, ParametricDistribution model components, PopulationFunction model components):
+Used for deterministic functions of parameters (like substitution and site model components):
 
 ```
 ClassName variableName = CalculationNode(inputName1=value1, inputName2=value2);
 ```
 
 ### Random Variable Declarations
-Always used for variables that follow a distribution:
+Used for variables that follow a distribution, with two possible patterns:
 
+**Direct Distribution Pattern**:
 ```
 ClassName variableName ~ Distribution(inputName1=value1, inputName2=value2);
+```
+
+BEAST2Lang supports both `Distribution` and `ParametricDistribution` subclasses directly after the `~` operator. When a `ParametricDistribution` is used (like LogNormal, Exponential, etc.), BEAST2Lang automatically wraps it in a `Prior` object.
+
+**Prior Pattern**:
+```
+ClassName variableName ~ Prior(distr=ParametricDistribution(...));
 ```
 
 ### Annotations
@@ -79,8 +88,9 @@ When a random variable is declared with the `~` syntax, BEAST2Lang needs to conn
 
 These mappings are centralized in the implementation to minimize hard-coded dependencies while enabling the language to automatically establish the correct connections between random variables and their distributions.
 
-## Example Model
+## Example Models
 
+### Standard BEAST2Lang Syntax
 ```
 // Import BEAST2 types, distributions and calculation nodes
 import beast.base.inference.parameter.*;
@@ -119,6 +129,53 @@ SiteModel siteModel = SiteModel(substModel=jc);
 @observed(data=alignment_data)
 Alignment alignment ~ TreeLikelihood(tree=tree, siteModel=siteModel);
 ```
+
+### Simplified Syntax with Direct Distribution References
+```
+// Import BEAST2 types, distributions and calculation nodes
+import beast.base.inference.parameter.*;
+import beast.base.inference.distribution.*;
+import beast.base.evolution.tree.*;
+import beast.base.evolution.speciation.*;
+import beast.base.evolution.substitutionmodel.*;
+import beast.base.evolution.sitemodel.*;
+import beast.base.evolution.alignment.*;
+import beast.base.evolution.likelihood.*;
+import org.beast2.modelLanguage.data.NexusAlignment;
+
+// Data
+@data
+Alignment alignment_data = NexusAlignment(file="primates.nex");
+
+@data
+TaxonSet taxa = TaxonSet(alignment=alignment_data);
+
+// Define birth rate parameter directly with log-normal distribution
+RealParameter birthRate ~ LogNormalDistributionModel(M=1, S=1);
+
+// Define a Yule tree prior that uses the birth rate
+Tree tree ~ YuleModel(birthDiffRate=birthRate, taxonset=taxa);
+
+// Define a JC69 substitution model
+JukesCantor jc = JukesCantor();
+
+// Define site model with the JC69 substitution model
+SiteModel siteModel = SiteModel(substModel=jc);
+
+// Alignment sampled from TreeLikelihood
+@observed(data=alignment_data)
+Alignment alignment ~ TreeLikelihood(tree=tree, siteModel=siteModel);
+```
+
+## PhyloSpec Support
+
+BEAST2Lang supports PhyloSpec-compatible syntax for increased interoperability with other modeling frameworks. To use PhyloSpec syntax, add the `--phylospec` flag to your commands:
+
+```
+./target/beast2lang run --input examples/example_model.b2l --phylospec
+```
+
+PhyloSpec syntax simplifies and standardizes distribution names and parameters, automatically mapping them to BEAST2 equivalents.
 
 ## Installation
 

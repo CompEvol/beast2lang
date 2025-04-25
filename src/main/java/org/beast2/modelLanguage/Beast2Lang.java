@@ -2,6 +2,9 @@ package org.beast2.modelLanguage;
 
 import beast.base.parser.XMLProducer;
 import org.beast2.modelLanguage.builder.Beast2ModelBuilderReflection;
+import org.beast2.modelLanguage.builder.Beast2LangParserWithPhyloSpec;
+import org.beast2.modelLanguage.builder.Beast2LangParser;
+import org.beast2.modelLanguage.builder.Beast2LangParserImpl;
 import org.beast2.modelLanguage.converter.Beast2ToPhyloSpecConverter;
 import org.beast2.modelLanguage.converter.PhyloSpecToBeast2Converter;
 import org.beast2.modelLanguage.model.Beast2Model;
@@ -34,17 +37,17 @@ import java.util.logging.Logger;
 /**
  * Main application class for Beast2Lang
  */
-@Command(name = "beast2lang", 
-         mixinStandardHelpOptions = true, 
-         version = "beast2lang 0.1.0",
-         description = "Provides utilities for working with Beast2 model definition language")
+@Command(name = "beast2lang",
+        mixinStandardHelpOptions = true,
+        version = "beast2lang 0.1.0",
+        description = "Provides utilities for working with Beast2 model definition language")
 public class Beast2Lang implements Callable<Integer> {
 
     private static final Logger logger = Logger.getLogger(Beast2Lang.class.getName());
-    
+
     // Flag to track BEAST2 initialization status
     private static boolean beast2Initialized = false;
-    
+
     /**
      * Initialize BEAST2 classes and environment
      */
@@ -217,7 +220,8 @@ public class Beast2Lang implements Callable<Integer> {
             @Option(names = {"--debug"}, description = "Enable debug logging", defaultValue = "false") boolean debug,
             @Option(names = {"--seed"}, description = "Random seed for MCMC run") Long seed,
             @Option(names = {"--threads"}, defaultValue = "1", description = "Number of threads") int threads,
-            @Option(names = {"--resume"}, description = "Resume from previous run", defaultValue = "false") boolean resume) {
+            @Option(names = {"--resume"}, description = "Resume from previous run", defaultValue = "false") boolean resume,
+            @Option(names = {"--phylospec"}, description = "Use PhyloSpec syntax", defaultValue = "false") boolean usePhyloSpec) {
 
         // Set debug level if requested
         if (debug) {
@@ -236,9 +240,17 @@ public class Beast2Lang implements Callable<Integer> {
 
             // First convert the model to BEAST2 objects
             Beast2ModelBuilderReflection reflectionBuilder = new Beast2ModelBuilderReflection();
+
+            // Use appropriate parser based on PhyloSpec flag
+            Beast2LangParser parser = usePhyloSpec
+                    ? new Beast2LangParserWithPhyloSpec()
+                    : new Beast2LangParserImpl();
+
             try (FileInputStream fis = new FileInputStream(inputFile)) {
-                // Parse the model
-                Beast2Model model = reflectionBuilder.buildFromStream(fis);
+                // Parse the model with the selected parser
+                Beast2Model model = usePhyloSpec
+                        ? parser.parseFromStream(fis)
+                        : reflectionBuilder.buildFromStream(fis);
 
                 // Create analysis parameters
                 Beast2Analysis analysis = new Beast2Analysis(
@@ -293,14 +305,18 @@ public class Beast2Lang implements Callable<Integer> {
 
     @Command(name = "validate", description = "Validate a Beast2Lang file")
     public Integer validate(
-            @Parameters(paramLabel = "FILE", description = "Beast2Lang file to validate") File file) {
+            @Parameters(paramLabel = "FILE", description = "Beast2Lang file to validate") File file,
+            @Option(names = {"--phylospec"}, description = "Use PhyloSpec syntax", defaultValue = "false") boolean usePhyloSpec) {
         try {
             System.out.println("Validating " + file.getPath() + "...");
-            
-            // Use our new refactored class directly
-            Beast2ModelBuilderReflection builder = new Beast2ModelBuilderReflection();
+
+            // Use appropriate parser based on PhyloSpec flag
+            Beast2LangParser parser = usePhyloSpec
+                    ? new Beast2LangParserWithPhyloSpec()
+                    : new Beast2LangParserImpl();
+
             try (FileInputStream fis = new FileInputStream(file)) {
-                Beast2Model model = builder.buildFromStream(fis);
+                Beast2Model model = parser.parseFromStream(fis);
                 System.out.println("Model is valid. Contains " + model.getStatements().size() + " statements.");
                 return 0;
             }
@@ -313,15 +329,15 @@ public class Beast2Lang implements Callable<Integer> {
 
     @Command(name = "convert", description = "Convert between Beast2Lang and other formats")
     public Integer convert(
-            @Option(names = {"--from"}, description = "Source format: beast2, phylospec", defaultValue = "beast2") String fromFormat,
-            @Option(names = {"--to"}, description = "Target format: beast2, phylospec, xml", defaultValue = "phylospec") String toFormat,
+            @Option(names = {"--from"}, description = "Source format: beast2, phylospec, lphy", defaultValue = "beast2") String fromFormat,
+            @Option(names = {"--to"}, description = "Target format: beast2, phylospec, lphy, xml", defaultValue = "phylospec") String toFormat,
             @Option(names = {"-o", "--output"}, description = "Output file") File outputFile,
             @Option(names = {"--debug"}, description = "Enable debug logging", defaultValue = "false") boolean debug,
             @Option(names="--chainLength", defaultValue="10000000", description="Default MCMC chain length") long chainLength,
             @Option(names="--logEvery", defaultValue="1000", description="Default logging interval") int logEvery,
             @Option(names="--traceFileName", defaultValue="trace.log", description="Default trace log file name") String traceFileName,
             @Parameters(paramLabel = "FILE", description = "Input file to convert") File inputFile) {
-        
+
         // Set debug level if requested
         if (debug) {
             java.util.logging.Logger rootLogger = java.util.logging.Logger.getLogger("");
@@ -330,22 +346,22 @@ public class Beast2Lang implements Callable<Integer> {
                 handler.setLevel(Level.FINE);
             }
         }
-        
+
         try {
             System.out.println("Converting from " + fromFormat + " to " + toFormat + "...");
-            
+
             // Initialize converters
             Beast2ToPhyloSpecConverter toPhyloSpecConverter = new Beast2ToPhyloSpecConverter();
             PhyloSpecToBeast2Converter toBeast2Converter = new PhyloSpecToBeast2Converter();
             Beast2ModelBuilderReflection reflectionBuilder = new Beast2ModelBuilderReflection();
-            
+
             // Perform conversion
             if ("beast2".equals(fromFormat) && "phylospec".equals(toFormat)) {
                 try (FileInputStream fis = new FileInputStream(inputFile)) {
                     // Convert Beast2Lang to PhyloSpec
                     Beast2Model model = reflectionBuilder.buildFromStream(fis);
                     JSONObject phyloSpec = toPhyloSpecConverter.convert(model);
-                    
+
                     // Output result
                     writeOutput(outputFile, phyloSpec.toString(2));
                     return 0;
@@ -354,33 +370,33 @@ public class Beast2Lang implements Callable<Integer> {
                 // Read PhyloSpec JSON
                 String content = new String(Files.readAllBytes(inputFile.toPath()));
                 JSONObject phyloSpec = new JSONObject(content);
-                
+
                 // Convert PhyloSpec to Beast2Lang
                 Beast2Model model = toBeast2Converter.convert(phyloSpec);
                 String beast2Lang = generateBeast2Lang(model);
-                
+
                 // Output result
                 writeOutput(outputFile, beast2Lang);
                 return 0;
             } else if ("beast2".equals(fromFormat) && "xml".equals(toFormat)) {
                 // Initialize BEAST2 environment
                 initializeBEAST2();
-                
+
                 try (FileInputStream fis = new FileInputStream(inputFile)) {
-                    // parse the pure model
+                    // Parse the pure model
                     Beast2Model model = reflectionBuilder.buildFromStream(fis);
-                    
-                    // wrap in analysis
+
+                    // Wrap in analysis
                     Beast2Analysis analysis = new Beast2Analysis(
-                        model,
-                        chainLength,      // from CLI option --chainLength
-                        logEvery,         // from CLI option --logEvery
-                        traceFileName     // from CLI option --traceFileName
+                            model,
+                            chainLength,      // from CLI option --chainLength
+                            logEvery,         // from CLI option --logEvery
+                            traceFileName     // from CLI option --traceFileName
                     );
-                    
-                    // build the run
+
+                    // Build the run
                     Beast2AnalysisBuilder analysisBuilder =
-                        new Beast2AnalysisBuilder(reflectionBuilder);
+                            new Beast2AnalysisBuilder(reflectionBuilder);
 
                     String xml;
                     MCMC rootRun = analysisBuilder.buildRun(analysis);
@@ -393,23 +409,27 @@ public class Beast2Lang implements Callable<Integer> {
                         System.out.println("Error dumping model structure: " + e.getMessage());
                     }
 
-// Then continue with XML generation
+                    // Then continue with XML generation
                     try {
                         xml = generateXML(rootRun);
-                        // generate XML
+                        // Generate XML
                         writeOutput(outputFile, xml);
                     } catch (Exception e) {
                         throw new RuntimeException("XML generation failure!", e);
                     }
                     return 0;
                 }
+            } else if ("lphy".equals(fromFormat)) {
+                // Handle LinguaPhylo format conversion if needed
+                System.err.println("LinguaPhylo conversion not yet implemented");
+                return 1;
             } else {
                 System.err.println("Unsupported conversion: " + fromFormat + " to " + toFormat);
                 return 1;
             }
         } catch (Exception e) {
             System.err.println("Error converting file: " + e.getMessage());
-            
+
             if (debug) {
                 e.printStackTrace();
             } else {
@@ -419,7 +439,7 @@ public class Beast2Lang implements Callable<Integer> {
                 e.printStackTrace(pw);
                 logger.severe("Detailed error: " + sw.toString());
             }
-            
+
             return 1;
         }
     }
@@ -565,12 +585,12 @@ public class Beast2Lang implements Callable<Integer> {
      */
     private String generateBeast2Lang(Beast2Model model) {
         StringBuilder sb = new StringBuilder();
-        
+
         // Generate Beast2Lang syntax for each statement
         model.getStatements().forEach(statement -> {
             sb.append(statement.toString()).append("\n");
         });
-        
+
         return sb.toString();
     }
 
@@ -581,11 +601,11 @@ public class Beast2Lang implements Callable<Integer> {
         if (beastObject == null) {
             throw new IllegalArgumentException("Cannot generate XML from null object");
         }
-        
+
         try {
             // Use reflection to invoke BEAST2's XMLProducer
             XMLProducer xmlProducer = new XMLProducer();
-            
+
             // Invoke toXML method
             String objectXml = xmlProducer.toXML(beastObject);
 
@@ -600,7 +620,7 @@ public class Beast2Lang implements Callable<Integer> {
             throw e;
         }
     }
-    
+
     /**
      * Write output to a file or stdout
      */
@@ -608,7 +628,7 @@ public class Beast2Lang implements Callable<Integer> {
         if (content == null) {
             throw new IOException("Cannot write null content");
         }
-        
+
         if (outputFile != null) {
             try (BufferedWriter writer = new BufferedWriter(new FileWriter(outputFile))) {
                 writer.write(content);
