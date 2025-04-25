@@ -2,6 +2,7 @@ package org.beast2.modelLanguage.builder.handlers;
 
 import beast.base.core.BEASTInterface;
 import beast.base.core.Input;
+import org.beast2.modelLanguage.builder.util.AutoboxingRegistry;
 import org.beast2.modelLanguage.builder.util.BEASTUtils;
 import org.beast2.modelLanguage.model.*;
 
@@ -78,6 +79,47 @@ public abstract class BaseHandler {
     }
 
     /**
+     * Single entry point for resolving and autoboxing values
+     */
+    protected Object resolveAndAutobox(Expression expr, Map<String, Object> objectRegistry, Class<?> expectedType) {
+        // First resolve the value
+        Object value = ExpressionResolver.resolveValue(expr, objectRegistry);
+
+        // Then apply autoboxing
+        if (value != null && expectedType != null) {
+            return AutoboxingRegistry.getInstance().autobox(value, expectedType, objectRegistry);
+        }
+
+        return value;
+    }
+
+    /**
+     * Configure an input with autoboxing
+     */
+    protected void configureInput(String name, Expression valueExpr,
+                                  BEASTInterface target, Map<String, Input<?>> inputMap,
+                                  Map<String, Object> objectRegistry) {
+        Input<?> input = inputMap.get(name);
+        if (input == null) {
+            logger.warning("No input named '" + name + "' found");
+            return;
+        }
+
+        // Get expected type for autoboxing
+        Class<?> expectedType = BEASTUtils.getInputExpectedType(input,target,name);
+
+        // Resolve and autobox in one step
+        Object value = resolveAndAutobox(valueExpr, objectRegistry, expectedType);
+
+        // Set the input
+        try {
+            BEASTUtils.setInputValue(input, value, target);
+        } catch (Exception e) {
+            logger.warning("Failed to set input '" + name + "': " + e.getMessage());
+        }
+    }
+
+    /**
      * Configure inputs for multiple objects (primary and optional secondary)
      */
     protected void configureInputForObjects(String name, Argument arg,
@@ -91,16 +133,16 @@ public abstract class BaseHandler {
 
         // Get input and expected type
         Input<?> primaryInput = primaryInputMap.get(name);
-        Class<?> expectedType = (primaryInput != null) ? primaryInput.getType() : null;
+        Class<?> expectedType = BEASTUtils.getInputExpectedType(primaryInput,(BEASTInterface) primaryObject,name);
 
         if (expectedType == null && secondaryInputMap != null) {
             Input<?> secondaryInput = secondaryInputMap.get(name);
             if (secondaryInput != null) {
-                expectedType = secondaryInput.getType();
+                expectedType = BEASTUtils.getInputExpectedType(secondaryInput,(BEASTInterface) secondaryObject,name);
             }
         }
 
-        // Resolve the value
+        // Resolve the value with autoboxing - this will apply all registered rules
         Object argValue = ExpressionResolver.resolveValueWithAutoboxing(
                 arg.getValue(), objectRegistry, expectedType);
 

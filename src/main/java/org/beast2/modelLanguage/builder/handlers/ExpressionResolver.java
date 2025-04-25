@@ -4,6 +4,7 @@ import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.logging.Logger;
 
+import org.beast2.modelLanguage.builder.util.AutoboxingRegistry;
 import org.beast2.modelLanguage.builder.util.BEASTUtils;
 import org.beast2.modelLanguage.model.*;
 
@@ -40,39 +41,15 @@ public class ExpressionResolver {
         return null;
     }
 
-    /**
-     * Resolve an Expression with potential autoboxing based on expected type
-     */
     public static Object resolveValueWithAutoboxing(Expression expr, Map<String, Object> objectRegistry, Class<?> expectedType) {
-        if (expr == null) {
-            return null;
+        // Just delegate to AutoboxingRegistry
+        Object value = resolveValue(expr, objectRegistry);
+
+        if (value != null && expectedType != null) {
+            return AutoboxingRegistry.getInstance().autobox(value, expectedType, objectRegistry);
         }
 
-        // Handle autoboxing for literals
-        if (expr instanceof Literal) {
-            Literal literal = (Literal) expr;
-            Object value = literal.getValue();
-
-            // Convert based on expected type
-            if (expectedType != null) {
-                if (Parameter.class.isAssignableFrom(expectedType)) {
-                    return BEASTUtils.createParameterForType(value, expectedType);
-                } else if (expectedType == Double.class || expectedType == double.class) {
-                    return BEASTUtils.convertToDouble(value);
-                } else if (expectedType == Integer.class || expectedType == int.class) {
-                    return BEASTUtils.convertToInteger(value);
-                } else if (expectedType == Boolean.class || expectedType == boolean.class) {
-                    return BEASTUtils.convertToBoolean(value);
-                } else if (expectedType == String.class) {
-                    return value != null ? value.toString() : null;
-                }
-            }
-
-            return value;
-        }
-
-        // Standard resolution for non-literals
-        return resolveValue(expr, objectRegistry);
+        return value;
     }
 
     /**

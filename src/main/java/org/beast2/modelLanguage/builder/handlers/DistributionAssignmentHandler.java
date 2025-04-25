@@ -95,7 +95,7 @@ public class DistributionAssignmentHandler extends BaseHandler {
                         Input<?> input = distInputMap.get(argName);
 
                         // Get the expected type for proper autoboxing
-                        Class<?> expectedType = (input != null) ? input.getType() : null;
+                        Class<?> expectedType = BEASTUtils.getInputExpectedType(input,(BEASTInterface) distObject,argName);
 
                         // Resolve with autoboxing based on expected type
                         Object argValue = ExpressionResolver.resolveValueWithAutoboxing(
@@ -274,8 +274,8 @@ public class DistributionAssignmentHandler extends BaseHandler {
                 continue;
             }
 
-            configureInputForObjects(name, arg, likelihoodObject, dataObject,
-                    likelihoodInputMap, dataInputMap, objectRegistry);
+            configureInput(arg.getName(), arg.getValue(),
+                    (BEASTInterface)likelihoodObject, likelihoodInputMap, objectRegistry);
         }
 
         // Initialize objects

@@ -213,6 +213,7 @@ public class Beast2Lang implements Callable<Integer> {
     @Command(name = "run", description = "Run a Beast2 model after conversion")
     public Integer runModel(
             @Option(names = {"-i", "--input"}, description = "Input Beast2Lang file", required = true) File inputFile,
+            @Option(names = {"-o", "--output"}, description = "Output Beast2 XML file", defaultValue="model.xml") File outputFile,
             @Option(names = {"--chainLength"}, defaultValue = "10000000", description = "MCMC chain length") long chainLength,
             @Option(names = {"--logEvery"}, defaultValue = "1000", description = "Logging interval") int logEvery,
             @Option(names = {"--traceFileName"}, defaultValue = "trace.log", description = "Trace log file name") String traceFileName,
@@ -282,6 +283,10 @@ public class Beast2Lang implements Callable<Integer> {
 
                 // Execute the MCMC
                 mcmc.run();
+
+                String xml = generateXML(mcmc);
+                // Generate XML
+                writeOutput(outputFile, xml);
 
                 System.out.println("MCMC run completed successfully.");
                 return 0;

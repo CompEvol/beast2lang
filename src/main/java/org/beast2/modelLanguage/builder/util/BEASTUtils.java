@@ -11,8 +11,7 @@ import org.beast2.modelLanguage.model.Argument;
 import org.beast2.modelLanguage.model.Expression;
 import org.beast2.modelLanguage.model.FunctionCall;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
+import java.lang.reflect.*;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -371,5 +370,89 @@ public class BEASTUtils {
 
     public static Object resolveValue(Expression expr, Map<String, Object> objectRegistry) {
         return ExpressionResolver.resolveValue(expr,objectRegistry);
+    }
+
+    /**
+     * Get the expected type for an Input field using Java reflection to examine generic type parameters
+     *
+     * @param input The Input object to examine
+     * @param beastObject The BEAST object containing the input
+     * @param inputName The name of the input
+     * @return The expected class type for the input, or null if it cannot be determined
+     */
+    public static Class<?> getInputExpectedType(Input<?> input, BEASTInterface beastObject, String inputName) {
+        if (input == null) {
+            return null;
+        }
+
+        // First try the direct approach
+        Class<?> expectedType = input.getType();
+        if (expectedType != null) {
+            return expectedType;
+        }
+
+        // Get the class containing this input
+        Class<?> clazz = beastObject.getClass();
+
+        // Use reflection to find the field and examine its generic type
+        while (clazz != null) {
+            // Try to find the field in this class
+            try {
+                for (Field field : clazz.getDeclaredFields()) {
+                    // Check if this is an Input field with the right name
+                    if (Input.class.isAssignableFrom(field.getType())) {
+                        field.setAccessible(true);
+                        Input<?> fieldInput = (Input<?>) field.get(beastObject);
+
+                        // Confirm this is the input we're looking for
+                        if (fieldInput != null && fieldInput.getName().equals(inputName)) {
+                            // Extract the generic parameter from Input<T>
+                            Type genericType = field.getGenericType();
+                            if (genericType instanceof ParameterizedType) {
+                                ParameterizedType paramType = (ParameterizedType) genericType;
+                                Type[] typeArgs = paramType.getActualTypeArguments();
+
+                                if (typeArgs.length > 0) {
+                                    if (typeArgs[0] instanceof Class) {
+                                        // Simple case: Input<ConcreteClass>
+                                        return (Class<?>) typeArgs[0];
+                                    } else if (typeArgs[0] instanceof ParameterizedType) {
+                                        // Handle generic types like Input<List<String>>
+                                        return (Class<?>) ((ParameterizedType) typeArgs[0]).getRawType();
+                                    } else if (typeArgs[0] instanceof TypeVariable) {
+                                        // Handle type variables like Input<T>
+                                        TypeVariable<?> typeVar = (TypeVariable<?>) typeArgs[0];
+
+                                        // Get the bounds of the type variable
+                                        Type[] bounds = typeVar.getBounds();
+                                        if (bounds.length > 0 && bounds[0] instanceof Class) {
+                                            // Use the first bound as the expected type
+                                            return (Class<?>) bounds[0];
+                                        }
+                                    } else if (typeArgs[0] instanceof WildcardType) {
+                                        // Handle wildcard types like Input<? extends Something>
+                                        WildcardType wildcard = (WildcardType) typeArgs[0];
+                                        Type[] upperBounds = wildcard.getUpperBounds();
+
+                                        if (upperBounds.length > 0 && upperBounds[0] instanceof Class) {
+                                            return (Class<?>) upperBounds[0];
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                // Just log and continue searching in parent classes
+                logger.fine("Exception examining field in " + clazz.getName() + ": " + e.getMessage());
+            }
+
+            // Move up to the parent class
+            clazz = clazz.getSuperclass();
+        }
+
+        // Could not determine the type
+        return null;
     }
 }

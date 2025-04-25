@@ -3,27 +3,16 @@ import beast.base.inference.distribution.*;
 import beast.base.evolution.tree.*;
 import beast.base.evolution.speciation.*;
 import beast.base.evolution.substitutionmodel.*;
-import beast.base.evolution.sitemodel.*;
 import beast.base.evolution.alignment.*;
 import beast.base.evolution.likelihood.*;
 import org.beast2.modelLanguage.data.NexusAlignment;
 
 @data
 Alignment alignment_data = NexusAlignment(file="primates.nex");
-@data
-TaxonSet taxa = TaxonSet(alignment=alignment_data);
 
 RealParameter birthRate ~ LogNormalDistributionModel(M=1, S=1);
-
-// Define a Yule tree prior that uses the birth rate
-Tree tree ~ YuleModel(birthDiffRate=birthRate, taxonset=taxa);
-
-// Define a JC69 substitution model
+Tree tree ~ YuleModel(birthDiffRate=birthRate, taxonset=alignment_data);
 JukesCantor jc = JukesCantor();
 
-// Define site model with the JC69 substitution model
-SiteModel siteModel = SiteModel(substModel=jc);
-
-// Alignment sampled from TreeLikelihood
 @observed(data=alignment_data)
-Alignment alignment ~ TreeLikelihood(tree=tree, siteModel=siteModel);
+Alignment alignment ~ TreeLikelihood(tree=tree, siteModel=jc);
