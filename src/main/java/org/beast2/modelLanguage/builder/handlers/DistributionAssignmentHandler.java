@@ -3,6 +3,7 @@ package org.beast2.modelLanguage.builder.handlers;
 import beast.base.core.BEASTInterface;
 import beast.base.core.Input;
 import beast.base.evolution.likelihood.TreeLikelihood;
+import beast.base.evolution.tree.MRCAPrior;
 import beast.base.inference.distribution.ParametricDistribution;
 import beast.base.inference.distribution.Prior;
 import beast.base.evolution.speciation.SpeciesTreeDistribution;
@@ -11,6 +12,7 @@ import beast.base.inference.parameter.Parameter;
 import org.beast2.modelLanguage.builder.util.BEASTUtils;
 import org.beast2.modelLanguage.model.*;
 
+import java.lang.reflect.Type;
 import java.util.*;
 
 /**
@@ -28,6 +30,7 @@ public class DistributionAssignmentHandler extends BaseHandler {
     static {
         CLASS_TO_ARGUMENT_INPUT.put(Prior.class, "x");
         CLASS_TO_ARGUMENT_INPUT.put(SpeciesTreeDistribution.class, "tree");
+        CLASS_TO_ARGUMENT_INPUT.put(MRCAPrior.class, "tree");
         CLASS_TO_ARGUMENT_INPUT.put(TreeLikelihood.class, "data");
     }
 
@@ -38,21 +41,27 @@ public class DistributionAssignmentHandler extends BaseHandler {
         super(DistributionAssignmentHandler.class.getName());
     }
 
-    /**
-     * Get the appropriate input name for connecting a random variable to a distribution
-     */
     private String getArgumentInputName(Object distribution) {
+        // Log what we're trying to match
+        logger.info("Finding argument input name for: " + distribution.getClass().getName());
+
         // Search for the most specific class match in our map
         Class<?> distClass = distribution.getClass();
         while (distClass != null) {
+            logger.info("Checking class: " + distClass.getName());
             if (CLASS_TO_ARGUMENT_INPUT.containsKey(distClass)) {
-                return CLASS_TO_ARGUMENT_INPUT.get(distClass);
+                String result = CLASS_TO_ARGUMENT_INPUT.get(distClass);
+                logger.info("Found matching argument input name: " + result);
+                return result;
             }
 
             // Check interfaces as well
             for (Class<?> iface : distClass.getInterfaces()) {
+                logger.info("Checking interface: " + iface.getName());
                 if (CLASS_TO_ARGUMENT_INPUT.containsKey(iface)) {
-                    return CLASS_TO_ARGUMENT_INPUT.get(iface);
+                    String result = CLASS_TO_ARGUMENT_INPUT.get(iface);
+                    logger.info("Found matching argument input name from interface: " + result);
+                    return result;
                 }
             }
 
@@ -60,6 +69,7 @@ public class DistributionAssignmentHandler extends BaseHandler {
             distClass = distClass.getSuperclass();
         }
 
+        logger.warning("No matching argument input name found for: " + distribution.getClass().getName());
         return null;
     }
 
@@ -88,20 +98,20 @@ public class DistributionAssignmentHandler extends BaseHandler {
                     String distVarName = varName + "Dist";
                     Object distObject = createBEASTObject(distClassName, distVarName);
 
-// 2. Configure the distribution with its arguments
+                    // 2. Configure the distribution with its arguments
                     Map<String, Input<?>> distInputMap = BEASTUtils.buildInputMap(distObject, distClass);
                     for (Argument arg : distFunc.getArguments()) {
                         String argName = arg.getName();
                         Input<?> input = distInputMap.get(argName);
 
                         // Get the expected type for proper autoboxing
-                        Class<?> expectedType = BEASTUtils.getInputExpectedType(input,(BEASTInterface) distObject,argName);
+                        Type expectedType = BEASTUtils.getInputExpectedType(input, (BEASTInterface) distObject, argName);
 
                         // Resolve with autoboxing based on expected type
                         Object argValue = ExpressionResolver.resolveValueWithAutoboxing(
                                 arg.getValue(), objectRegistry, expectedType);
 
-                        if (input != null && distObject instanceof BEASTInterface) {
+                        if (input != null && distObject != null) {
                             try {
                                 BEASTUtils.setInputValue(input, argValue, (BEASTInterface)distObject);
                             } catch (Exception e) {
@@ -121,27 +131,30 @@ public class DistributionAssignmentHandler extends BaseHandler {
                     // Store it in the registry
                     objectRegistry.put(distVarName, distObject);
 
-                    // 3. Now create a Prior that wraps this distribution
-                    Object priorObject = createBEASTObject("beast.base.inference.distribution.Prior",
-                            varName + "Prior");
+                    // 3. Create or get the parameter object
+                    // Check if parameter already exists
+                    Object paramObject;
+                    Object existingParam = objectRegistry.get(varName);
+                    if (existingParam != null && Parameter.class.isAssignableFrom(existingParam.getClass())) {
+                        // Reuse existing parameter
+                        logger.info("Using existing parameter object: " + varName);
+                        paramObject = existingParam;
+                    } else {
+                        // Create new parameter
+                        paramObject = createBEASTObject(className, varName);
 
-                    // 4. Create the parameter
-                    Object paramObject = createBEASTObject(className, varName);
+                        initializeRealParameter(paramObject);
 
-                    // Special handling for RealParameter or other Parameter types
-                    if (Parameter.class.isAssignableFrom(paramObject.getClass())) {
-                        // Initialize with default values if needed
-                        if (paramObject.getClass().getName().equals("beast.base.inference.parameter.RealParameter")) {
-                            initializeRealParameter(paramObject, paramObject.getClass());
-                        }
+                        // Store the parameter in registry
+                        objectRegistry.put(varName, paramObject);
                     }
 
-                    // Store the parameter
-                    objectRegistry.put(varName, paramObject);
+                    // 4. Now create a Prior that wraps this distribution
+                    String priorName = getUniquePriorName(varName, objectRegistry);
+                    Object priorObject = createBEASTObject("beast.base.inference.distribution.Prior", priorName);
 
                     // 5. Wire the distribution and parameter to the prior
-                    Map<String, Input<?>> priorInputMap = BEASTUtils.buildInputMap(priorObject,
-                            priorObject.getClass());
+                    Map<String, Input<?>> priorInputMap = BEASTUtils.buildInputMap(priorObject, priorObject.getClass());
 
                     // Connect distribution to prior
                     Input<?> distrInput = priorInputMap.get("distr");
@@ -158,10 +171,12 @@ public class DistributionAssignmentHandler extends BaseHandler {
                     // Initialize the prior
                     BEASTUtils.callInitAndValidate(priorObject, priorObject.getClass());
 
-                    // Store the prior
-                    objectRegistry.put(varName + "Prior", priorObject);
+                    // Store the prior and update prior list
+                    objectRegistry.put(priorName, priorObject);
+                    addDistributionForObject(varName, priorName, objectRegistry);
 
-                    // We're done - the pattern is handled
+                    initializeParameterFromDistribution(paramObject, priorObject);
+
                     return;
                 }
             } catch (ClassNotFoundException e) {
@@ -172,32 +187,140 @@ public class DistributionAssignmentHandler extends BaseHandler {
 
         // Normal processing if we didn't handle the special case
 
-        // Create the parameter object
-        Object beastObject = createBEASTObject(className, varName);
+        // Check if the object already exists in the registry
+        Object beastObject;
+        Object existingObject = objectRegistry.get(varName);
+        Class<?> objectClass = loadClass(className);
 
-        // Special handling for RealParameter
-        if (className.equals("beast.base.inference.parameter.RealParameter")) {
-            initializeRealParameter(beastObject, beastObject.getClass());
+        if (existingObject != null && objectClass.isInstance(existingObject)) {
+            // Use existing object if it's compatible
+            logger.info("Using existing object " + varName + " for multiple distributions");
+            beastObject = existingObject;
+        } else {
+            // Create the object if it doesn't exist
+            beastObject = createBEASTObject(className, varName);
+
+            if (className.equals("beast.base.inference.parameter.RealParameter")) {
+                initializeRealParameter(beastObject);
+            }
+
+            // Store the object
+            objectRegistry.put(varName, beastObject);
         }
-
-        // Store the parameter object
-        objectRegistry.put(varName, beastObject);
 
         // If no distribution is specified, we're done
         if (!(distribution instanceof FunctionCall)) {
             return;
         }
 
-        // Create the distribution object
+        // Create the distribution object with a unique name
         FunctionCall funcCall = (FunctionCall) distribution;
         String distClassName = funcCall.getClassName();
-        Object distObject = createBEASTObject(distClassName, varName + "Prior");
+        String priorName = getUniquePriorName(varName, objectRegistry);
+        Object distObject = createBEASTObject(distClassName, priorName);
 
         // Configure the distribution
         configureDistribution(distObject, beastObject, funcCall, objectRegistry);
 
         // Store the distribution object
-        objectRegistry.put(varName + "Prior", distObject);
+        objectRegistry.put(priorName, distObject);
+
+        // Track this distribution for the object
+        addDistributionForObject(varName, priorName, objectRegistry);
+    }
+
+    private void initializeParameterFromDistribution(Object paramObject, Object priorObject) {
+        if (paramObject == null || !(paramObject instanceof BEASTInterface) ||
+                priorObject == null || !(priorObject instanceof beast.base.inference.distribution.Prior)) {
+            return;
+        }
+
+        BEASTInterface param = (BEASTInterface)paramObject;
+        beast.base.inference.distribution.Prior prior =
+                (beast.base.inference.distribution.Prior)priorObject;
+
+        beast.base.inference.distribution.ParametricDistribution dist = prior.distInput.get();
+
+        if (dist != null) {
+            try {
+                // Get median value
+                double median = dist.inverseCumulativeProbability(0.5);
+
+                if (!Double.isNaN(median) && !Double.isInfinite(median)) {
+                    // Important: REPLACE existing values by using setValue not just initByName
+                    if (param instanceof beast.base.inference.parameter.RealParameter) {
+                        beast.base.inference.parameter.RealParameter realParam =
+                                (beast.base.inference.parameter.RealParameter)param;
+
+                        realParam.setValue(0, median); // Set at index 0
+
+                        logger.info("Initialized parameter " + param.getID() +
+                                " with median " + median + " from distribution");
+                    }
+                }
+            } catch (Exception e) {
+                logger.warning("Failed to sample from distribution: " + e.getMessage());
+            }
+        }
+    }
+
+    // Add this method to initialize RealParameter objects properly
+    private void initializeRealParameter(Object paramObject) {
+        if (!(paramObject instanceof BEASTInterface)) {
+            return;
+        }
+
+        try {
+            // Initialize with a default value of 1.0 (a reasonable starting point)
+            ((BEASTInterface)paramObject).initByName("value", List.of(0.5));
+            logger.info("Initialized parameter with default value 0.5");
+        } catch (Exception e) {
+            logger.warning("Failed to initialize parameter: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Get a unique name for a prior
+     */
+    private String getUniquePriorName(String varName, Map<String, Object> objectRegistry) {
+        String basePriorName = varName + "Prior";
+
+        // If base name is available, use it
+        if (!objectRegistry.containsKey(basePriorName)) {
+            return basePriorName;
+        }
+
+        // Otherwise, generate a unique name with a counter
+        int counter = 1;
+        String priorName;
+        do {
+            priorName = basePriorName + counter;
+            counter++;
+        } while (objectRegistry.containsKey(priorName));
+
+        return priorName;
+    }
+
+    /**
+     * Add a distribution to the list of distributions for an object
+     */
+    private void addDistributionForObject(String objectName, String priorName, Map<String, Object> objectRegistry) {
+        // Key for storing the list of distributions for this object
+        String distributionsKey = objectName + "Distributions";
+
+        // Get existing list or create a new one
+        @SuppressWarnings("unchecked")
+        List<String> distributionList = (List<String>) objectRegistry.get(distributionsKey);
+
+        if (distributionList == null) {
+            distributionList = new ArrayList<>();
+            objectRegistry.put(distributionsKey, distributionList);
+        }
+
+        // Add this distribution to the list
+        distributionList.add(priorName);
+        logger.info("Added distribution " + priorName + " for object " + objectName +
+                " (total: " + distributionList.size() + ")");
     }
 
     /**
@@ -288,11 +411,11 @@ public class DistributionAssignmentHandler extends BaseHandler {
         objectRegistry.put(varName + "Likelihood", likelihoodObject);
     }
 
-    /**
-     * Configure distribution and parameter objects
-     */
     private void configureDistribution(Object distObject, Object paramObject, FunctionCall funcCall,
                                        Map<String, Object> objectRegistry) throws Exception {
+        logger.info("Configuring distribution: " + distObject.getClass().getName() +
+                " with parameter: " + paramObject.getClass().getName());
+
         // Build input maps
         Map<String, Input<?>> distInputMap = BEASTUtils.buildInputMap(distObject, distObject.getClass());
         Map<String, Input<?>> paramInputMap = null;
@@ -300,7 +423,24 @@ public class DistributionAssignmentHandler extends BaseHandler {
             paramInputMap = BEASTUtils.buildInputMap(paramObject, paramObject.getClass());
         }
 
-        // Connect parameter to distribution
+        // IMPORTANT CHANGE: Process function call arguments FIRST
+        for (Argument arg : funcCall.getArguments()) {
+            String name = arg.getName();
+            configureInputForObjects(name, arg, distObject, paramObject,
+                    distInputMap, paramInputMap, objectRegistry);
+        }
+
+        // NOW try to initialize the parameter object if needed
+        if (paramObject instanceof BEASTInterface) {
+            try {
+                BEASTUtils.callInitAndValidate(paramObject, paramObject.getClass());
+                logger.info("Successfully initialized parameter object");
+            } catch (Exception e) {
+                logger.warning("Failed to initialize parameter object: " + e.getMessage());
+            }
+        }
+
+        // THEN connect parameter to distribution
         String inputName = getArgumentInputName(distObject);
         boolean parameterConnected = false;
 
@@ -308,31 +448,21 @@ public class DistributionAssignmentHandler extends BaseHandler {
             Input<?> input = ((BEASTInterface) distObject).getInput(inputName);
             if (input != null) {
                 try {
+                    logger.info("Connecting " + paramObject.getClass().getSimpleName() +
+                            " to " + distObject.getClass().getSimpleName() +
+                            " via input '" + inputName + "'");
                     BEASTUtils.setInputValue(input, paramObject, (BEASTInterface) distObject);
                     parameterConnected = true;
                 } catch (Exception e) {
                     logger.warning("Failed to connect parameter: " + e.getMessage());
                 }
+            } else {
+                logger.warning("Could not find input '" + inputName + "' in " +
+                        distObject.getClass().getSimpleName());
             }
         }
 
-        // Process function call arguments
-        for (Argument arg : funcCall.getArguments()) {
-            String name = arg.getName();
-
-            // Skip parameter input if already handled
-            if (parameterConnected && name.equals(inputName)) {
-                continue;
-            }
-
-            configureInputForObjects(name, arg, distObject, paramObject,
-                    distInputMap, paramInputMap, objectRegistry);
-        }
-
-        // Initialize objects
+        // Initialize distribution object
         BEASTUtils.callInitAndValidate(distObject, distObject.getClass());
-        if (paramObject instanceof BEASTInterface) {
-            BEASTUtils.callInitAndValidate(paramObject, paramObject.getClass());
-        }
     }
 }

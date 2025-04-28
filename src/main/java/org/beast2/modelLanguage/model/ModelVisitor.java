@@ -15,4 +15,5 @@ public interface ModelVisitor<T> {
     T visit(FunctionCall funcCall);
     T visit(Identifier identifier);
     T visit(Literal literal);
+    T visit(ArrayLiteral arrayLiteral);
 }

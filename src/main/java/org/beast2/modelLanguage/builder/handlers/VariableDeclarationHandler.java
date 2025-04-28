@@ -3,9 +3,11 @@ package org.beast2.modelLanguage.builder.handlers;
 import beast.base.core.BEASTInterface;
 import beast.base.core.Input;
 import beast.base.inference.parameter.Parameter;
+import org.beast2.modelLanguage.builder.util.AutoboxingRegistry;
 import org.beast2.modelLanguage.builder.util.BEASTUtils;
 import org.beast2.modelLanguage.model.*;
 
+import java.lang.reflect.Type;
 import java.util.Map;
 
 /**
@@ -20,34 +22,51 @@ public class VariableDeclarationHandler extends BaseHandler {
         super(VariableDeclarationHandler.class.getName());
     }
 
-    /**
-     * Create a BEAST2 object from a variable declaration
-     *
-     * @param varDecl the variable declaration to process
-     * @param objectRegistry registry of created objects for reference resolution
-     * @return the created BEAST2 object
-     * @throws Exception if object creation fails
-     */
     public Object createObject(VariableDeclaration varDecl, Map<String, Object> objectRegistry) throws Exception {
         String declaredTypeName = varDecl.getClassName();
         String variableName = varDecl.getVariableName();
         Expression value = varDecl.getValue();
 
-        // Handle literal values for Parameter types
+        // Handle array literals
+        if (value instanceof ArrayLiteral) {
+            ArrayLiteral arrayLiteral = (ArrayLiteral) value;
+
+            // Handle String[] array
+            if (declaredTypeName.equals("String[]")) {
+                String[] stringArray = new String[arrayLiteral.getElements().size()];
+                for (int i = 0; i < arrayLiteral.getElements().size(); i++) {
+                    Expression elem = arrayLiteral.getElements().get(i);
+                    if (elem instanceof Literal) {
+                        stringArray[i] = ((Literal) elem).getValue().toString();
+                    } else {
+                        Object resolvedValue = ExpressionResolver.resolveValue(elem, objectRegistry);
+                        stringArray[i] = resolvedValue != null ? resolvedValue.toString() : null;
+                    }
+                }
+                objectRegistry.put(variableName, stringArray);
+                return stringArray;
+            }
+
+            // Add support for other array types as needed
+            throw new UnsupportedOperationException("Array type not supported: " + declaredTypeName);
+        }
+
+        // Handle literal values directly
         if (value instanceof Literal) {
+            Object literalValue = ((Literal) value).getValue();
             try {
                 Class<?> declaredType = loadClass(declaredTypeName);
-                if (Parameter.class.isAssignableFrom(declaredType)) {
-                    return ParameterAutoboxer.literalToParameter((Literal) value, variableName);
-                }
+                // Use AutoboxingRegistry instead of direct Parameter handling
+                return AutoboxingRegistry.getInstance().autobox(literalValue, declaredType, objectRegistry);
             } catch (ClassNotFoundException e) {
-                // If class not found, continue with normal processing
+                logger.warning("Class not found: " + declaredTypeName);
+                return ((Literal) value).getValue();
             }
         }
 
         // Handle function calls
         if (!(value instanceof FunctionCall)) {
-            throw new IllegalArgumentException("Value must be a function call or a literal for Parameter types");
+            throw new IllegalArgumentException("Value must be a function call, literal, or array literal");
         }
 
         FunctionCall funcCall = (FunctionCall) value;
@@ -92,45 +111,21 @@ public class VariableDeclarationHandler extends BaseHandler {
                 throw new RuntimeException("No input named '" + name + "' found");
             }
 
-            // Get expected type
-            Class<?> expectedType = input.getType();
+            // Resolve the value (without autoboxing first)
+            Object resolvedValue = ExpressionResolver.resolveValue(arg.getValue(), objectRegistry);
 
-            // Resolve the value based on the expected type
-            Object resolvedValue = resolveValueForInput(arg.getValue(), objectRegistry, expectedType);
+            Type expectedType = BEASTUtils.getInputExpectedType(input,beastObject,name);
+
+            // Apply autoboxing if needed
+            Object autoboxedValue = AutoboxingRegistry.getInstance().autobox(resolvedValue, expectedType, objectRegistry);
 
             // Set the input value
             try {
-                BEASTUtils.setInputValue(input, resolvedValue, beastObject);
+                BEASTUtils.setInputValue(input, autoboxedValue, beastObject);
             } catch (Exception e) {
-                // Try parameter conversion as fallback for type mismatches
-                if (resolvedValue != null) {
-                    Object paramValue = BEASTUtils.createRealParameter(resolvedValue);
-                    BEASTUtils.setInputValue(input, paramValue, beastObject);
-                } else {
-                    throw e;
-                }
+                logger.warning("Error setting input '" + name + "': " + e.getMessage());
+                throw e;
             }
         }
-    }
-
-    /**
-     * Resolve a value based on its expression and expected type
-     */
-    private Object resolveValueForInput(Expression expr, Map<String, Object> objectRegistry,
-                                        Class<?> expectedType) {
-        // Handle literal values that need conversion
-        if (expr instanceof Literal && expectedType != null) {
-            Literal literal = (Literal) expr;
-            Object value = literal.getValue();
-
-            if (BEASTUtils.isParameterType(expectedType)) {
-                return BEASTUtils.createParameterForType(value, expectedType);
-            }
-
-            return value;
-        }
-
-        // Use standard resolver for other cases
-        return ExpressionResolver.resolveValue(expr, objectRegistry);
     }
 }

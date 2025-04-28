@@ -6,6 +6,8 @@ import org.beast2.modelLanguage.builder.util.AutoboxingRegistry;
 import org.beast2.modelLanguage.builder.util.BEASTUtils;
 import org.beast2.modelLanguage.model.*;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
@@ -63,31 +65,15 @@ public abstract class BaseHandler {
     }
 
     /**
-     * Initialize a RealParameter with default values
-     */
-    protected void initializeRealParameter(Object paramObject, Class<?> paramClass) {
-        try {
-            // Set default value for RealParameter
-            List<Double> defaultValue = List.of(0.0);
-            ((BEASTInterface)paramObject).initByName("value", defaultValue);
-
-            // Initialize the parameter
-            BEASTUtils.callInitAndValidate(paramObject, paramClass);
-        } catch (Exception e) {
-            logger.warning("Failed to initialize RealParameter: " + e.getMessage());
-        }
-    }
-
-    /**
      * Single entry point for resolving and autoboxing values
      */
-    protected Object resolveAndAutobox(Expression expr, Map<String, Object> objectRegistry, Class<?> expectedType) {
+    protected Object resolveAndAutobox(Expression expr, Map<String, Object> objectRegistry, Type targetType) {
         // First resolve the value
         Object value = ExpressionResolver.resolveValue(expr, objectRegistry);
 
         // Then apply autoboxing
-        if (value != null && expectedType != null) {
-            return AutoboxingRegistry.getInstance().autobox(value, expectedType, objectRegistry);
+        if (targetType != null) {
+            return AutoboxingRegistry.getInstance().autobox(value, targetType, objectRegistry);
         }
 
         return value;
@@ -106,7 +92,7 @@ public abstract class BaseHandler {
         }
 
         // Get expected type for autoboxing
-        Class<?> expectedType = BEASTUtils.getInputExpectedType(input,target,name);
+        Type expectedType = BEASTUtils.getInputExpectedType(input,target,name);
 
         // Resolve and autobox in one step
         Object value = resolveAndAutobox(valueExpr, objectRegistry, expectedType);
@@ -119,9 +105,6 @@ public abstract class BaseHandler {
         }
     }
 
-    /**
-     * Configure inputs for multiple objects (primary and optional secondary)
-     */
     protected void configureInputForObjects(String name, Argument arg,
                                             Object primaryObject, Object secondaryObject,
                                             Map<String, Input<?>> primaryInputMap,
@@ -131,42 +114,74 @@ public abstract class BaseHandler {
             return;
         }
 
-        // Get input and expected type
-        Input<?> primaryInput = primaryInputMap.get(name);
-        Class<?> expectedType = BEASTUtils.getInputExpectedType(primaryInput,(BEASTInterface) primaryObject,name);
+        // Get the value from the expression
+        Object argValue = ExpressionResolver.resolveValue(arg.getValue(), objectRegistry);
 
-        if (expectedType == null && secondaryInputMap != null) {
-            Input<?> secondaryInput = secondaryInputMap.get(name);
-            if (secondaryInput != null) {
-                expectedType = BEASTUtils.getInputExpectedType(secondaryInput,(BEASTInterface) secondaryObject,name);
-            }
+        // Check both inputs
+        Input<?> primaryInput = primaryInputMap.get(name);
+        Input<?> secondaryInput = (secondaryInputMap != null) ? secondaryInputMap.get(name) : null;
+
+        // Get expected types
+        Type primaryExpectedType = (primaryInput != null) ?
+                BEASTUtils.getInputExpectedType(primaryInput, (BEASTInterface) primaryObject, name) : null;
+        Type secondaryExpectedType = (secondaryInput != null && secondaryObject instanceof BEASTInterface) ?
+                BEASTUtils.getInputExpectedType(secondaryInput, (BEASTInterface) secondaryObject, name) : null;
+
+        // Try to find the best match for this input based on the arg value's type
+        boolean useSecondary = false;
+
+        // If argValue is a TaxonSet or Alignment and secondaryInput exists on Tree, prefer that
+        if (argValue != null &&
+                secondaryInput != null &&
+                (argValue.getClass().getName().contains("TaxonSet") ||
+                        argValue.getClass().getName().contains("Alignment"))) {
+            useSecondary = true;
+            logger.info("Preferring secondary object for taxon-related input: " + name);
         }
 
-        // Resolve the value with autoboxing - this will apply all registered rules
-        Object argValue = ExpressionResolver.resolveValueWithAutoboxing(
-                arg.getValue(), objectRegistry, expectedType);
+        // Apply autoboxing to the value based on target type
+        Object primaryValue = primaryExpectedType != null ?
+                AutoboxingRegistry.getInstance().autobox(argValue, primaryExpectedType, objectRegistry) : argValue;
+        Object secondaryValue = secondaryExpectedType != null ?
+                AutoboxingRegistry.getInstance().autobox(argValue, secondaryExpectedType, objectRegistry) : argValue;
 
-        // Try to set on primary object first
         boolean inputSet = false;
-        if (primaryInput != null) {
+
+        // Try secondary first if we determined it's more appropriate
+        if (useSecondary && secondaryObject instanceof BEASTInterface && secondaryInput != null) {
             try {
-                BEASTUtils.setInputValue(primaryInput, argValue, (BEASTInterface) primaryObject);
+                logger.info("Setting input '" + name + "' on secondary object (Tree)");
+                BEASTUtils.setInputValue(secondaryInput, secondaryValue, (BEASTInterface) secondaryObject);
                 inputSet = true;
             } catch (Exception e) {
-                // Try secondary if primary fails
+                logger.warning("Failed to set input on secondary object: " + e.getMessage());
             }
         }
 
-        // Try secondary object if primary failed
-        if (!inputSet && secondaryObject instanceof BEASTInterface && secondaryInputMap != null) {
-            Input<?> secondaryInput = secondaryInputMap.get(name);
-            if (secondaryInput != null) {
-                try {
-                    BEASTUtils.setInputValue(secondaryInput, argValue, (BEASTInterface) secondaryObject);
-                } catch (Exception e) {
-                    // Both failed, nothing more to do
+        // Try primary if secondary wasn't used or failed
+        if (!inputSet && primaryInput != null) {
+            try {
+                logger.info("Setting input '" + name + "' on primary object (Distribution)");
+                BEASTUtils.setInputValue(primaryInput, primaryValue, (BEASTInterface) primaryObject);
+                inputSet = true;
+            } catch (Exception e) {
+                logger.warning("Failed to set input on primary object: " + e.getMessage());
+
+                // If we haven't tried secondary yet, try it now
+                if (!useSecondary && secondaryObject instanceof BEASTInterface && secondaryInput != null) {
+                    try {
+                        logger.info("Falling back to secondary object for input: " + name);
+                        BEASTUtils.setInputValue(secondaryInput, secondaryValue, (BEASTInterface) secondaryObject);
+                        inputSet = true;
+                    } catch (Exception e2) {
+                        logger.warning("Failed to set input on secondary object: " + e2.getMessage());
+                    }
                 }
             }
+        }
+
+        if (!inputSet) {
+            logger.warning("Could not set input '" + name + "' on either primary or secondary object");
         }
     }
 }

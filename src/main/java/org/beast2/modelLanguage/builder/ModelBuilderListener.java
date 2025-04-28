@@ -33,8 +33,8 @@ public class ModelBuilderListener extends Beast2ModelLanguageBaseListener {
      */
     @Override
     public void exitImportStatement(Beast2ModelLanguageParser.ImportStatementContext ctx) {
-        String packageName = ctx.qualifiedName().getText();
-        boolean isWildcard = ctx.STAR() != null;
+        String packageName = ctx.importName().qualifiedName().getText();
+        boolean isWildcard = ctx.importName().STAR() != null;
 
         ImportStatement importStmt = new ImportStatement(packageName, isWildcard);
         model.addImport(importStmt);
@@ -145,9 +145,53 @@ public class ModelBuilderListener extends Beast2ModelLanguageBaseListener {
         } else if (ctx instanceof Beast2ModelLanguageParser.LiteralExprContext) {
             Object value = getLiteralValue(((Beast2ModelLanguageParser.LiteralExprContext) ctx).literal());
             return createLiteral(value);
+        } else if (ctx instanceof Beast2ModelLanguageParser.ArrayLiteralExprContext) {
+            Beast2ModelLanguageParser.ArrayLiteralContext arrayCtx =
+                    ((Beast2ModelLanguageParser.ArrayLiteralExprContext) ctx).arrayLiteral();
+            return createArrayLiteral(arrayCtx);
         } else {
             throw new IllegalStateException("Unknown expression type: " + ctx.getClass().getName());
         }
+    }
+
+    /**
+     * Create an Expression from an argument value context
+     */
+    private Expression createExpressionFromArgumentValue(Beast2ModelLanguageParser.ArgumentValueContext ctx) {
+        if (ctx.expression() != null) {
+            return createExpression(ctx.expression());
+        } else if (ctx.literal() != null) {
+            Object value = getLiteralValue(ctx.literal());
+            return createLiteral(value);
+        } else if (ctx.arrayLiteral() != null) {
+            return createArrayLiteral(ctx.arrayLiteral());
+        } else {
+            throw new IllegalStateException("Unknown argument value type");
+        }
+    }
+
+    /**
+     * Create an ArrayLiteral from its context
+     */
+    private ArrayLiteral createArrayLiteral(Beast2ModelLanguageParser.ArrayLiteralContext ctx) {
+        List<Expression> elements = new ArrayList<>();
+
+        // Process array elements if present
+        if (ctx.arrayElement() != null) {
+            for (Beast2ModelLanguageParser.ArrayElementContext elemCtx : ctx.arrayElement()) {
+                if (elemCtx.literal() != null) {
+                    Object value = getLiteralValue(elemCtx.literal());
+                    elements.add(createLiteral(value));
+                } else if (elemCtx.identifier() != null) {
+                    String name = elemCtx.identifier().getText();
+                    elements.add(new Identifier(name));
+                } else if (elemCtx.functionCall() != null) {
+                    elements.add(createFunctionCall(elemCtx.functionCall()));
+                }
+            }
+        }
+
+        return new ArrayLiteral(elements);
     }
 
     /**
@@ -160,8 +204,8 @@ public class ModelBuilderListener extends Beast2ModelLanguageBaseListener {
         // Add arguments if present
         if (ctx.argumentList() != null) {
             for (Beast2ModelLanguageParser.ArgumentContext argCtx : ctx.argumentList().argument()) {
-                String name = argCtx.identifier().getText();
-                Expression value = createExpression(argCtx.argumentValue().expression());
+                String name = argCtx.argumentName().getText();
+                Expression value = createExpressionFromArgumentValue(argCtx.argumentValue());
                 arguments.add(new Argument(name, value));
             }
         }

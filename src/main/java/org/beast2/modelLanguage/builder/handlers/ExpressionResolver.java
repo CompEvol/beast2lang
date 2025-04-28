@@ -1,15 +1,16 @@
 package org.beast2.modelLanguage.builder.handlers;
 
 import java.lang.reflect.Method;
+import java.lang.reflect.Type;
 import java.util.Map;
 import java.util.logging.Logger;
 
+import beast.base.core.Input;
 import org.beast2.modelLanguage.builder.util.AutoboxingRegistry;
 import org.beast2.modelLanguage.builder.util.BEASTUtils;
 import org.beast2.modelLanguage.model.*;
 
 import beast.base.core.BEASTInterface;
-import beast.base.inference.parameter.Parameter;
 
 /**
  * Utility class for resolving Expression values to Java objects
@@ -41,12 +42,12 @@ public class ExpressionResolver {
         return null;
     }
 
-    public static Object resolveValueWithAutoboxing(Expression expr, Map<String, Object> objectRegistry, Class<?> expectedType) {
+    public static Object resolveValueWithAutoboxing(Expression expr, Map<String, Object> objectRegistry, Type targetType) {
         // Just delegate to AutoboxingRegistry
         Object value = resolveValue(expr, objectRegistry);
 
-        if (value != null && expectedType != null) {
-            return AutoboxingRegistry.getInstance().autobox(value, expectedType, objectRegistry);
+        if (targetType != null) {
+            return AutoboxingRegistry.getInstance().autobox(value, targetType, objectRegistry);
         }
 
         return value;
@@ -75,57 +76,12 @@ public class ExpressionResolver {
                 BEASTUtils.configureFromFunctionCall(nestedObject, funcCall, inputMap, objectRegistry);
                 BEASTUtils.callInitAndValidate(nestedObject, beastClass);
             } else {
-                configureGenericObject(nestedObject, beastClass, funcCall, objectRegistry);
+                throw new RuntimeException("Must be BEASTInterface!");
             }
 
             return nestedObject;
         } catch (Exception e) {
             return null;
-        }
-    }
-
-    /**
-     * Configure a generic Java object using setter methods
-     */
-    private static void configureGenericObject(Object object, Class<?> objectClass,
-                                               FunctionCall funcCall, Map<String, Object> objectRegistry) {
-        for (Argument arg : funcCall.getArguments()) {
-            String paramName = arg.getName();
-            if (paramName == null) {
-                continue;
-            }
-
-            try {
-                // Try initByName if available
-                try {
-                    Method initMethod = objectClass.getMethod("initByName", String.class, Object.class);
-                    Class<?> expectedType = getParameterTypeFromSetters(objectClass, paramName);
-                    Object paramValue = resolveValueWithAutoboxing(arg.getValue(), objectRegistry, expectedType);
-
-                    if (paramValue != null) {
-                        initMethod.invoke(object, paramName, paramValue);
-                        continue;
-                    }
-                } catch (NoSuchMethodException e) {
-                    // Try setter methods
-                }
-
-                // Try setter methods
-                String setterName = "set" + Character.toUpperCase(paramName.charAt(0)) + paramName.substring(1);
-                for (Method method : objectClass.getMethods()) {
-                    if (method.getName().equals(setterName) && method.getParameterCount() == 1) {
-                        Class<?> paramType = method.getParameterTypes()[0];
-                        Object paramValue = resolveValueWithAutoboxing(arg.getValue(), objectRegistry, paramType);
-
-                        if (paramValue != null) {
-                            method.invoke(object, paramValue);
-                            break;
-                        }
-                    }
-                }
-            } catch (Exception e) {
-                // Skip this parameter if setting fails
-            }
         }
     }
 

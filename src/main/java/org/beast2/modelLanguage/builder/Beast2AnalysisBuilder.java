@@ -2,8 +2,12 @@ package org.beast2.modelLanguage.builder;
 
 import beast.base.core.BEASTInterface;
 import beast.base.core.Input;
+import beast.base.evolution.alignment.Alignment;
+import beast.base.evolution.alignment.Taxon;
+import beast.base.evolution.alignment.TaxonSet;
 import beast.base.evolution.likelihood.TreeLikelihood;
 import beast.base.evolution.operator.*;
+import beast.base.evolution.tree.MRCAPrior;
 import beast.base.evolution.tree.Node;
 import beast.base.evolution.tree.Tree;
 import beast.base.inference.*;
@@ -86,53 +90,165 @@ public class Beast2AnalysisBuilder {
         return setupMCMC(analysis, posterior, state, operators);
     }
 
-    /**
-     * Initialize all Tree objects with a basic topology
-     */
     private void initializeTrees() {
         try {
             Map<String, Object> objects = modelBuilder.getAllObjects();
+
+            // First identify MRCAPriors and their constraints
+            Map<String, Set<String>> calibratedTaxa = new HashMap<>();
+            for (Object obj : objects.values()) {
+                if (obj instanceof MRCAPrior) {
+                    MRCAPrior prior = (MRCAPrior) obj;
+                    TaxonSet taxonSet = prior.taxonsetInput.get();
+                    if (taxonSet != null) {
+                        // Get the taxa names from this constraint
+                        Set<String> taxa = new HashSet<>();
+                        for (Taxon taxon : taxonSet.taxonsetInput.get()) {
+                            taxa.add(taxon.getID());
+                        }
+
+                        // Store for each tree this prior is applied to
+                        Tree tree = prior.treeInput.get();
+                        if (tree != null) {
+                            calibratedTaxa.put(tree.getID(), taxa);
+                        }
+                    }
+                }
+            }
+
+            // Now process each tree
             for (Map.Entry<String, Object> entry : objects.entrySet()) {
                 if (entry.getValue() instanceof Tree) {
                     Tree tree = (Tree) entry.getValue();
 
-                    // Skip if tree already has a root node
+                    // Skip if already initialized
                     if (tree.getRoot() != null) {
                         continue;
                     }
 
-                    // Create a simple 2-taxon tree
+                    logger.info("Initializing tree with calibration-aware topology: " + entry.getKey());
+
+                    // Get taxon set for this tree
+                    TaxonSet taxonSet = null;
                     try {
-                        logger.info("Initializing tree with basic topology: " + entry.getKey());
-
-                        // Create root node and two child nodes
-                        Node rootNode = new Node();
-                        rootNode.setHeight(1.0);
-
-                        Node leftChild = new Node();
-                        leftChild.setHeight(0.0);
-                        leftChild.setID(entry.getKey() + ".taxon1");
-
-                        Node rightChild = new Node();
-                        rightChild.setHeight(0.0);
-                        rightChild.setID(entry.getKey() + ".taxon2");
-
-                        // Connect nodes
-                        rootNode.addChild(leftChild);
-                        rootNode.addChild(rightChild);
-
-                        // Set the root node of the tree
-                        tree.setRoot(rootNode);
-
-                        logger.info("Successfully initialized tree with basic topology");
+                        taxonSet = tree.getTaxonset();
                     } catch (Exception e) {
-                        logger.warning("Could not initialize tree with basic topology: " + e.getMessage());
+                        // Tree might not have a taxonset yet
                     }
+
+                    if (taxonSet == null) {
+                        // Try to find a taxonset from any alignments
+                        for (Object obj : objects.values()) {
+                            if (obj instanceof Alignment) {
+                                Alignment align = (Alignment) obj;
+                                List<String> taxaNames = align.getTaxaNames();
+                                if (taxaNames != null && !taxaNames.isEmpty()) {
+                                    // Create a taxonset from this alignment
+                                    taxonSet = new TaxonSet();
+                                    for (String taxName : taxaNames) {
+                                        Taxon taxon = new Taxon(taxName);
+                                        taxonSet.taxonsetInput.setValue(taxon, taxonSet);
+                                    }
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    if (taxonSet == null) {
+                        logger.warning("Could not find taxon set for tree");
+                        continue;
+                    }
+
+                    // Get the set of calibrated taxa for this tree
+                    Set<String> calibrated = calibratedTaxa.get(tree.getID());
+
+                    // Create a simple tree topology
+                    // If we have calibration constraints, ensure they're satisfied
+                    if (calibrated != null && !calibrated.isEmpty()) {
+                        initializeWithCalibration(tree, taxonSet, calibrated);
+                    } else {
+                        initializeSimpleTree(tree, taxonSet);
+                    }
+
+                    logger.info("Successfully initialized tree topology");
                 }
             }
         } catch (Exception e) {
             logger.warning("Error initializing trees: " + e.getMessage());
         }
+    }
+
+    // Add these helper methods
+    private void initializeWithCalibration(Tree tree, TaxonSet taxonSet, Set<String> calibratedTaxa) {
+        // Create a balanced tree with calibrated taxa as a monophyletic group
+        List<String> allTaxa = new ArrayList<>();
+        for (Taxon taxon : taxonSet.taxonsetInput.get()) {
+            allTaxa.add(taxon.getID());
+        }
+
+        // Split into calibrated and non-calibrated
+        List<String> constrainedTaxa = new ArrayList<>();
+        List<String> otherTaxa = new ArrayList<>();
+
+        for (String taxon : allTaxa) {
+            if (calibratedTaxa.contains(taxon)) {
+                constrainedTaxa.add(taxon);
+            } else {
+                otherTaxa.add(taxon);
+            }
+        }
+
+        // Create a subtree for calibrated taxa
+        Node calibratedRoot = new Node();
+        calibratedRoot.setHeight(5.0); // A reasonable height for the calibrated node
+
+        // Add calibrated taxa as children
+        for (int i = 0; i < constrainedTaxa.size(); i++) {
+            Node leafNode = new Node();
+            leafNode.setHeight(0.0);
+            leafNode.setID(constrainedTaxa.get(i));
+            calibratedRoot.addChild(leafNode);
+        }
+
+        // Create a balanced tree for the rest
+        Node root = new Node();
+        root.setHeight(10.0); // A bit older than the calibrated node
+
+        // Add the calibrated subtree as one child
+        root.addChild(calibratedRoot);
+
+        // Add non-calibrated taxa
+        for (String taxon : otherTaxa) {
+            Node leafNode = new Node();
+            leafNode.setHeight(0.0);
+            leafNode.setID(taxon);
+            root.addChild(leafNode);
+        }
+
+        // Set the root
+        tree.setRoot(root);
+    }
+
+    private void initializeSimpleTree(Tree tree, TaxonSet taxonSet) {
+        // Create a simple balanced tree
+        List<String> allTaxa = new ArrayList<>();
+        for (Taxon taxon : taxonSet.taxonsetInput.get()) {
+            allTaxa.add(taxon.getID());
+        }
+
+        // Just create a star tree with all taxa as children of the root
+        Node root = new Node();
+        root.setHeight(10.0);
+
+        for (String taxon : allTaxa) {
+            Node leafNode = new Node();
+            leafNode.setHeight(0.0);
+            leafNode.setID(taxon);
+            root.addChild(leafNode);
+        }
+
+        tree.setRoot(root);
     }
 
     /**
@@ -145,9 +261,6 @@ public class Beast2AnalysisBuilder {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Set up the state object to be sampled.
-     */
     private State setupState() {
         // Create a state object using BEAST2 API
         State state = new State();
@@ -156,13 +269,22 @@ public class Beast2AnalysisBuilder {
         // Get state nodes from the model builder
         List<StateNode> stateNodes = modelBuilder.getCreatedStateNodes();
 
-        if (stateNodes.isEmpty()) {
-            logger.warning("No state nodes found! The analysis may not run correctly.");
-        } else {
-            logger.info("Setting up state with " + stateNodes.size() + " state nodes");
+        // Remove duplicates based on ID
+        Map<String, StateNode> uniqueNodes = new HashMap<>();
+        for (StateNode node : stateNodes) {
+            // Only add each unique ID once
+            if (node.getID() != null && !uniqueNodes.containsKey(node.getID())) {
+                uniqueNodes.put(node.getID(), node);
+            }
         }
 
-        state.initByName(INPUT_STATE_NODE, stateNodes);
+        if (uniqueNodes.isEmpty()) {
+            logger.warning("No state nodes found! The analysis may not run correctly.");
+        } else {
+            logger.info("Setting up state with " + uniqueNodes.size() + " unique state nodes");
+        }
+
+        state.initByName(INPUT_STATE_NODE, new ArrayList<>(uniqueNodes.values()));
         return state;
     }
 

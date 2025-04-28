@@ -9,7 +9,11 @@ program
     ;
 
 importStatement
-    : IMPORT qualifiedName (DOT STAR)? SEMICOLON
+    : IMPORT importName SEMICOLON
+    ;
+
+importName
+    : qualifiedName (DOT STAR)?
     ;
 
 statement
@@ -22,7 +26,7 @@ annotation
     ;
 
 annotationName
-    : IDENTIFIER
+    : identifier
     ;
 
 annotationBody
@@ -45,6 +49,7 @@ expression
     : functionCall                  # FunctionCallExpr
     | identifier                    # IdentifierExpr
     | literal                       # LiteralExpr
+    | arrayLiteral                  # ArrayLiteralExpr
     ;
 
 functionCall
@@ -56,16 +61,31 @@ argumentList
     ;
 
 argument
-    : identifier EQUALS argumentValue
+    : argumentName EQUALS argumentValue
+    ;
+
+argumentName
+    : identifier (DOT identifier)*  // Allows dot-separated names like "clock.rate"
     ;
 
 argumentValue
     : expression
     | literal
+    | arrayLiteral
+    ;
+
+arrayLiteral
+    : LBRACKET (arrayElement (COMMA arrayElement)*)? RBRACKET
+    ;
+
+arrayElement
+    : literal
+    | identifier
+    | functionCall
     ;
 
 className
-    : qualifiedName
+    : qualifiedName (LBRACKET RBRACKET)*  // Allow multiple dimensions like Type[][]
     ;
 
 qualifiedName
@@ -92,6 +112,8 @@ LPAREN      : '(';
 RPAREN      : ')';
 LBRACE      : '{';
 RBRACE      : '}';
+LBRACKET    : '[';
+RBRACKET    : ']';
 DOT         : '.';
 AT          : '@';
 STAR        : '*';
@@ -107,12 +129,12 @@ IDENTIFIER
     ;
 
 INTEGER_LITERAL
-    : [0-9]+
+    : '-'? [0-9]+
     ;
 
 FLOAT_LITERAL
-    : [0-9]+ '.' [0-9]*
-    | '.' [0-9]+
+    : '-'? [0-9]+ '.' [0-9]*
+    | '-'? '.' [0-9]+
     ;
 
 STRING_LITERAL

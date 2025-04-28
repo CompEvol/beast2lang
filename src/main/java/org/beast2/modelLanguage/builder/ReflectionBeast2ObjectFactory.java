@@ -457,30 +457,6 @@ public class ReflectionBeast2ObjectFactory implements Beast2ObjectFactory, State
     }
 
     /**
-     * Get all created state nodes that should be part of MCMC sampling.
-     * Only includes StateNodes that are random variables (have distributions)
-     * and are not observed.
-     */
-    public List<StateNode> getCreatedStateNodes() {
-        List<StateNode> stateNodes = new ArrayList<>();
-
-        // Include only random variables (from DistributionAssignments) that are StateNodes
-        // and are not observed
-        for (String varName : randomVariables) {
-            if (!observedVariables.contains(varName)) { // Skip observed variables
-                Object obj = beastObjects.get(varName);
-                if (obj instanceof StateNode) {
-                    stateNodes.add((StateNode) obj);
-                    logger.fine("Added random variable to state nodes: " + varName);
-                }
-            }
-        }
-
-        logger.info("Returning " + stateNodes.size() + " StateNode objects for state");
-        return stateNodes;
-    }
-
-    /**
      * Get all created distributions
      */
     public List<beast.base.inference.Distribution> getCreatedDistributions() {

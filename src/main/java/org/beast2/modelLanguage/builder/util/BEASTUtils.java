@@ -229,10 +229,10 @@ public class BEASTUtils {
         try {
             @SuppressWarnings("unchecked")
             Input<Object> typedInput = (Input<Object>) input;
+            logger.fine("Setting input '" + input.getName() + "' to " + value);
             typedInput.setValue(value, beastObject);
-            logger.fine("Set input '" + input.getName() + "' to " + value);
         } catch (Exception e) {
-            logger.warning("Error setting input " + input.getName() + ": " + e.getMessage());
+            logger.warning("Error setting input " + input.getName() + " with value " + value + ": " + e.getMessage());
             throw e;
         }
     }
@@ -273,12 +273,9 @@ public class BEASTUtils {
                 continue;
             }
 
-            // Get expected type for potential autoboxing
-            Class<?> expectedType = input.getType();
-
             // Resolve value with potential autoboxing
             Object argValue = resolveValueWithAutoboxing(
-                    arg.getValue(), objectRegistry, expectedType);
+                    arg.getValue(), objectRegistry, BEASTUtils.getInputExpectedType(input,beastObject, name));
 
             try {
                 setInputValue(input, argValue, beastObject);
@@ -311,44 +308,20 @@ public class BEASTUtils {
     }
 
     /**
-     * Resolve a value according to an expected input type, with appropriate conversion
-     */
-    public static Object resolveValueForInput(Expression expr, Map<String, Object> objectRegistry,
-                                              Input<?> input, String inputName) {
-        Object resolvedValue;
-        Class<?> expectedType = input.getType();
-
-        // Resolve with autoboxing if we have type information
-        if (expectedType != null) {
-            resolvedValue = resolveValueWithAutoboxing(expr, objectRegistry, expectedType);
-        } else {
-            resolvedValue = resolveValue(expr, objectRegistry);
-        }
-
-        // If value is null or resolution failed
-        if (resolvedValue == null) {
-            logger.warning("Failed to resolve value for input: " + inputName);
-            return null;
-        }
-
-        return resolvedValue;
-    }
-
-    /**
      * Create the most appropriate Parameter type based on an expected type
      */
-    public static Parameter<?> createParameterForType(Object value, Class<?> expectedType) {
+    public static Parameter<?> createParameterForType(Object value, Type expectedType) {
         if (value == null) {
             return createRealParameter(0.0);
         }
 
         try {
             if (expectedType != null) {
-                if (IntegerParameter.class.isAssignableFrom(expectedType)) {
+                if (IntegerParameter.class.isAssignableFrom(expectedType.getClass())) {
                     return createIntegerParameter(convertToInteger(value));
-                } else if (BooleanParameter.class.isAssignableFrom(expectedType)) {
+                } else if (BooleanParameter.class.isAssignableFrom(expectedType.getClass())) {
                     return createBooleanParameter(convertToBoolean(value));
-                } else if (RealParameter.class.isAssignableFrom(expectedType)) {
+                } else if (RealParameter.class.isAssignableFrom(expectedType.getClass())) {
                     return createRealParameter(convertToDouble(value));
                 }
             }
@@ -364,31 +337,31 @@ public class BEASTUtils {
     /**
      * Placeholder methods that will need implementations from ExpressionResolver
      */
-    public static Object resolveValueWithAutoboxing(Expression expr, Map<String, Object> objectRegistry, Class<?> expectedType) {
-        return ExpressionResolver.resolveValueWithAutoboxing(expr,objectRegistry,expectedType);
+    public static Object resolveValueWithAutoboxing(Expression expr, Map<String, Object> objectRegistry, Type targetType) {
+        return ExpressionResolver.resolveValueWithAutoboxing(expr, objectRegistry, targetType);
     }
 
     public static Object resolveValue(Expression expr, Map<String, Object> objectRegistry) {
-        return ExpressionResolver.resolveValue(expr,objectRegistry);
+        return ExpressionResolver.resolveValue(expr, objectRegistry);
     }
 
     /**
      * Get the expected type for an Input field using Java reflection to examine generic type parameters
      *
-     * @param input The Input object to examine
+     * @param input       The Input object to examine
      * @param beastObject The BEAST object containing the input
-     * @param inputName The name of the input
-     * @return The expected class type for the input, or null if it cannot be determined
+     * @param inputName   The name of the input
+     * @return The expected Type for the input, or null if it cannot be determined
      */
-    public static Class<?> getInputExpectedType(Input<?> input, BEASTInterface beastObject, String inputName) {
+    public static Type getInputExpectedType(Input<?> input, BEASTInterface beastObject, String inputName) {
         if (input == null) {
             return null;
         }
 
-        // First try the direct approach
-        Class<?> expectedType = input.getType();
-        if (expectedType != null) {
-            return expectedType;
+        // First try the direct approach to get raw class
+        Class<?> rawType = input.getType();
+        if (rawType != null) {
+            return rawType; // Return as Type
         }
 
         // Get the class containing this input
@@ -413,31 +386,8 @@ public class BEASTUtils {
                                 Type[] typeArgs = paramType.getActualTypeArguments();
 
                                 if (typeArgs.length > 0) {
-                                    if (typeArgs[0] instanceof Class) {
-                                        // Simple case: Input<ConcreteClass>
-                                        return (Class<?>) typeArgs[0];
-                                    } else if (typeArgs[0] instanceof ParameterizedType) {
-                                        // Handle generic types like Input<List<String>>
-                                        return (Class<?>) ((ParameterizedType) typeArgs[0]).getRawType();
-                                    } else if (typeArgs[0] instanceof TypeVariable) {
-                                        // Handle type variables like Input<T>
-                                        TypeVariable<?> typeVar = (TypeVariable<?>) typeArgs[0];
-
-                                        // Get the bounds of the type variable
-                                        Type[] bounds = typeVar.getBounds();
-                                        if (bounds.length > 0 && bounds[0] instanceof Class) {
-                                            // Use the first bound as the expected type
-                                            return (Class<?>) bounds[0];
-                                        }
-                                    } else if (typeArgs[0] instanceof WildcardType) {
-                                        // Handle wildcard types like Input<? extends Something>
-                                        WildcardType wildcard = (WildcardType) typeArgs[0];
-                                        Type[] upperBounds = wildcard.getUpperBounds();
-
-                                        if (upperBounds.length > 0 && upperBounds[0] instanceof Class) {
-                                            return (Class<?>) upperBounds[0];
-                                        }
-                                    }
+                                    // Return the actual Type argument instead of trying to convert it to a Class
+                                    return typeArgs[0];
                                 }
                             }
                         }

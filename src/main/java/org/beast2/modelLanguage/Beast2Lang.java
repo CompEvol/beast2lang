@@ -278,15 +278,17 @@ public class Beast2Lang implements Callable<Integer> {
                     dumpModelStructure(reflectionBuilder.getAllObjects());
                 }
 
+                System.out.println("Writing XML...");
+
+                String xml = generateXML(mcmc);
+                // Generate XML
+                writeOutput(outputFile, xml);
+
                 // Run the MCMC
                 System.out.println("Starting MCMC run...");
 
                 // Execute the MCMC
                 mcmc.run();
-
-                String xml = generateXML(mcmc);
-                // Generate XML
-                writeOutput(outputFile, xml);
 
                 System.out.println("MCMC run completed successfully.");
                 return 0;
