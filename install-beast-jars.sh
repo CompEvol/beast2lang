@@ -9,10 +9,10 @@ set -e
 # Determine BEAST2 location
 if [ -z "$1" ]; then
     # Try to find BEAST2 in common locations
-    if [ -d "/Applications/BEAST 2.7.5" ]; then
-        BEAST_PATH="/Applications/BEAST 2.7.5"
-    elif [ -d "$HOME/Applications/BEAST 2.7.5" ]; then
-        BEAST_PATH="$HOME/Applications/BEAST 2.7.5"
+    if [ -d "/Applications/BEAST 2.7.7" ]; then
+        BEAST_PATH="/Applications/BEAST 2.7.7"
+    elif [ -d "$HOME/Applications/BEAST 2.7.7" ]; then
+        BEAST_PATH="$HOME/Applications/BEAST 2.7.7"
     elif [ -d "/usr/local/share/beast" ]; then
         BEAST_PATH="/usr/local/share/beast"
     else
@@ -58,7 +58,7 @@ mvn install:install-file \
   -Dfile="$BEAST_BASE_JAR" \
   -DgroupId=beast2 \
   -DartifactId=beast-base \
-  -Dversion=2.7.5 \
+  -Dversion=2.7.7 \
   -Dpackaging=jar
 
 # Install BEAST.app.jar
@@ -67,7 +67,7 @@ mvn install:install-file \
   -Dfile="$BEAST_APP_JAR" \
   -DgroupId=beast2 \
   -DartifactId=beast-app \
-  -Dversion=2.7.5 \
+  -Dversion=2.7.7 \
   -Dpackaging=jar
 
 # Install launcher.jar
@@ -76,7 +76,7 @@ mvn install:install-file \
   -Dfile="$BEAST_LAUNCHER_JAR" \
   -DgroupId=beast2 \
   -DartifactId=beast-launcher \
-  -Dversion=2.7.5 \
+  -Dversion=2.7.7 \
   -Dpackaging=jar
 
 echo "All BEAST2 dependencies installed successfully!"

@@ -51,17 +51,17 @@
     <dependency>
         <groupId>beast2</groupId>
         <artifactId>beast-base</artifactId>
-        <version>2.7.5</version>
+        <version>2.7.7</version>
     </dependency>
     <dependency>
         <groupId>beast2</groupId>
         <artifactId>beast-app</artifactId>
-        <version>2.7.5</version>
+        <version>2.7.7</version>
     </dependency>
     <dependency>
         <groupId>beast2</groupId>
         <artifactId>beast-launcher</artifactId>
-        <version>2.7.5</version>
+        <version>2.7.7</version>
     </dependency>
     </dependencies>
 
@@ -123,10 +123,10 @@ if [ -z "$BEAST" ]; then
 
     # Check specific version as fallback
     if [ -z "$BEAST" ]; then
-        if [ -d "/Applications/BEAST 2.7.5" ]; then
-            BEAST="/Applications/BEAST 2.7.5"
-        elif [ -d "$HOME/Applications/BEAST 2.7.5" ]; then
-            BEAST="$HOME/Applications/BEAST 2.7.5"
+        if [ -d "/Applications/BEAST 2.7.7" ]; then
+            BEAST="/Applications/BEAST 2.7.7"
+        elif [ -d "$HOME/Applications/BEAST 2.7.7" ]; then
+            BEAST="$HOME/Applications/BEAST 2.7.7"
         elif [ -d "/usr/local/share/beast" ]; then
             # Check if this is a 2.7.x version in /usr/local/share/beast
             if [ -f "/usr/local/share/beast/lib/version.xml" ]; then

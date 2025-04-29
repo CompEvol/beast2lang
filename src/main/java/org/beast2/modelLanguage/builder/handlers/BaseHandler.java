@@ -132,9 +132,13 @@ public abstract class BaseHandler {
         // First, try to set the input on the primary object
         if (primaryInput != null) {
             try {
-                // Apply autoboxing to the value based on primary target type
-                Object primaryValue = primaryExpectedType != null ?
-                        AutoboxingRegistry.getInstance().autobox(argValue, primaryExpectedType, objectRegistry) : argValue;
+                // Check if autoboxing is needed
+                Object primaryValue = argValue;
+                if (!AutoboxingRegistry.isDirectlyAssignable(argValue, primaryExpectedType)) {
+                    // Only apply autoboxing if the types are not directly compatible
+                    primaryValue = primaryExpectedType != null ?
+                            AutoboxingRegistry.getInstance().autobox(argValue, primaryExpectedType, objectRegistry) : argValue;
+                }
 
                 logger.info("Attempting to set input '" + name + "' on primary object");
                 BEASTUtils.setInputValue(primaryInput, primaryValue, (BEASTInterface) primaryObject);
@@ -148,9 +152,13 @@ public abstract class BaseHandler {
         // Only try secondary if primary wasn't set successfully
         if (!inputSet && secondaryInput != null && secondaryObject instanceof BEASTInterface) {
             try {
-                // Apply autoboxing to the value based on secondary target type
-                Object secondaryValue = secondaryExpectedType != null ?
-                        AutoboxingRegistry.getInstance().autobox(argValue, secondaryExpectedType, objectRegistry) : argValue;
+                // Check if autoboxing is needed
+                Object secondaryValue = argValue;
+                if (!AutoboxingRegistry.isDirectlyAssignable(argValue, secondaryExpectedType)) {
+                    // Only apply autoboxing if the types are not directly compatible
+                    secondaryValue = secondaryExpectedType != null ?
+                            AutoboxingRegistry.getInstance().autobox(argValue, secondaryExpectedType, objectRegistry) : argValue;
+                }
 
                 logger.info("Falling back to secondary object for input: " + name);
                 BEASTUtils.setInputValue(secondaryInput, secondaryValue, (BEASTInterface) secondaryObject);

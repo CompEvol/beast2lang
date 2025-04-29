@@ -33,6 +33,24 @@ public class AutoboxingRegistry {
     }
 
     /**
+     * Check if a value is directly assignable to a target type without needing autoboxing
+     */
+    public static boolean isDirectlyAssignable(Object value, Type targetType) {
+        if (value == null || targetType == null) {
+            return true; // null is assignable to any type
+        }
+
+        Class<?> valueClass = value.getClass();
+        Class<?> targetClass = TypeUtils.getRawType(targetType);
+
+        if (targetClass == null) {
+            return false;
+        }
+
+        return targetClass.isAssignableFrom(valueClass);
+    }
+
+    /**
      * Private constructor to enforce singleton pattern
      */
     private AutoboxingRegistry() {
@@ -71,6 +89,11 @@ public class AutoboxingRegistry {
     public Object autobox(Object value, Type targetType, Map<String, Object> objectRegistry) {
         if (value == null || targetType == null) {
             return value;
+        }
+
+        // Check if the value is already assignable to the target type
+        if (isDirectlyAssignable(value, targetType)) {
+            return value; // No autoboxing needed
         }
 
         // Try each rule in order
