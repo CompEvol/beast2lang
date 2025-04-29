@@ -32,4 +32,12 @@ public interface Beast2ObjectFactory {
      * @return the BEAST2 object, or null if not found
      */
     Object getObject(String name);
+
+    /**
+     * Add a BEAST2 object to the model with the specified ID
+     *
+     * @param id the ID to use for the object
+     * @param object the BEAST2 object to add
+     */
+    void addObjectToModel(String id, Object object);
 }

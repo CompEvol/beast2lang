@@ -7,7 +7,6 @@ import beast.base.evolution.alignment.*;
 import beast.base.evolution.likelihood.*;
 import beast.base.evolution.branchratemodel.*;
 import org.beast2.modelLanguage.data.NexusAlignment;
-import org.beast2.modelLanguage.data.Taxa;
 
 @data
 Alignment alignment_data = NexusAlignment(file="primates.nex");
@@ -16,7 +15,7 @@ RealParameter birthRate ~ LogNormalDistributionModel(M=1, S=1);
 RealParameter clockRate ~ LogNormalDistributionModel(M=-1, S=1);
 
 String[] calibratedTaxonNames = ["Homo_sapiens", "Pan"];
-Taxa calibratedTaxa = Taxa(names=calibratedTaxonNames);
+TaxonSet calibratedTaxa = TaxonSet(taxon=calibratedTaxonNames);
 ParametricDistribution lognorm = LogNormalDistributionModel(M=1.7,S=0.1);
 
 Tree tree ~ YuleModel(birthDiffRate=birthRate, taxonset=alignment_data);

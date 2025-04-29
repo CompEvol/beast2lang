@@ -91,6 +91,18 @@ public class ReflectionBeast2ObjectFactory implements Beast2ObjectFactory, State
         return findRootObject();
     }
 
+    @Override
+    public void addObjectToModel(String id, Object object) {
+        beastObjects.put(id, object);
+        logger.info("Added object to model: " + id);
+
+        // Also track StateNode objects if applicable
+        if (object instanceof StateNode) {
+            stateNodeObjects.put(id, (StateNode) object);
+            logger.info("Added StateNode to model: " + id);
+        }
+    }
+
     /**
      * Process all import statements
      */

@@ -207,6 +207,17 @@ public class Beast2ModelBuilderReflection {
     }
 
     /**
+     * Add a BEAST2 object to the model with the specified ID
+     *
+     * @param id the ID to use for the object
+     * @param object the BEAST2 object to add
+     */
+    public void addObjectToModel(String id, Object object) {
+        objectFactory.addObjectToModel(id, object);
+        logger.info("Added object to model via model builder: " + id);
+    }
+
+    /**
      * Get all created BEAST2 objects
      */
     public Map<String, Object> getAllObjects() {

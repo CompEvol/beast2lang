@@ -8,11 +8,14 @@ import beast.base.evolution.alignment.TaxonSet;
 import beast.base.evolution.likelihood.TreeLikelihood;
 import beast.base.evolution.operator.*;
 import beast.base.evolution.tree.MRCAPrior;
-import beast.base.evolution.tree.Node;
 import beast.base.evolution.tree.Tree;
+import beast.base.evolution.tree.TreeInterface;
+import beast.base.evolution.tree.coalescent.ConstantPopulation;
+import beast.base.evolution.tree.coalescent.RandomTree;
 import beast.base.inference.*;
 import beast.base.inference.operator.DeltaExchangeOperator;
 import beast.base.inference.parameter.Parameter;
+import beast.base.inference.parameter.RealParameter;
 import org.beast2.modelLanguage.model.Beast2Analysis;
 
 import java.util.*;
@@ -66,8 +69,8 @@ public class Beast2AnalysisBuilder {
             modelBuilder.buildModel(analysis.getModel());
         }
 
-        // Initialize trees with basic topology first
-        initializeTrees();
+        // Initialize trees with RandomTree initializer
+        initializeTreesWithRandomTree();
 
         // Set up the core components
         State state = setupState();
@@ -90,170 +93,340 @@ public class Beast2AnalysisBuilder {
         return setupMCMC(analysis, posterior, state, operators);
     }
 
-    private void initializeTrees() {
+    private void initializeTreesWithRandomTree() {
         try {
             Map<String, Object> objects = modelBuilder.getAllObjects();
 
-            // First identify MRCAPriors and their constraints
-            Map<String, Set<String>> calibratedTaxa = new HashMap<>();
+            // First find all trees and MRCAPriors
+            Map<String, List<MRCAPrior>> treeToPriors = new HashMap<>();
+
+            // Collect all MRCAPriors and organize them by tree
             for (Object obj : objects.values()) {
                 if (obj instanceof MRCAPrior) {
                     MRCAPrior prior = (MRCAPrior) obj;
-                    TaxonSet taxonSet = prior.taxonsetInput.get();
-                    if (taxonSet != null) {
-                        // Get the taxa names from this constraint
-                        Set<String> taxa = new HashSet<>();
-                        for (Taxon taxon : taxonSet.taxonsetInput.get()) {
-                            taxa.add(taxon.getID());
+                    Tree priorTree = prior.treeInput.get();
+                    if (priorTree != null) {
+                        String treeId = priorTree.getID();
+                        if (!treeToPriors.containsKey(treeId)) {
+                            treeToPriors.put(treeId, new ArrayList<>());
                         }
-
-                        // Store for each tree this prior is applied to
-                        Tree tree = prior.treeInput.get();
-                        if (tree != null) {
-                            calibratedTaxa.put(tree.getID(), taxa);
-                        }
+                        treeToPriors.get(treeId).add(prior);
+                        logger.info("Found MRCAPrior for tree " + treeId + ": " + prior.getID());
                     }
                 }
             }
 
-            // Now process each tree
+            // Map to store trees to their corresponding alignments
+            Map<String, Alignment> treeToAlignment = new HashMap<>();
+
+            // Find TreeLikelihood objects to determine which alignment is used with which tree
+            for (Object obj : objects.values()) {
+                if (obj instanceof TreeLikelihood) {
+                    TreeLikelihood likelihood = (TreeLikelihood) obj;
+                    TreeInterface tree = likelihood.treeInput.get();
+                    Alignment data = likelihood.dataInput.get();
+
+                    if (tree != null && data != null) {
+                        treeToAlignment.put(tree.getID(), data);
+                        logger.info("Found alignment " + data.getID() + " for tree " + tree.getID());
+                    }
+                }
+            }
+
+            // Now create RandomTree initializers for each tree
             for (Map.Entry<String, Object> entry : objects.entrySet()) {
                 if (entry.getValue() instanceof Tree) {
                     Tree tree = (Tree) entry.getValue();
+                    String treeId = tree.getID();
 
-                    // Skip if already initialized
-                    if (tree.getRoot() != null) {
+                    // Find the alignment for this tree
+                    Alignment alignment = treeToAlignment.get(treeId);
+                    if (alignment == null) {
+                        logger.warning("Could not find alignment for tree " + treeId + ", skipping initialization");
                         continue;
                     }
 
-                    logger.info("Initializing tree with calibration-aware topology: " + entry.getKey());
+                    // Get any MRCAPriors for this tree
+                    List<MRCAPrior> priors = treeToPriors.getOrDefault(treeId, new ArrayList<>());
+                    logger.info("Creating RandomTree for " + treeId + " with alignment " + alignment.getID() +
+                            " and " + priors.size() + " MRCAPriors");
 
-                    // Get taxon set for this tree
-                    TaxonSet taxonSet = null;
                     try {
-                        taxonSet = tree.getTaxonset();
-                    } catch (Exception e) {
-                        // Tree might not have a taxonset yet
-                    }
+                        // Create population size parameter
+                        RealParameter popSize = new RealParameter("1.0");
+                        popSize.setID("randomPopSize.t:" + treeId);
 
-                    if (taxonSet == null) {
-                        // Try to find a taxonset from any alignments
-                        for (Object obj : objects.values()) {
-                            if (obj instanceof Alignment) {
-                                Alignment align = (Alignment) obj;
-                                List<String> taxaNames = align.getTaxaNames();
-                                if (taxaNames != null && !taxaNames.isEmpty()) {
-                                    // Create a taxonset from this alignment
-                                    taxonSet = new TaxonSet();
-                                    for (String taxName : taxaNames) {
-                                        Taxon taxon = new Taxon(taxName);
-                                        taxonSet.taxonsetInput.setValue(taxon, taxonSet);
-                                    }
-                                    break;
-                                }
-                            }
+                        // Create constant population model
+                        ConstantPopulation popModel = new ConstantPopulation();
+                        popModel.setID("ConstantPopulation.t:" + treeId);
+                        popModel.initByName("popSize", popSize);
+
+                        // Create RandomTree
+                        RandomTree randomTree = new RandomTree();
+                        randomTree.setID("RandomTree.t:" + treeId);
+
+                        // Add basic inputs - use alignment instead of taxonset
+                        randomTree.setInputValue("taxa", alignment);
+                        randomTree.setInputValue("populationModel", popModel);
+                        randomTree.setInputValue("initial", tree);
+                        randomTree.setInputValue("estimate", false);
+
+                        // Add MRCAPriors as constraints
+                        if (!priors.isEmpty()) {
+                            randomTree.setInputValue("constraint", priors);
                         }
+
+                        // Add objects to model builder
+                        modelBuilder.addObjectToModel(popSize.getID(), popSize);
+                        modelBuilder.addObjectToModel(popModel.getID(), popModel);
+                        modelBuilder.addObjectToModel(randomTree.getID(), randomTree);
+
+                        logger.info("Successfully created RandomTree initializer: " + randomTree.getID());
+                    } catch (Exception e) {
+                        logger.warning("Failed to create RandomTree for " + treeId + ": " + e.getMessage());
+                        e.printStackTrace();
                     }
-
-                    if (taxonSet == null) {
-                        logger.warning("Could not find taxon set for tree");
-                        continue;
-                    }
-
-                    // Get the set of calibrated taxa for this tree
-                    Set<String> calibrated = calibratedTaxa.get(tree.getID());
-
-                    // Create a simple tree topology
-                    // If we have calibration constraints, ensure they're satisfied
-                    if (calibrated != null && !calibrated.isEmpty()) {
-                        initializeWithCalibration(tree, taxonSet, calibrated);
-                    } else {
-                        initializeSimpleTree(tree, taxonSet);
-                    }
-
-                    logger.info("Successfully initialized tree topology");
                 }
             }
+
         } catch (Exception e) {
-            logger.warning("Error initializing trees: " + e.getMessage());
+            logger.warning("Error in tree initialization: " + e.getMessage());
+            e.printStackTrace();
         }
-    }
-
-    // Add these helper methods
-    private void initializeWithCalibration(Tree tree, TaxonSet taxonSet, Set<String> calibratedTaxa) {
-        // Create a balanced tree with calibrated taxa as a monophyletic group
-        List<String> allTaxa = new ArrayList<>();
-        for (Taxon taxon : taxonSet.taxonsetInput.get()) {
-            allTaxa.add(taxon.getID());
-        }
-
-        // Split into calibrated and non-calibrated
-        List<String> constrainedTaxa = new ArrayList<>();
-        List<String> otherTaxa = new ArrayList<>();
-
-        for (String taxon : allTaxa) {
-            if (calibratedTaxa.contains(taxon)) {
-                constrainedTaxa.add(taxon);
-            } else {
-                otherTaxa.add(taxon);
-            }
-        }
-
-        // Create a subtree for calibrated taxa
-        Node calibratedRoot = new Node();
-        calibratedRoot.setHeight(5.0); // A reasonable height for the calibrated node
-
-        // Add calibrated taxa as children
-        for (int i = 0; i < constrainedTaxa.size(); i++) {
-            Node leafNode = new Node();
-            leafNode.setHeight(0.0);
-            leafNode.setID(constrainedTaxa.get(i));
-            calibratedRoot.addChild(leafNode);
-        }
-
-        // Create a balanced tree for the rest
-        Node root = new Node();
-        root.setHeight(10.0); // A bit older than the calibrated node
-
-        // Add the calibrated subtree as one child
-        root.addChild(calibratedRoot);
-
-        // Add non-calibrated taxa
-        for (String taxon : otherTaxa) {
-            Node leafNode = new Node();
-            leafNode.setHeight(0.0);
-            leafNode.setID(taxon);
-            root.addChild(leafNode);
-        }
-
-        // Set the root
-        tree.setRoot(root);
-    }
-
-    private void initializeSimpleTree(Tree tree, TaxonSet taxonSet) {
-        // Create a simple balanced tree
-        List<String> allTaxa = new ArrayList<>();
-        for (Taxon taxon : taxonSet.taxonsetInput.get()) {
-            allTaxa.add(taxon.getID());
-        }
-
-        // Just create a star tree with all taxa as children of the root
-        Node root = new Node();
-        root.setHeight(10.0);
-
-        for (String taxon : allTaxa) {
-            Node leafNode = new Node();
-            leafNode.setHeight(0.0);
-            leafNode.setID(taxon);
-            root.addChild(leafNode);
-        }
-
-        tree.setRoot(root);
     }
 
     /**
-     * Filter TreeLikelihood objects from a list of distributions
+     * Create a RandomTree initializer for a tree
      */
+    private beast.base.evolution.tree.coalescent.RandomTree createRandomTreeInitializer(Tree tree, String treeId) {
+        try {
+            // Get the tree's existing taxon set
+            TaxonSet taxonSet = tree.getTaxonset();
+
+            // If tree doesn't have a taxon set, try to find or create one
+            if (taxonSet == null) {
+                logger.info("No taxon set found for tree: " + treeId + ". Will try to find or create one.");
+
+                // Try to find taxon set from any tree likelihood that uses this tree
+                for (Object obj : modelBuilder.getAllObjects().values()) {
+                    if (obj instanceof TreeLikelihood) {
+                        TreeLikelihood likelihood = (TreeLikelihood) obj;
+                        if (likelihood.treeInput.get() == tree) {
+                            // Create taxon set from the alignment
+                            Alignment data = likelihood.dataInput.get();
+                            if (data != null) {
+                                List<String> taxaNames = data.getTaxaNames();
+                                taxonSet = new TaxonSet();
+                                taxonSet.setID(treeId + ".taxa");
+                                for (String taxName : taxaNames) {
+                                    Taxon taxon = new Taxon(taxName);
+                                    taxonSet.taxonsetInput.setValue(taxon, taxonSet);
+                                }
+                                // Store the taxon set in the tree
+                                tree.setInputValue("taxonset", taxonSet);
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // If still no taxon set, we can't proceed
+                if (taxonSet == null) {
+                    logger.warning("Could not find or create taxon set for tree: " + treeId);
+                    return null;
+                }
+            }
+
+            logger.info("Using taxon set with " + taxonSet.getTaxonCount() + " taxa for tree: " + treeId);
+
+            // Create population size parameter
+            RealParameter popSize = new RealParameter();
+            String popSizeId = "randomPopSize.t:" + treeId;
+            popSize.setID(popSizeId);
+            popSize.initByName("value", "1.0");
+
+            // Create constant population model
+            ConstantPopulation popModel = new ConstantPopulation();
+            String popModelId = "ConstantPopulation.t:" + treeId;
+            popModel.setID(popModelId);
+            popModel.initByName("popSize", popSize);
+
+            // Create and configure RandomTree
+            beast.base.evolution.tree.coalescent.RandomTree randomTree =
+                    new beast.base.evolution.tree.coalescent.RandomTree();
+            String randomTreeId = "RandomTree.t:" + treeId;
+            randomTree.setID(randomTreeId);
+
+            // Configure RandomTree with the tree's taxon set
+            randomTree.initByName(
+                    "taxa", taxonSet,
+                    "populationModel", popModel,
+                    "initial", tree,
+                    "estimate", false
+            );
+
+            // Return the RandomTree initializer (we'll add it to the MCMC later)
+            return randomTree;
+        } catch (Exception e) {
+            logger.warning("Failed to create RandomTree initializer: " + e.getMessage());
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    /**
+     * Set up the MCMC object.
+     */
+    private MCMC setupMCMC(Beast2Analysis analysis, CompoundDistribution posterior,
+                           State state, List<Operator> operators) {
+        // Create MCMC object using BEAST2 API
+        MCMC mcmc = new MCMC();
+        mcmc.setID(ID_MCMC);
+
+        // Create loggers
+        List<beast.base.inference.Logger> loggers = setupLoggers(analysis, posterior);
+
+        // Find all RandomTree initializers to add to the MCMC init input
+        List<StateNodeInitialiser> initializers = findTreeInitializers();
+
+        // Set up chainLength, state, operators, posterior, and loggers
+        if (initializers.isEmpty()) {
+            // Without initializers
+            mcmc.initByName(
+                    INPUT_CHAIN_LENGTH, analysis.getChainLength(),
+                    INPUT_STATE, state,
+                    INPUT_DISTRIBUTION, posterior,
+                    INPUT_OPERATOR, operators,
+                    INPUT_LOGGER, loggers
+            );
+        } else {
+            // With initializers
+            mcmc.initByName(
+                    INPUT_CHAIN_LENGTH, analysis.getChainLength(),
+                    INPUT_STATE, state,
+                    INPUT_DISTRIBUTION, posterior,
+                    INPUT_OPERATOR, operators,
+                    INPUT_LOGGER, loggers,
+                    "init", initializers
+            );
+            logger.info("Added " + initializers.size() + " tree initializers to MCMC");
+        }
+
+        return mcmc;
+    }
+
+    /**
+     * Find all RandomTree initializers in the model
+     */
+    private List<StateNodeInitialiser> findTreeInitializers() {
+        List<StateNodeInitialiser> initializers = new ArrayList<>();
+
+        // Explicitly search for RandomTree objects by class name to avoid potential class loading issues
+        for (Map.Entry<String, Object> entry : modelBuilder.getAllObjects().entrySet()) {
+            String className = entry.getValue().getClass().getName();
+            if (className.contains("RandomTree")) {
+                Object obj = entry.getValue();
+                if (obj instanceof StateNodeInitialiser) {
+                    initializers.add((StateNodeInitialiser) obj);
+                    logger.info("Found initializer: " + entry.getKey() + " of class " + className);
+                }
+            }
+        }
+
+        logger.info("Total initializers found: " + initializers.size());
+        return initializers;
+    }
+
+    /**
+     * Initialize a tree using RandomTree instead of manual construction
+     */
+    private void initializeWithRandomTree(Tree tree, Alignment alignment, String treeId) {
+        try {
+            // Get the tree's existing taxon set
+            TaxonSet taxonSet = tree.getTaxonset();
+
+            // If tree doesn't have a taxon set, try to find or create one
+            if (taxonSet == null) {
+                logger.info("No taxon set found for tree: " + treeId + ". Will try to find or create one.");
+
+                // Try to find taxon set from any tree likelihood that uses this tree
+                for (Object obj : modelBuilder.getAllObjects().values()) {
+                    if (obj instanceof TreeLikelihood) {
+                        TreeLikelihood likelihood = (TreeLikelihood) obj;
+                        if (likelihood.treeInput.get() == tree) {
+                            // Create taxon set from the alignment
+                            Alignment data = likelihood.dataInput.get();
+                            if (data != null) {
+                                List<String> taxaNames = data.getTaxaNames();
+                                taxonSet = new TaxonSet();
+                                taxonSet.setID(treeId + ".taxa");
+                                for (String taxName : taxaNames) {
+                                    Taxon taxon = new Taxon(taxName);
+                                    taxonSet.taxonsetInput.setValue(taxon, taxonSet);
+                                }
+                                // Store the taxon set in the tree
+                                tree.setInputValue("taxonset", taxonSet);
+                                modelBuilder.addObjectToModel(taxonSet.getID(), taxonSet);
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // If still no taxon set, we can't proceed
+                if (taxonSet == null) {
+                    logger.warning("Could not find or create taxon set for tree: " + treeId);
+                    return;
+                }
+            }
+
+            logger.info("Using taxon set with " + taxonSet.getTaxonCount() + " taxa for tree: " + treeId);
+
+            // Create constant population model
+            ConstantPopulation popModel = new ConstantPopulation();
+            String popModelId = "ConstantPopulation.t:" + treeId;
+            popModel.setID(popModelId);
+
+            // Create population size parameter
+            RealParameter popSize = new RealParameter();
+            String popSizeId = "randomPopSize.t:" + treeId;
+            popSize.setID(popSizeId);
+            popSize.initByName("value", "1.0");
+
+            // Add to the model
+            modelBuilder.addObjectToModel(popSizeId, popSize);
+
+            // Set up population model with the parameter
+            popModel.initByName("popSize", popSize);
+            modelBuilder.addObjectToModel(popModelId, popModel);
+
+            // Create and configure RandomTree
+            RandomTree randomTree = new RandomTree();
+            String randomTreeId = "RandomTree.t:" + treeId;
+            randomTree.setID(randomTreeId);
+
+            // Configure RandomTree with the tree's taxon set
+            randomTree.initByName(
+                    "taxa", taxonSet,
+                    "populationModel", popModel,
+                    "initial", tree,
+                    "estimate", false
+            );
+
+            // Add the RandomTree initializer to the model
+            modelBuilder.addObjectToModel(randomTreeId, randomTree);
+
+            // Initialize the tree
+            randomTree.initStateNodes();
+
+            logger.info("Successfully initialized tree using RandomTree: " + treeId);
+        } catch (Exception e) {
+            logger.warning("Failed to initialize tree with RandomTree: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    // Original filterTreeLikelihoods method unchanged
     private List<TreeLikelihood> filterTreeLikelihoods(List<Distribution> dists) {
         return dists.stream()
                 .filter(d -> d instanceof TreeLikelihood)
@@ -347,30 +520,6 @@ public class Beast2AnalysisBuilder {
             logger.warning("Could not initialize state nodes: " + e.getMessage());
             e.printStackTrace();
         }
-    }
-
-    /**
-     * Set up the MCMC object.
-     */
-    private MCMC setupMCMC(Beast2Analysis analysis, CompoundDistribution posterior,
-                           State state, List<Operator> operators) {
-        // Create MCMC object using BEAST2 API
-        MCMC mcmc = new MCMC();
-        mcmc.setID(ID_MCMC);
-
-        // Create loggers
-        List<beast.base.inference.Logger> loggers = setupLoggers(analysis, posterior);
-
-        // Set up chainLength, state, operators, and posterior using BEAST2 API
-        mcmc.initByName(
-                INPUT_CHAIN_LENGTH, analysis.getChainLength(),
-                INPUT_STATE, state,
-                INPUT_DISTRIBUTION, posterior,
-                INPUT_OPERATOR, operators,
-                INPUT_LOGGER, loggers
-        );
-
-        return mcmc;
     }
 
     /**

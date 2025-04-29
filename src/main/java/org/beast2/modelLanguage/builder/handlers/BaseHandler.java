@@ -127,56 +127,36 @@ public abstract class BaseHandler {
         Type secondaryExpectedType = (secondaryInput != null && secondaryObject instanceof BEASTInterface) ?
                 BEASTUtils.getInputExpectedType(secondaryInput, (BEASTInterface) secondaryObject, name) : null;
 
-        // Try to find the best match for this input based on the arg value's type
-        boolean useSecondary = false;
-
-        // If argValue is a TaxonSet or Alignment and secondaryInput exists on Tree, prefer that
-        if (argValue != null &&
-                secondaryInput != null &&
-                (argValue.getClass().getName().contains("TaxonSet") ||
-                        argValue.getClass().getName().contains("Alignment"))) {
-            useSecondary = true;
-            logger.info("Preferring secondary object for taxon-related input: " + name);
-        }
-
-        // Apply autoboxing to the value based on target type
-        Object primaryValue = primaryExpectedType != null ?
-                AutoboxingRegistry.getInstance().autobox(argValue, primaryExpectedType, objectRegistry) : argValue;
-        Object secondaryValue = secondaryExpectedType != null ?
-                AutoboxingRegistry.getInstance().autobox(argValue, secondaryExpectedType, objectRegistry) : argValue;
-
         boolean inputSet = false;
 
-        // Try secondary first if we determined it's more appropriate
-        if (useSecondary && secondaryObject instanceof BEASTInterface && secondaryInput != null) {
+        // First, try to set the input on the primary object
+        if (primaryInput != null) {
             try {
-                logger.info("Setting input '" + name + "' on secondary object (Tree)");
-                BEASTUtils.setInputValue(secondaryInput, secondaryValue, (BEASTInterface) secondaryObject);
-                inputSet = true;
-            } catch (Exception e) {
-                logger.warning("Failed to set input on secondary object: " + e.getMessage());
-            }
-        }
+                // Apply autoboxing to the value based on primary target type
+                Object primaryValue = primaryExpectedType != null ?
+                        AutoboxingRegistry.getInstance().autobox(argValue, primaryExpectedType, objectRegistry) : argValue;
 
-        // Try primary if secondary wasn't used or failed
-        if (!inputSet && primaryInput != null) {
-            try {
-                logger.info("Setting input '" + name + "' on primary object (Distribution)");
+                logger.info("Attempting to set input '" + name + "' on primary object");
                 BEASTUtils.setInputValue(primaryInput, primaryValue, (BEASTInterface) primaryObject);
                 inputSet = true;
             } catch (Exception e) {
                 logger.warning("Failed to set input on primary object: " + e.getMessage());
+                // Continue to try secondary if primary fails
+            }
+        }
 
-                // If we haven't tried secondary yet, try it now
-                if (!useSecondary && secondaryObject instanceof BEASTInterface && secondaryInput != null) {
-                    try {
-                        logger.info("Falling back to secondary object for input: " + name);
-                        BEASTUtils.setInputValue(secondaryInput, secondaryValue, (BEASTInterface) secondaryObject);
-                        inputSet = true;
-                    } catch (Exception e2) {
-                        logger.warning("Failed to set input on secondary object: " + e2.getMessage());
-                    }
-                }
+        // Only try secondary if primary wasn't set successfully
+        if (!inputSet && secondaryInput != null && secondaryObject instanceof BEASTInterface) {
+            try {
+                // Apply autoboxing to the value based on secondary target type
+                Object secondaryValue = secondaryExpectedType != null ?
+                        AutoboxingRegistry.getInstance().autobox(argValue, secondaryExpectedType, objectRegistry) : argValue;
+
+                logger.info("Falling back to secondary object for input: " + name);
+                BEASTUtils.setInputValue(secondaryInput, secondaryValue, (BEASTInterface) secondaryObject);
+                inputSet = true;
+            } catch (Exception e) {
+                logger.warning("Failed to set input on secondary object: " + e.getMessage());
             }
         }
 

@@ -54,6 +54,8 @@ public class AutoboxingRegistry {
 
         // Rule 4: Alignment to TaxonSet autoboxing
         addRule(new AlignmentToTaxonSetRule());
+
+        addRule(new StringArrayToTaxonListRule());
     }
 
     /**
@@ -231,6 +233,48 @@ public class AutoboxingRegistry {
             }
 
             return baseClass.isAssignableFrom(testClass);
+        }
+    }
+
+    /**
+     * Rule for autoboxing String[] to List<Taxon>
+     */
+    public static class StringArrayToTaxonListRule implements AutoboxingRule {
+        @Override
+        public boolean canAutobox(Object value, Type targetType) {
+            // Check if value is a String array
+            if (!(value instanceof String[])) {
+                return false;
+            }
+
+            // Check if target is a Collection
+            if (!TypeUtils.isCollection(targetType)) {
+                return false;
+            }
+
+            // Get element type of the collection
+            Type elementType = TypeUtils.getCollectionElementType(targetType);
+            if (elementType == null) {
+                return false;
+            }
+
+            // Check if element type is Taxon
+            Class<?> elementClass = TypeUtils.getRawType(elementType);
+            return elementClass != null && Taxon.class.isAssignableFrom(elementClass);
+        }
+
+        @Override
+        public Object autobox(Object value, Type targetType, Map<String, Object> objectRegistry) throws Exception {
+            String[] taxonNames = (String[]) value;
+            List<Taxon> taxonList = new ArrayList<>();
+
+            // Convert each string to a Taxon object
+            for (String name : taxonNames) {
+                Taxon taxon = new Taxon(name);
+                taxonList.add(taxon);
+            }
+
+            return taxonList;
         }
     }
 
