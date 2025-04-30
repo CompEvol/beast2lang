@@ -3,10 +3,12 @@ package org.beast2.modelLanguage.builder.handlers;
 import beast.base.core.BEASTInterface;
 import beast.base.core.Input;
 import beast.base.inference.parameter.Parameter;
+import org.beast2.modelLanguage.builder.NameResolver;
 import org.beast2.modelLanguage.builder.util.AutoboxingRegistry;
 import org.beast2.modelLanguage.builder.util.BEASTUtils;
 import org.beast2.modelLanguage.model.*;
 
+import java.lang.reflect.Array;
 import java.lang.reflect.Type;
 import java.util.Map;
 
@@ -29,26 +31,7 @@ public class VariableDeclarationHandler extends BaseHandler {
 
         // Handle array literals
         if (value instanceof ArrayLiteral) {
-            ArrayLiteral arrayLiteral = (ArrayLiteral) value;
-
-            // Handle String[] array
-            if (declaredTypeName.equals("String[]")) {
-                String[] stringArray = new String[arrayLiteral.getElements().size()];
-                for (int i = 0; i < arrayLiteral.getElements().size(); i++) {
-                    Expression elem = arrayLiteral.getElements().get(i);
-                    if (elem instanceof Literal) {
-                        stringArray[i] = ((Literal) elem).getValue().toString();
-                    } else {
-                        Object resolvedValue = ExpressionResolver.resolveValue(elem, objectRegistry);
-                        stringArray[i] = resolvedValue != null ? resolvedValue.toString() : null;
-                    }
-                }
-                objectRegistry.put(variableName, stringArray);
-                return stringArray;
-            }
-
-            // Add support for other array types as needed
-            throw new UnsupportedOperationException("Array type not supported: " + declaredTypeName);
+            return handleArrayLiteral(declaredTypeName, variableName, (ArrayLiteral) value, objectRegistry);
         }
 
         // Handle literal values directly
@@ -90,6 +73,77 @@ public class VariableDeclarationHandler extends BaseHandler {
         BEASTUtils.callInitAndValidate(beastObject, implementationClass);
 
         return beastObject;
+    }
+
+    /**
+     * Handle array literal expressions and create appropriate arrays
+     */
+    private Object handleArrayLiteral(String declaredTypeName, String variableName,
+                                      ArrayLiteral arrayLiteral, Map<String, Object> objectRegistry) throws Exception {
+        // Check if this is an array type
+        if (!declaredTypeName.endsWith("[]")) {
+            throw new IllegalArgumentException("Expected array type for array literal, got: " + declaredTypeName);
+        }
+
+        // Get the component type name (remove the [] suffix)
+        String componentTypeName = declaredTypeName.substring(0, declaredTypeName.length() - 2);
+
+        // Use NameResolver instance to resolve the component type name
+        NameResolver resolver = new NameResolver();  // Use an empty resolver - it will use fallbacks
+        String resolvedComponentTypeName = resolver.resolveClassName(componentTypeName);
+
+        try {
+            // Load the component class using the resolved name
+            Class<?> componentClass = loadClass(resolvedComponentTypeName);
+
+            // Create array of the proper component type
+            int length = arrayLiteral.getElements().size();
+            Object array = Array.newInstance(componentClass, length);
+
+            // Fill the array with resolved values
+            for (int i = 0; i < length; i++) {
+                Expression elem = arrayLiteral.getElements().get(i);
+                Object resolvedValue = ExpressionResolver.resolveValue(elem, objectRegistry);
+
+                // For primitive component types, we need additional conversion
+                if (componentClass.isPrimitive()) {
+                    if (componentClass == int.class) {
+                        Array.setInt(array, i, BEASTUtils.convertToInteger(resolvedValue));
+                    } else if (componentClass == double.class) {
+                        Array.setDouble(array, i, BEASTUtils.convertToDouble(resolvedValue));
+                    } else if (componentClass == boolean.class) {
+                        Array.setBoolean(array, i, BEASTUtils.convertToBoolean(resolvedValue));
+                    } else if (componentClass == byte.class) {
+                        Array.setByte(array, i, (byte) BEASTUtils.convertToInteger(resolvedValue));
+                    } else if (componentClass == char.class) {
+                        char charValue = resolvedValue != null ? resolvedValue.toString().charAt(0) : '\0';
+                        Array.setChar(array, i, charValue);
+                    } else if (componentClass == short.class) {
+                        Array.setShort(array, i, (short) BEASTUtils.convertToInteger(resolvedValue));
+                    } else if (componentClass == long.class) {
+                        Array.setLong(array, i, (long) BEASTUtils.convertToInteger(resolvedValue));
+                    } else if (componentClass == float.class) {
+                        Array.setFloat(array, i, (float) BEASTUtils.convertToDouble(resolvedValue));
+                    }
+                } else {
+                    // For object types, check if the value is assignable to the component type
+                    if (resolvedValue != null && !componentClass.isAssignableFrom(resolvedValue.getClass())) {
+                        // Try autoboxing
+                        resolvedValue = AutoboxingRegistry.getInstance().autobox(resolvedValue, componentClass, objectRegistry);
+                    }
+
+                    // Set the array element
+                    Array.set(array, i, resolvedValue);
+                }
+            }
+
+            // Store the array in the object registry and return it
+            objectRegistry.put(variableName, array);
+            return array;
+        } catch (ClassNotFoundException e) {
+            throw new ClassNotFoundException("Could not find component class: " + componentTypeName +
+                    " (resolved as " + resolvedComponentTypeName + ")", e);
+        }
     }
 
     /**

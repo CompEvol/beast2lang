@@ -111,6 +111,35 @@ public class Beast2AnalysisBuilder {
             // Set initial tree
             calibratedTree.setInputValue("initial", tree);
 
+            // Find the alignment/taxonset for this tree
+            TaxonSet taxonset = null;
+
+            // First, check if the tree already has a taxonset
+            TaxonSet treeTaxonset = tree.getTaxonset();
+            if (treeTaxonset != null) {
+                taxonset = treeTaxonset;
+                logger.info("Using existing taxonset from tree for CalibratedYuleInitialTree: " + treeId);
+            } else {
+
+                // If still no taxonset, try to find a suitable alignment in the model
+                for (Object obj : modelBuilder.getAllObjects().values()) {
+                    if (obj instanceof TaxonSet && ((TaxonSet) obj).getTaxonCount() == tree.getLeafNodeCount()) {
+                        taxonset = (TaxonSet) obj;
+                        logger.info("Using TaxonSet " + ((TaxonSet) obj).getID() + " for tree " + treeId);
+                        break;
+                    }
+                }
+            }
+
+            // Set the taxonset on the CalibratedYuleInitialTree if found
+            if (taxonset != null) {
+                calibratedTree.setInputValue("taxonset", taxonset);
+                logger.info("Set taxonset for CalibratedYuleInitialTree: " + treeId);
+            } else {
+                logger.warning("Could not find suitable taxonset for CalibratedYuleInitialTree: " + treeId);
+                return null; // Cannot proceed without taxonset
+            }
+
             // Create CalibrationPoint objects from MRCAPriors
             for (MRCAPrior prior : priors) {
                 // Only use priors with distributions
@@ -127,17 +156,13 @@ public class Beast2AnalysisBuilder {
 
                     // Add to model builder
                     modelBuilder.addObjectToModel(cp.getID(), cp);
-
-                    logger.info("Added CalibrationPoint from " + prior.getID() +
-                            " for tree " + treeId);
+                    logger.info("Added CalibrationPoint from " + prior.getID() + " for tree " + treeId);
                 }
             }
 
             // Add to model builder
             modelBuilder.addObjectToModel(calibratedTree.getID(), calibratedTree);
-
             logger.info("Successfully created CalibratedYuleInitialTree: " + calibratedTree.getID());
-
             return calibratedTree;
         } catch (Exception e) {
             logger.warning("Failed to create CalibratedYuleInitialTree: " + e.getMessage());

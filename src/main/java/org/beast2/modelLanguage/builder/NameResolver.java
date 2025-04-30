@@ -16,18 +16,18 @@ import java.util.logging.Logger;
 public class NameResolver {
 
     private static final Logger logger = Logger.getLogger(NameResolver.class.getName());
-    
+
     // Classes known to have problematic static initializers
     private static final Set<String> PROBLEMATIC_CLASSES = new HashSet<>();
     static {
         PROBLEMATIC_CLASSES.add("beast.base.evolution.alignment.Alignment");
         PROBLEMATIC_CLASSES.add("beast.base.evolution.alignment.FilteredAlignment");
     }
-    
+
     private final Map<String, String> explicitImports;
     private final List<String> wildcardImports;
     private final Map<String, String> resolvedCache;
-    
+
     /**
      * Constructor that initializes empty import collections
      */
@@ -36,15 +36,15 @@ public class NameResolver {
         this.wildcardImports = new ArrayList<>();
         this.resolvedCache = new HashMap<>();
     }
-    
+
     /**
      * Constructor that initializes with a list of import statements
-     * 
+     *
      * @param imports the list of import statements
      */
     public NameResolver(List<ImportStatement> imports) {
         this();
-        
+
         if (imports != null) {
             for (ImportStatement importStmt : imports) {
                 if (importStmt.isWildcard()) {
@@ -57,10 +57,10 @@ public class NameResolver {
             }
         }
     }
-    
+
     /**
      * Add an explicit import (e.g., "import java.util.List")
-     * 
+     *
      * @param packageName the fully qualified name
      */
     public void addExplicitImport(String packageName) {
@@ -68,20 +68,20 @@ public class NameResolver {
         explicitImports.put(simpleName, packageName);
         logger.fine("Added explicit import: " + simpleName + " → " + packageName);
     }
-    
+
     /**
      * Add a wildcard import (e.g., "import java.util.*")
-     * 
+     *
      * @param packageName the package name (without ".*")
      */
     public void addWildcardImport(String packageName) {
         wildcardImports.add(packageName);
         logger.fine("Added wildcard import: " + packageName + ".*");
     }
-    
+
     /**
      * Extract the simple name from a fully qualified name
-     * 
+     *
      * @param fullyQualifiedName the fully qualified name
      * @return the simple name (part after the last dot)
      */
@@ -92,10 +92,10 @@ public class NameResolver {
         }
         return fullyQualifiedName;
     }
-    
+
     /**
      * Safe way to check if a class exists without triggering static initializers
-     * 
+     *
      * @param className the class name to check
      * @return true if the class exists in the classpath
      */
@@ -105,7 +105,7 @@ public class NameResolver {
             // For problematic classes, just assume they exist if they're in BEAST2 packages
             return className.startsWith("beast.");
         }
-        
+
         try {
             // Use a less aggressive class loading approach that doesn't initialize the class
             Class.forName(className, false, getClass().getClassLoader());
@@ -124,24 +124,42 @@ public class NameResolver {
             return false;
         }
     }
-    
+
     /**
      * Resolve a class name, which could be either simple or fully qualified
-     * 
+     *
      * @param className the class name to resolve
      * @return the fully qualified class name, or the input if it cannot be resolved
      */
     public String resolveClassName(String className) {
+        // Handle array types by resolving the component type
+        if (className.endsWith("[]")) {
+            String componentTypeName = className.substring(0, className.length() - 2);
+            String resolvedComponentName = resolveClassName(componentTypeName);
+            return resolvedComponentName + "[]";
+        }
+
         // If it already contains dots, assume it's fully qualified
         if (className.contains(".")) {
             return className;
         }
-        
+
         // Check cache first
         if (resolvedCache.containsKey(className)) {
             return resolvedCache.get(className);
         }
-        
+
+        // Special cases for common built-in Java types
+        if ("String".equals(className)) {
+            return "java.lang.String";
+        } else if ("Integer".equals(className)) {
+            return "java.lang.Integer";
+        } else if ("Double".equals(className)) {
+            return "java.lang.Double";
+        } else if ("Boolean".equals(className)) {
+            return "java.lang.Boolean";
+        }
+
         // Check explicit imports first
         if (explicitImports.containsKey(className)) {
             String resolved = explicitImports.get(className);
@@ -149,48 +167,49 @@ public class NameResolver {
             resolvedCache.put(className, resolved);
             return resolved;
         }
-        
+
         // Try wildcard imports - check each possible class but safely
         for (String wildcardPackage : wildcardImports) {
             String qualifiedName = wildcardPackage + "." + className;
             logger.fine("Trying wildcard resolution: " + qualifiedName);
-            
+
             if (classExists(qualifiedName)) {
                 logger.fine("Successfully resolved " + className + " to " + qualifiedName);
                 resolvedCache.put(className, qualifiedName);
                 return qualifiedName;
             }
         }
-        
+
         // If we get here, we couldn't resolve it through imports
         logger.warning("Could not resolve class name: " + className + " - no matching import found");
-        
+
         // As a fallback, try some common BEAST2 packages
         String[] commonPackages = {
-            "beast.base.inference.parameter",
-            "beast.base.inference.distribution",
-            "beast.base.evolution.tree",
-            "beast.base.evolution.speciation",
-            "beast.base.evolution.substitutionmodel",
-            "beast.base.evolution.sitemodel",
-            "beast.base.evolution.alignment",
-            "beast.base.evolution.likelihood"
+                "beast.base.inference.parameter",
+                "beast.base.inference.distribution",
+                "beast.base.evolution.tree",
+                "beast.base.evolution.speciation",
+                "beast.base.evolution.substitutionmodel",
+                "beast.base.evolution.sitemodel",
+                "beast.base.evolution.alignment",
+                "beast.base.evolution.likelihood",
+                "beast.base.evolution.branchratemodel"
         };
-        
+
         for (String pkg : commonPackages) {
             String qualifiedName = pkg + "." + className;
             logger.fine("Trying fallback resolution in common package: " + qualifiedName);
-            
+
             if (classExists(qualifiedName)) {
                 logger.fine("Successfully resolved " + className + " to " + qualifiedName + " using fallback");
                 resolvedCache.put(className, qualifiedName);
                 return qualifiedName;
             }
         }
-        
+
         // If all else fails, return the original name
         logger.warning("Could not resolve " + className + " - will use unqualified name");
-        
+
         // Special handling for known BEAST2 class names that might be problematic to load
         if ("Alignment".equals(className)) {
             String qualifiedName = "beast.base.evolution.alignment.Alignment";
@@ -204,7 +223,7 @@ public class NameResolver {
             resolvedCache.put(className, qualifiedName);
             return qualifiedName;
         }
-        
+
         // Cache the "failure" case too
         resolvedCache.put(className, className);
         return className;

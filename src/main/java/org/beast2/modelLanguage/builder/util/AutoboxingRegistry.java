@@ -61,6 +61,9 @@ public class AutoboxingRegistry {
      * Initialize default autoboxing rules
      */
     private void initializeDefaultRules() {
+        // General array to list autoboxing rule (add this first as it's most general)
+        addRule(new ArrayToListAutoboxingRule());
+
         // Rule 1: Literal to Parameter autoboxing
         addRule(new LiteralToParameterRule());
 
@@ -73,6 +76,7 @@ public class AutoboxingRegistry {
         // Rule 4: Alignment to TaxonSet autoboxing
         addRule(new AlignmentToTaxonSetRule());
 
+        // Rule 5: String array to Taxon list (more specific than general rule)
         addRule(new StringArrayToTaxonListRule());
     }
 
@@ -256,6 +260,88 @@ public class AutoboxingRegistry {
             }
 
             return baseClass.isAssignableFrom(testClass);
+        }
+    }
+
+    /**
+     * Rule for autoboxing any Array to a corresponding List
+     */
+    public static class ArrayToListAutoboxingRule implements AutoboxingRule {
+        @Override
+        public boolean canAutobox(Object value, Type targetType) {
+            // Check if value is an array
+            if (value == null || !value.getClass().isArray()) {
+                return false;
+            }
+
+            // Check if target is a Collection
+            if (!TypeUtils.isCollection(targetType)) {
+                return false;
+            }
+
+            // Get element type of the collection
+            Type targetElementType = TypeUtils.getCollectionElementType(targetType);
+            if (targetElementType == null) {
+                return false;
+            }
+
+            // Get element type of the array
+            Class<?> arrayElementType = value.getClass().getComponentType();
+
+            // Check if array element type is assignable to collection element type
+            Class<?> targetElementClass = TypeUtils.getRawType(targetElementType);
+
+            // Return true if array elements can be directly assigned to the list
+            if (targetElementClass != null && targetElementClass.isAssignableFrom(arrayElementType)) {
+                return true;
+            }
+
+            // Also check if there's an autoboxing rule for array elements to collection elements
+            // This allows for more complex conversions
+            if (Array.getLength(value) > 0) {
+                for (AutoboxingRule rule : getInstance().rules) {
+                    if (rule != this && rule.canAutobox(Array.get(value, 0), targetElementType)) {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        @Override
+        public Object autobox(Object value, Type targetType, Map<String, Object> objectRegistry) throws Exception {
+            if (!value.getClass().isArray()) {
+                throw new IllegalArgumentException("Expected an array but got " + value.getClass().getName());
+            }
+
+            int length = Array.getLength(value);
+            List<Object> result = new ArrayList<>(length);
+
+            // Get element type of the collection
+            Type targetElementType = TypeUtils.getCollectionElementType(targetType);
+            Class<?> targetElementClass = TypeUtils.getRawType(targetElementType);
+
+            // Get component type of the array
+            Class<?> arrayComponentType = value.getClass().getComponentType();
+
+            // Check if we need to autobox individual elements
+            boolean needsElementAutoboxing = targetElementClass != null &&
+                    !targetElementClass.isAssignableFrom(arrayComponentType);
+
+            // Convert each array element to appropriate list element
+            for (int i = 0; i < length; i++) {
+                Object element = Array.get(value, i);
+
+                // If needed, try to autobox the individual element
+                if (needsElementAutoboxing) {
+                    element = getInstance().autobox(element, targetElementType, objectRegistry);
+                }
+
+                result.add(element);
+            }
+
+            return result;
         }
     }
 
@@ -468,5 +554,4 @@ public class AutoboxingRegistry {
             return null;
         }
     }
-
 }
