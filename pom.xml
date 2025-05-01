@@ -48,137 +48,168 @@
             <scope>test</scope>
         </dependency>
 
-    <dependency>
-        <groupId>beast2</groupId>
-        <artifactId>beast-base</artifactId>
-        <version>2.7.7</version>
-    </dependency>
-    <dependency>
-        <groupId>beast2</groupId>
-        <artifactId>beast-app</artifactId>
-        <version>2.7.7</version>
-    </dependency>
-    <dependency>
-        <groupId>beast2</groupId>
-        <artifactId>beast-launcher</artifactId>
-        <version>2.7.7</version>
-    </dependency>
+        <dependency>
+            <groupId>beast2</groupId>
+            <artifactId>beast-base</artifactId>
+            <version>2.7.7</version>
+        </dependency>
+        <dependency>
+            <groupId>beast2</groupId>
+            <artifactId>beast-app</artifactId>
+            <version>2.7.7</version>
+        </dependency>
+        <dependency>
+            <groupId>beast2</groupId>
+            <artifactId>beast-launcher</artifactId>
+            <version>2.7.7</version>
+        </dependency>
+        <dependency>
+            <groupId>beast.app</groupId>
+            <artifactId>beastlauncher</artifactId>
+            <version>0.1.0-SNAPSHOT</version>
+        </dependency>
     </dependencies>
+
+
 
 
     <build>
         <plugins>
 
-        <!-- Plugin to generate the command-line script -->
-<plugin>
-    <groupId>org.apache.maven.plugins</groupId>
-    <artifactId>maven-antrun-plugin</artifactId>
-    <version>3.1.0</version>
-    <executions>
-        <execution>
-            <id>create-shell-script</id>
-            <phase>package</phase>
-            <goals>
-                <goal>run</goal>
-            </goals>
-            <configuration>
-                <target>
-                    <echo file="${project.build.directory}/beast2lang">#!/bin/sh
-# Determine the location of this script
-if [ -z "$SCRIPT_LOCATION" ]; then
-    ## resolve links - $0 may be a link to application
-    PRG="$0"
-    # need this for relative symlinks
-    while [ -h "$PRG" ]; do
-        ls=`ls -ld "$PRG"`
-        link=`expr "$ls" : '.*-> \(.*\)$'`
-        if expr "$link" : '/.*' > /dev/null; then
-            PRG="$link"
-        else
-            PRG="`dirname "$PRG"`/$link"
-        fi
-    done
-    saveddir=`pwd`
-    SCRIPT_LOCATION=`dirname "$PRG"`
-    cd "$saveddir"
-fi
+            <!-- Add this plugin to your pom.xml -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <version>3.6.1</version>
+                <executions>
+                    <execution>
+                        <id>copy-launcher</id>
+                        <phase>prepare-package</phase>
+                        <goals>
+                            <goal>copy</goal>
+                        </goals>
+                        <configuration>
+                            <artifactItems>
+                                <artifactItem>
+                                    <groupId>beast.app</groupId>
+                                    <artifactId>beastlauncher</artifactId>
+                                    <version>0.1.0-SNAPSHOT</version>
+                                    <type>jar</type>
+                                    <overWrite>true</overWrite>
+                                    <outputDirectory>${project.build.directory}/lib</outputDirectory>
+                                    <destFileName>beastlauncher-0.1.0-SNAPSHOT.jar</destFileName>
+                                </artifactItem>
+                            </artifactItems>
+                            <outputDirectory>${project.build.directory}/lib</outputDirectory>
+                            <overWriteReleases>true</overWriteReleases>
+                            <overWriteSnapshots>true</overWriteSnapshots>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
 
-# Find BEAST 2.7.x installation
-if [ -z "$BEAST" ]; then
-    # macOS Applications directory - look for any BEAST 2.7.x
-    if [ -d "/Applications" ]; then
-        BEAST_DIR=$(find /Applications -maxdepth 1 -type d -name "BEAST 2.7*" | sort -r | head -n 1)
-        if [ ! -z "$BEAST_DIR" ]; then
-            BEAST="$BEAST_DIR"
-        fi
-    fi
+            <!-- Update the antrun plugin to copy lib directory and the updated script -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <version>3.1.0</version>
+                <executions>
+                    <execution>
+                        <id>create-shell-script</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <target>
+                                <!-- Copy launcher jar to lib directory in final distribution -->
+                                <mkdir dir="${project.build.directory}/lib" />
+                                <copy todir="${project.build.directory}/lib">
+                                    <fileset dir="${project.build.directory}/lib" includes="beastlauncher-*.jar" />
+                                </copy>
 
-    # Home Applications directory - look for any BEAST 2.7.x
-    if [ -z "$BEAST" ] &amp;&amp; [ -d "$HOME/Applications" ]; then
-        BEAST_DIR=$(find $HOME/Applications -maxdepth 1 -type d -name "BEAST 2.7*" | sort -r | head -n 1)
-        if [ ! -z "$BEAST_DIR" ]; then
-            BEAST="$BEAST_DIR"
-        fi
-    fi
+                                <!-- Create the updated script -->
+                                <echo file="${project.build.directory}/beast2lang">#!/bin/sh
+                                    # Generic script for Beast2Lang using the BeastGenericLauncher
 
-    # Check specific version as fallback
-    if [ -z "$BEAST" ]; then
-        if [ -d "/Applications/BEAST 2.7.7" ]; then
-            BEAST="/Applications/BEAST 2.7.7"
-        elif [ -d "$HOME/Applications/BEAST 2.7.7" ]; then
-            BEAST="$HOME/Applications/BEAST 2.7.7"
-        elif [ -d "/usr/local/share/beast" ]; then
-            # Check if this is a 2.7.x version in /usr/local/share/beast
-            if [ -f "/usr/local/share/beast/lib/version.xml" ]; then
-                VERSION=$(grep "2.7" "/usr/local/share/beast/lib/version.xml")
-                if [ ! -z "$VERSION" ]; then
-                    BEAST="/usr/local/share/beast"
-                fi
-            else
-                BEAST="/usr/local/share/beast"
-            fi
-        fi
-    fi
+                                    # Determine the location of this script
+                                    SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &amp;&amp; pwd )"
 
-    # If we still can't find BEAST 2.7.x, try to fall back to bundled dependencies
-    if [ -z "$BEAST" ]; then
-        echo "BEAST 2.7.x installation not found. Using bundled dependencies."
-        BEAST="bundled"
-    else
-        echo "Found BEAST installation at: $BEAST"
-    fi
-fi
+                                    # Find BEAST 2.7.x installation
+                                    if [ -z "$BEAST" ]; then
+                                    # macOS Applications directory - look for any BEAST 2.7.x
+                                    if [ -d "/Applications" ]; then
+                                    BEAST_DIR=$(find /Applications -maxdepth 1 -type d -name "BEAST 2.7*" | sort -r | head -n 1)
+                                    if [ ! -z "$BEAST_DIR" ]; then
+                                    BEAST="$BEAST_DIR"
+                                    fi
+                                    fi
 
-# Set Java
-JAVA="java"
-if [ "$BEAST" != "bundled" ] &amp;&amp; [ -x "${BEAST}/jre/bin/java" ]; then
-    JAVA="${BEAST}/jre/bin/java"
-fi
+                                    # Check specific version as fallback
+                                    if [ -z "$BEAST" ]; then
+                                    if [ -d "/Applications/BEAST 2.7.7" ]; then
+                                    BEAST="/Applications/BEAST 2.7.7"
+                                    fi
+                                    fi
 
-# Set classpath with BEAST JARs
-CP="${SCRIPT_LOCATION}/beast2lang-0.1.0-SNAPSHOT-jar-with-dependencies.jar"
-if [ "$BEAST" != "bundled" ]; then
-    # Add all BEAST JARs to classpath
-    for jar in ${BEAST}/lib/*.jar; do
-        CP="${CP}:${jar}"
-    done
-    # Add package JARs
-    if [ -d "${BEAST}/lib/packages" ]; then
-        for jar in ${BEAST}/lib/packages/*.jar; do
-            CP="${CP}:${jar}"
-        done
-    fi
-fi
+                                    if [ ! -z "$BEAST" ]; then
+                                    echo "Found BEAST installation at: $BEAST"
+                                    fi
+                                    fi
 
-# Run the application
-"$JAVA" -Dlauncher.wait.for.exit=true -Xss256m -Xmx4g -Dbeast.user.package.dir=user.pkgs -cp "$CP" org.beast2.modelLanguage.Beast2Lang "$@"
-</echo>
-                    <chmod file="${project.build.directory}/beast2lang" perm="755"/>
-                </target>
-            </configuration>
-        </execution>
-    </executions>
-</plugin>
+                                    # Set Java
+                                    JAVA="java"
+                                    if [ ! -z "$BEAST" ] &amp;&amp; [ -x "${BEAST}/jre/bin/java" ]; then
+                                    JAVA="${BEAST}/jre/bin/java"
+                                    fi
+
+                                    # Set classpath with beast2lang.jar, beastlauncher.jar and beast-launcher.jar
+                                    BEAST2LANG_JAR="${SCRIPT_DIR}/beast2lang-0.1.0-SNAPSHOT-jar-with-dependencies.jar"
+                                    if [ ! -f "$BEAST2LANG_JAR" ]; then
+                                    # Try alternate name
+                                    BEAST2LANG_JAR="${SCRIPT_DIR}/beast2lang-0.1.0-SNAPSHOT.jar"
+                                    fi
+
+                                    LAUNCHER_JAR="${SCRIPT_DIR}/lib/beastlauncher-0.1.0-SNAPSHOT.jar"
+                                    BEAST_LAUNCHER_JAR=""
+
+                                    if [ ! -z "$BEAST" ]; then
+                                    if [ -f "${BEAST}/lib/launcher.jar" ]; then
+                                    BEAST_LAUNCHER_JAR="${BEAST}/lib/launcher.jar"
+                                    fi
+
+                                    # Set BEAST_PACKAGE_PATH system property
+                                    if [ -d "${BEAST}/lib/packages" ]; then
+                                    BEAST_PACKAGE_PATH="${BEAST}/lib/packages"
+                                    echo "Setting BEAST_PACKAGE_PATH to: ${BEAST_PACKAGE_PATH}"
+                                    fi
+                                    fi
+
+                                    # Set up classpath - IMPORTANT: include Beast2Lang JAR first
+                                    CP="${BEAST2LANG_JAR}"
+                                    if [ ! -z "$LAUNCHER_JAR" ] &amp;&amp; [ -f "$LAUNCHER_JAR" ]; then
+                                    CP="${CP}:${LAUNCHER_JAR}"
+                                    fi
+                                    if [ ! -z "$BEAST_LAUNCHER_JAR" ]; then
+                                    CP="${CP}:${BEAST_LAUNCHER_JAR}"
+                                    fi
+
+                                    # Report the classpath for debugging
+                                    echo "Using classpath: $CP"
+
+                                    # Run the application using the generic launcher
+                                    "$JAVA" -Dlauncher.wait.for.exit=true -Xss256m -Xmx4g \
+                                    -Dbeast.user.package.dir=user.pkgs \
+                                    -DBEAST_PACKAGE_PATH="${BEAST_PACKAGE_PATH}" \
+                                    -cp "$CP" beast.app.launcher.BeastGenericLauncher \
+                                    --main org.beast2.modelLanguage.Beast2Lang "$@"
+                                </echo>
+                                <chmod file="${project.build.directory}/beast2lang" perm="755"/>
+                            </target>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
 
 <!-- Plugin to create an executable JAR with dependencies -->
 <plugin>

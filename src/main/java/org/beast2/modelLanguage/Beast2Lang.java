@@ -1,5 +1,6 @@
 package org.beast2.modelLanguage;
 
+import beast.base.core.BEASTInterface;
 import beast.base.parser.XMLProducer;
 import org.beast2.modelLanguage.builder.Beast2ModelBuilderReflection;
 import org.beast2.modelLanguage.builder.Beast2LangParserWithPhyloSpec;
@@ -11,7 +12,6 @@ import org.beast2.modelLanguage.model.Beast2Model;
 import org.beast2.modelLanguage.model.Beast2Analysis;
 import org.beast2.modelLanguage.builder.Beast2AnalysisBuilder;
 import beast.base.inference.MCMC;
-
 
 import org.json.JSONObject;
 import picocli.CommandLine;
@@ -26,7 +26,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
@@ -44,171 +43,6 @@ import java.util.logging.Logger;
 public class Beast2Lang implements Callable<Integer> {
 
     private static final Logger logger = Logger.getLogger(Beast2Lang.class.getName());
-
-    // Flag to track BEAST2 initialization status
-    private static boolean beast2Initialized = false;
-
-    /**
-     * Initialize BEAST2 classes and environment
-     */
-    private static void initializeBEAST2() {
-        if (beast2Initialized) {
-            return;
-        }
-
-        try {
-            // Set program name for BEAST
-            Class<?> programStatusClass = Class.forName("beast.base.core.ProgramStatus");
-            java.lang.reflect.Field nameField = programStatusClass.getField("name");
-            nameField.set(null, "Beast2Lang");
-
-            // Set BEAST2 directory to ensure resources are loaded properly
-            try {
-                System.out.println("Looking for BEAST2 installation directory...");
-
-                // Try common environment variables
-                String beastHome = System.getenv("BEAST_HOME");
-                if (beastHome == null || beastHome.isEmpty()) {
-                    beastHome = System.getenv("BEAST2_HOME");
-                }
-
-                // If found, set it as a system property
-                if (beastHome != null && !beastHome.isEmpty()) {
-                    System.out.println("Found BEAST installation at: " + beastHome);
-                    System.setProperty("beast.dir", beastHome);
-                    System.setProperty("beast.dir.site", beastHome + "/site");
-                    System.setProperty("beast.dir.user", beastHome + "/site");
-                }
-            } catch (Exception e) {
-                System.out.println("Warning: Could not set BEAST2 directory: " + e.getMessage());
-            }
-
-            // Initialize BEASTClassLoader and its service loading mechanism
-            try {
-                // Get the BEASTClassLoader class
-                Class<?> loaderClass = Class.forName("beast.base.core.BEASTClassLoader");
-
-                // First try to initialize the registry explicitly
-                try {
-                    Method initRegistryMethod = loaderClass.getMethod("initServices");
-                    initRegistryMethod.invoke(null);
-                    logger.info("Explicitly initialized BEAST service registry");
-                } catch (NoSuchMethodException e) {
-                    // If that method doesn't exist, try to load services directly
-                    logger.info("No initServices method found, trying to initialize services indirectly");
-                }
-
-                // Pre-load and register key data types
-                Class<?> dataTypeClass = Class.forName("beast.base.evolution.datatype.DataType");
-
-                // Try to access the registry to see if it's working
-                try {
-                    Method loadServiceMethod = loaderClass.getMethod("loadService", Class.class);
-                    Set<?> services = (Set<?>) loadServiceMethod.invoke(null, dataTypeClass);
-
-                    if (services != null) {
-                        logger.info("DataType service registry working, found " + services.size() + " services");
-                    } else {
-                        logger.warning("DataType service registry returned null");
-
-                        // Try to manually register key data types
-                        try {
-                            Method registerClassMethod = loaderClass.getMethod("registerClass", Class.class);
-                            registerClassMethod.invoke(null, Class.forName("beast.base.evolution.datatype.Nucleotide"));
-                            registerClassMethod.invoke(null, Class.forName("beast.base.evolution.datatype.Amino"));
-                            registerClassMethod.invoke(null, Class.forName("beast.base.evolution.datatype.StandardData"));
-                            logger.info("Manually registered key data types");
-                        } catch (Exception ex) {
-                            logger.warning("Failed to manually register data types: " + ex.getMessage());
-                        }
-                    }
-                } catch (Exception e) {
-                    logger.warning("Could not access service registry: " + e.getMessage());
-                }
-            } catch (Exception e) {
-                logger.warning("Could not initialize BEAST service loader: " + e.getMessage());
-            }
-
-            // Initialize key BEAST2 classes that might need special handling
-            try {
-                // Force load some key classes to ensure they're properly initialized
-                Class.forName("beast.base.evolution.datatype.DataType");
-                Class.forName("beast.base.evolution.datatype.StandardData");
-                Class.forName("beast.base.evolution.datatype.UserDataType");
-            } catch (Exception e) {
-                logger.warning("Could not preload some BEAST2 classes: " + e.getMessage());
-            }
-
-            // Load BEAST packages
-            try {
-                Class<?> packageManagerClass = Class.forName("beast.pkgmgmt.PackageManager");
-                System.out.println("Loading package     ");
-                java.lang.reflect.Method loadExternalJarsMethod =
-                        packageManagerClass.getMethod("loadExternalJars");
-                loadExternalJarsMethod.invoke(null);
-                logger.info("BEAST2 packages initialized successfully");
-            } catch (Exception e) {
-                // Log but continue - core functionality should still work
-                logger.warning("Could not load some external packages: " + e.getMessage());
-            }
-
-            // Log success
-            logger.info("BEAST2 environment initialized");
-            beast2Initialized = true;
-        } catch (Exception e) {
-            logger.severe("Error initializing BEAST2: " + e.getMessage());
-            e.printStackTrace();
-        }
-
-        fixDataTypeRegistration();
-    }
-
-    private static void fixDataTypeRegistration() {
-        try {
-            // Get the BEASTClassLoader class
-            Class<?> beastClassLoaderClass = Class.forName("beast.pkgmgmt.BEASTClassLoader");
-
-            // Access its services field (the map that stores services)
-            java.lang.reflect.Field servicesField = beastClassLoaderClass.getDeclaredField("services");
-            servicesField.setAccessible(true);
-            Map<String, Set<String>> services = (Map<String, Set<String>>) servicesField.get(null);
-
-            // Check if services map exists
-            if (services == null) {
-                services = new HashMap<>();
-                servicesField.set(null, services);
-                logger.info("Created services map in BEASTClassLoader");
-            }
-
-            // Check if DataType entry exists
-            String dataTypeClass = "beast.base.evolution.datatype.DataType";
-            if (!services.containsKey(dataTypeClass)) {
-                services.put(dataTypeClass, new HashSet<>());
-                logger.info("Created DataType entry in services map");
-            }
-
-            // Add data type class names as strings
-            Set<String> dataTypes = services.get(dataTypeClass);
-            dataTypes.add("beast.base.evolution.datatype.Nucleotide");
-            dataTypes.add("beast.base.evolution.datatype.StandardData");
-            dataTypes.add("beast.base.evolution.datatype.UserDataType");
-            logger.info("Added data type class names to services");
-
-            // Now manually load the actual data type classes
-            try {
-                Class.forName("beast.base.evolution.datatype.Nucleotide");
-                Class.forName("beast.base.evolution.datatype.StandardData");
-                Class.forName("beast.base.evolution.datatype.UserDataType");
-                logger.info("Loaded data type classes");
-            } catch (Exception e) {
-                logger.warning("Could not load data type classes: " + e.getMessage());
-            }
-
-        } catch (Exception e) {
-            logger.warning("Could not fix data type registration: " + e.getMessage());
-            e.printStackTrace();
-        }
-    }
 
     @Command(name = "run", description = "Run a Beast2 model after conversion")
     public Integer runModel(
@@ -235,9 +69,6 @@ public class Beast2Lang implements Callable<Integer> {
 
         try {
             System.out.println("Running Beast2 model from file: " + inputFile.getPath());
-
-            // Initialize BEAST2 environment
-            initializeBEAST2();
 
             // First convert the model to BEAST2 objects
             Beast2ModelBuilderReflection reflectionBuilder = new Beast2ModelBuilderReflection();
@@ -280,18 +111,41 @@ public class Beast2Lang implements Callable<Integer> {
 
                 System.out.println("Writing XML...");
 
-                String xml = generateXML(mcmc);
                 // Generate XML
+                String xml = generateXML(mcmc);
+                // Write XML to output file
                 writeOutput(outputFile, xml);
 
-                // Run the MCMC
-                System.out.println("Starting MCMC run...");
+                System.out.println("XML written to " + outputFile.getPath());
 
-                // Execute the MCMC
-                mcmc.run();
+                // Now instead of running the existing MCMC object, we'll load from the XML
+                System.out.println("Loading the model from XML...");
 
-                System.out.println("MCMC run completed successfully.");
-                return 0;
+                try {
+                    // Use BEAST2's XMLParser to read the XML back in
+                    beast.base.parser.XMLParser parser2 = new beast.base.parser.XMLParser();
+                    Object loadedObject = parser2.parseFile(outputFile);
+
+                    if (loadedObject instanceof MCMC) {
+                        MCMC loadedMCMC = (MCMC) loadedObject;
+
+                        // Run the MCMC loaded from XML
+                        System.out.println("Starting MCMC run from loaded XML...");
+                        loadedMCMC.run();
+
+                        System.out.println("MCMC run completed successfully.");
+                        return 0;
+                    } else {
+                        throw new RuntimeException("Loaded object is not an MCMC instance: " +
+                                (loadedObject != null ? loadedObject.getClass().getName() : "null"));
+                    }
+                } catch (Exception e) {
+                    System.err.println("Error loading or running from XML: " + e.getMessage());
+                    if (debug) {
+                        e.printStackTrace();
+                    }
+                    return 1;
+                }
             }
         } catch (Exception e) {
             System.err.println("Error running BEAST2 model: " + e.getMessage());
@@ -386,9 +240,6 @@ public class Beast2Lang implements Callable<Integer> {
                 writeOutput(outputFile, beast2Lang);
                 return 0;
             } else if ("beast2".equals(fromFormat) && "xml".equals(toFormat)) {
-                // Initialize BEAST2 environment
-                initializeBEAST2();
-
                 try (FileInputStream fis = new FileInputStream(inputFile)) {
                     // Parse the pure model
                     Beast2Model model = reflectionBuilder.buildFromStream(fis);
