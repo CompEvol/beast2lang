@@ -2,10 +2,15 @@ package org.beast2.modelLanguage;
 
 import beast.base.core.BEASTInterface;
 import beast.base.parser.XMLProducer;
+import beast.base.parser.XMLParser;
+import beast.base.inference.CompoundDistribution;
+import beast.base.inference.State;
 import org.beast2.modelLanguage.builder.Beast2ModelBuilderReflection;
 import org.beast2.modelLanguage.builder.Beast2LangParserWithPhyloSpec;
 import org.beast2.modelLanguage.builder.Beast2LangParser;
 import org.beast2.modelLanguage.builder.Beast2LangParserImpl;
+import org.beast2.modelLanguage.converter.Beast2ModelWriter;
+import org.beast2.modelLanguage.converter.Beast2ToBeast2LangConverter;
 import org.beast2.modelLanguage.converter.Beast2ToPhyloSpecConverter;
 import org.beast2.modelLanguage.converter.PhyloSpecToBeast2Converter;
 import org.beast2.modelLanguage.model.Beast2Model;
@@ -277,6 +282,45 @@ public class Beast2Lang implements Callable<Integer> {
                     }
                     return 0;
                 }
+            } else if ("xml".equals(fromFormat) && "beast2".equals(toFormat)) {
+                // Handle XML to Beast2Lang conversion
+                System.out.println("Converting BEAST2 XML to Beast2Lang...");
+
+                // Parse the XML file
+                XMLParser parser = new XMLParser();
+                BEASTInterface beast = parser.parseFile(inputFile);
+
+                if (!(beast instanceof MCMC)) {
+                    throw new IllegalArgumentException("Input XML does not contain an MCMC analysis");
+                }
+
+                MCMC mcmc = (MCMC) beast;
+
+                // Extract the posterior distribution and state
+                CompoundDistribution posterior = (CompoundDistribution) mcmc.posteriorInput.get();
+                State state = mcmc.startStateInput.get();
+
+                // Convert to Beast2Lang model
+                Beast2ToBeast2LangConverter converter = new Beast2ToBeast2LangConverter();
+                Beast2Model model = converter.convertToBeast2Model(posterior, state);
+
+                // Write the model to a file
+                Beast2ModelWriter writer = new Beast2ModelWriter();
+                String scriptContent = writer.writeModel(model);
+
+                // If output file is not specified, derive from input
+                if (outputFile == null) {
+                    String baseName = inputFile.getName();
+                    if (baseName.endsWith(".xml")) {
+                        baseName = baseName.substring(0, baseName.length() - 4);
+                    }
+                    outputFile = new File(baseName + ".b2l");
+                }
+
+                // Save to file
+                writeOutput(outputFile, scriptContent);
+                System.out.println("BEAST2 XML file successfully converted to Beast2Lang script: " + outputFile);
+                return 0;
             } else if ("lphy".equals(fromFormat)) {
                 // Handle LinguaPhylo format conversion if needed
                 System.err.println("LinguaPhylo conversion not yet implemented");
@@ -287,6 +331,78 @@ public class Beast2Lang implements Callable<Integer> {
             }
         } catch (Exception e) {
             System.err.println("Error converting file: " + e.getMessage());
+
+            if (debug) {
+                e.printStackTrace();
+            } else {
+                // Print a more useful stack trace
+                StringWriter sw = new StringWriter();
+                PrintWriter pw = new PrintWriter(sw);
+                e.printStackTrace(pw);
+                logger.severe("Detailed error: " + sw.toString());
+            }
+
+            return 1;
+        }
+    }
+
+    @Command(name = "decompile", description = "Decompile BEAST2 XML to Beast2Lang")
+    public Integer decompile(
+            @Option(names = {"-i", "--input"}, description = "Input BEAST2 XML file", required = true) File inputFile,
+            @Option(names = {"-o", "--output"}, description = "Output Beast2Lang file") File outputFile,
+            @Option(names = {"--debug"}, description = "Enable debug logging", defaultValue = "false") boolean debug) {
+
+        // Set debug level if requested
+        if (debug) {
+            java.util.logging.Logger rootLogger = java.util.logging.Logger.getLogger("");
+            rootLogger.setLevel(Level.FINE);
+            for (java.util.logging.Handler handler : rootLogger.getHandlers()) {
+                handler.setLevel(Level.FINE);
+            }
+        }
+
+        try {
+            System.out.println("Decompiling BEAST2 XML file: " + inputFile.getPath());
+
+            // If output file is not specified, derive from input
+            if (outputFile == null) {
+                String baseName = inputFile.getName();
+                if (baseName.endsWith(".xml")) {
+                    baseName = baseName.substring(0, baseName.length() - 4);
+                }
+                outputFile = new File(baseName + ".b2l");
+            }
+
+            // Parse the XML file
+            XMLParser parser = new XMLParser();
+            BEASTInterface beast = parser.parseFile(inputFile);
+
+            if (!(beast instanceof MCMC)) {
+                throw new IllegalArgumentException("Input XML does not contain an MCMC analysis");
+            }
+
+            MCMC mcmc = (MCMC) beast;
+
+            // Extract the posterior distribution and state
+            CompoundDistribution posterior = (CompoundDistribution) mcmc.posteriorInput.get();
+            State state = mcmc.startStateInput.get();
+
+            // Convert to Beast2Lang model
+            Beast2ToBeast2LangConverter converter = new Beast2ToBeast2LangConverter();
+            Beast2Model model = converter.convertToBeast2Model(posterior, state);
+
+            // Write the model to a file
+            Beast2ModelWriter writer = new Beast2ModelWriter();
+            String scriptContent = writer.writeModel(model);
+
+            // Save to file
+            writeOutput(outputFile, scriptContent);
+
+            System.out.println("BEAST2 XML file successfully decompiled to Beast2Lang script: " + outputFile);
+            return 0;
+
+        } catch (Exception e) {
+            System.err.println("Error decompiling BEAST2 XML: " + e.getMessage());
 
             if (debug) {
                 e.printStackTrace();

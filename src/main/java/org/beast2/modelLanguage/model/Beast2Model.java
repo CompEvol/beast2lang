@@ -89,4 +89,8 @@ public class Beast2Model {
         
         return sb.toString();
     }
+
+    public void clearStatements() {
+        statements.clear();
+    }
 }
