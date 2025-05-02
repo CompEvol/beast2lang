@@ -93,84 +93,6 @@ public class Beast2AnalysisBuilder {
         return setupMCMC(analysis, posterior, state, operators);
     }
 
-    /**
-     * Create a CalibratedYuleInitialTree initializer for a tree using calibrations from MRCAPriors
-     */
-    private StateNodeInitialiser createCalibratedYuleInitializer(Tree tree, String treeId, List<MRCAPrior> priors) {
-        try {
-            if (priors.isEmpty()) {
-                logger.info("No calibrations found for tree " + treeId + ", cannot use CalibratedYuleInitialTree");
-                return null;
-            }
-
-            // Create CalibratedYuleInitialTree
-            beast.base.evolution.speciation.CalibratedYuleInitialTree calibratedTree =
-                    new beast.base.evolution.speciation.CalibratedYuleInitialTree();
-            calibratedTree.setID("CalibratedYuleInitialTree." + treeId);
-
-            // Set initial tree
-            calibratedTree.setInputValue("initial", tree);
-
-            // Find the alignment/taxonset for this tree
-            TaxonSet taxonset = null;
-
-            // First, check if the tree already has a taxonset
-            TaxonSet treeTaxonset = tree.getTaxonset();
-            if (treeTaxonset != null) {
-                taxonset = treeTaxonset;
-                logger.info("Using existing taxonset from tree for CalibratedYuleInitialTree: " + treeId);
-            } else {
-
-                // If still no taxonset, try to find a suitable alignment in the model
-                for (Object obj : modelBuilder.getAllObjects().values()) {
-                    if (obj instanceof TaxonSet && ((TaxonSet) obj).getTaxonCount() == tree.getLeafNodeCount()) {
-                        taxonset = (TaxonSet) obj;
-                        logger.info("Using TaxonSet " + ((TaxonSet) obj).getID() + " for tree " + treeId);
-                        break;
-                    }
-                }
-            }
-
-            // Set the taxonset on the CalibratedYuleInitialTree if found
-            if (taxonset != null) {
-                calibratedTree.setInputValue("taxonset", taxonset);
-                logger.info("Set taxonset for CalibratedYuleInitialTree: " + treeId);
-            } else {
-                logger.warning("Could not find suitable taxonset for CalibratedYuleInitialTree: " + treeId);
-                return null; // Cannot proceed without taxonset
-            }
-
-            // Create CalibrationPoint objects from MRCAPriors
-            for (MRCAPrior prior : priors) {
-                // Only use priors with distributions
-                if (prior.distInput.get() != null) {
-                    beast.base.evolution.speciation.CalibrationPoint cp =
-                            new beast.base.evolution.speciation.CalibrationPoint();
-                    cp.setID("CalibrationPoint." + prior.getID());
-                    cp.setInputValue("taxonset", prior.taxonsetInput.get());
-                    cp.setInputValue("distr", prior.distInput.get());
-                    cp.setInputValue("parentOf", false); // Default behavior
-
-                    // Add to calibrations
-                    calibratedTree.setInputValue("calibrations", cp);
-
-                    // Add to model builder
-                    modelBuilder.addObjectToModel(cp.getID(), cp);
-                    logger.info("Added CalibrationPoint from " + prior.getID() + " for tree " + treeId);
-                }
-            }
-
-            // Add to model builder
-            modelBuilder.addObjectToModel(calibratedTree.getID(), calibratedTree);
-            logger.info("Successfully created CalibratedYuleInitialTree: " + calibratedTree.getID());
-            return calibratedTree;
-        } catch (Exception e) {
-            logger.warning("Failed to create CalibratedYuleInitialTree: " + e.getMessage());
-            e.printStackTrace();
-            return null;
-        }
-    }
-
     private void initializeTreesWithRandomTree() {
         try {
             Map<String, Object> objects = modelBuilder.getAllObjects();
@@ -232,22 +154,14 @@ public class Beast2AnalysisBuilder {
                             .anyMatch(p -> p.distInput.get() != null);
 
                     if (hasCalibrations) {
-                        // Try to use CalibratedYuleInitialTree first
-                        StateNodeInitialiser initializer = createCalibratedYuleInitializer(tree, treeId, priors);
-                        if (initializer != null) {
-                            logger.info("Successfully created CalibratedYuleInitialTree for " + treeId);
-                            continue; // Skip to next tree
-                        }
-                        // If it fails, fall back to RandomTree
-                        logger.info("Falling back to RandomTree for " + treeId);
-                    }
 
-                    // Use RandomTree
-                    try {
-                        createRandomTreeInitializer(tree, alignment, treeId, priors);
-                    } catch (Exception e) {
-                        logger.warning("Failed to create tree initializer for " + treeId + ": " + e.getMessage());
-                        e.printStackTrace();
+                        // Use RandomTree
+                        try {
+                            createRandomTreeInitializer(tree, alignment, treeId, priors);
+                        } catch (Exception e) {
+                            logger.warning("Failed to create tree initializer for " + treeId + ": " + e.getMessage());
+                            e.printStackTrace();
+                        }
                     }
                 }
             }

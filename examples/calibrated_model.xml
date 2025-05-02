@@ -28,8 +28,11 @@ name="alignment">
             <parameter id="birthRate" spec="parameter.RealParameter" name="stateNode">0.5</parameter>
             <parameter id="clockRate" spec="parameter.RealParameter" name="stateNode">0.5</parameter>
         </state>
-        <init id="CalibratedYuleInitialTree.tree" spec="beast.base.evolution.speciation.CalibratedYuleInitialTree" initial="@tree" taxonset="@TaxonSet">
-            <calibrations id="CalibrationPoint.treePrior1" spec="beast.base.evolution.speciation.CalibrationPoint">
+        <init id="RandomTree.tree" spec="RandomTree" estimate="false" initial="@tree" taxonset="@TaxonSet">
+            <populationModel id="ConstantPopulation.tree" spec="ConstantPopulation">
+                <parameter id="randomPopSize.tree" spec="parameter.RealParameter" lower="0.0" name="popSize" upper="0.0">1.0</parameter>
+            </populationModel>
+            <constraint id="treePrior1" spec="beast.base.evolution.tree.MRCAPrior" monophyletic="true" tree="@tree">
                 <taxonset id="calibratedTaxa" spec="TaxonSet">
                     <taxon id="Homo_sapiens" spec="Taxon"/>
                     <taxon id="Pan" spec="Taxon"/>
@@ -38,7 +41,7 @@ name="alignment">
                     <parameter id="RealParameter" spec="parameter.RealParameter" name="M">1.7</parameter>
                     <parameter id="RealParameter1" spec="parameter.RealParameter" name="S">0.1</parameter>
                 </distr>
-            </calibrations>
+            </constraint>
         </init>
         <distribution id="posterior" spec="CompoundDistribution">
             <distribution id="prior" spec="CompoundDistribution">
@@ -48,7 +51,7 @@ name="alignment">
                         <parameter id="RealParameter3" spec="parameter.RealParameter" name="S">1.0</parameter>
                     </distr>
                 </distribution>
-                <distribution id="treePrior1" spec="beast.base.evolution.tree.MRCAPrior" distr="@lognorm" monophyletic="true" taxonset="@calibratedTaxa" tree="@tree"/>
+                <distribution idref="treePrior1"/>
                 <distribution id="birthRatePrior" spec="distribution.Prior" x="@birthRate">
                     <distr id="birthRateDist" spec="distribution.LogNormalDistributionModel">
                         <parameter id="RealParameter4" spec="parameter.RealParameter" name="M">1.0</parameter>
@@ -80,12 +83,13 @@ name="alignment">
         </logger>
         <logger id="fileLogger" spec="Logger" fileName="trace.log" logEvery="1000">
             <log idref="posterior"/>
+            <log idref="randomPopSize.tree"/>
             <log idref="clockRate"/>
             <log idref="birthRate"/>
         </logger>
         <logger id="treeLogger" spec="Logger" fileName="trace.trees" logEvery="1000" mode="tree">
-            <log idref="CalibratedYuleInitialTree.tree"/>
             <log idref="tree"/>
+            <log idref="RandomTree.tree"/>
         </logger>
     </run>
 
