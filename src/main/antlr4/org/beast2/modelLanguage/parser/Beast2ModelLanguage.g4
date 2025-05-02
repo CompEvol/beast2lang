@@ -47,6 +47,7 @@ distributionAssignment
 
 expression
     : functionCall                  # FunctionCallExpr
+    | nexusFunction                 # NexusFunctionExpr
     | identifier                    # IdentifierExpr
     | literal                       # LiteralExpr
     | arrayLiteral                  # ArrayLiteralExpr
@@ -54,6 +55,10 @@ expression
 
 functionCall
     : className LPAREN argumentList? RPAREN
+    ;
+
+nexusFunction
+    : NEXUS LPAREN argumentList? RPAREN
     ;
 
 argumentList
@@ -118,6 +123,7 @@ DOT         : '.';
 AT          : '@';
 STAR        : '*';
 IMPORT      : 'import';
+NEXUS       : 'nexus';
 
 BOOLEAN_LITERAL
     : 'true'

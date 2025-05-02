@@ -7,11 +7,10 @@ import beast.base.evolution.substitutionmodel.*;
 import beast.base.evolution.sitemodel.*;
 import beast.base.evolution.alignment.*;
 import beast.base.evolution.likelihood.*;
-import org.beast2.modelLanguage.data.NexusAlignment;
 
 //Data
 @data
-Alignment alignment_data = NexusAlignment(file="primates.nex");
+Alignment alignment_data = nexus(file="primates.nex");
 
 @data
 TaxonSet taxa = TaxonSet(alignment=alignment_data);
