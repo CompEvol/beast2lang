@@ -48,7 +48,7 @@ name="alignment">
                         <parameter id="RealParameter3" spec="parameter.RealParameter" name="S">1.0</parameter>
                     </distr>
                 </distribution>
-                <distribution id="treePrior1" spec="beast.base.evolution.tree.MRCAPrior" distr="@lognorm" taxonset="@calibratedTaxa" tree="@tree"/>
+                <distribution id="treePrior1" spec="beast.base.evolution.tree.MRCAPrior" distr="@lognorm" monophyletic="true" taxonset="@calibratedTaxa" tree="@tree"/>
                 <distribution id="birthRatePrior" spec="distribution.Prior" x="@birthRate">
                     <distr id="birthRateDist" spec="distribution.LogNormalDistributionModel">
                         <parameter id="RealParameter4" spec="parameter.RealParameter" name="M">1.0</parameter>

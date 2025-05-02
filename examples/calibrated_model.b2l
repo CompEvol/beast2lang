@@ -18,7 +18,7 @@ TaxonSet calibratedTaxa = TaxonSet(taxon=calibratedTaxonNames);
 ParametricDistribution lognorm = LogNormalDistributionModel(M=1.7,S=0.1);
 
 Tree tree ~ YuleModel(birthDiffRate=birthRate, taxonset=alignment_data);
-Tree tree ~ MRCAPrior(taxonset=calibratedTaxa, distr=lognorm, monophyletic=false);
+Tree tree ~ MRCAPrior(taxonset=calibratedTaxa, distr=lognorm, monophyletic=true);
 
 StrictClockModel clockModel = StrictClockModel(clock.rate=clockRate);
 JukesCantor jc = JukesCantor();

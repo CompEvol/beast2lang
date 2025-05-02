@@ -11,6 +11,7 @@ import org.beast2.modelLanguage.model.*;
 import java.lang.reflect.Array;
 import java.lang.reflect.Type;
 import java.util.Map;
+import java.util.logging.Logger;
 
 /**
  * Handler for VariableDeclaration statements, responsible for creating BEAST2 objects.
@@ -47,9 +48,14 @@ public class VariableDeclarationHandler extends BaseHandler {
             }
         }
 
+        // Handle nexus function calls
+        if (value instanceof NexusFunction) {
+            return handleNexusFunction(declaredTypeName, variableName, (NexusFunction) value, objectRegistry);
+        }
+
         // Handle function calls
         if (!(value instanceof FunctionCall)) {
-            throw new IllegalArgumentException("Value must be a function call, literal, or array literal");
+            throw new IllegalArgumentException("Value must be a function call, literal, array literal, or nexus function");
         }
 
         FunctionCall funcCall = (FunctionCall) value;
@@ -76,10 +82,46 @@ public class VariableDeclarationHandler extends BaseHandler {
     }
 
     /**
+     * Handle nexus function calls to load alignments from Nexus files
+     */
+    private Object handleNexusFunction(String declaredTypeName, String variableName,
+                                       NexusFunction nexusFunction, Map<String, Object> objectRegistry) throws Exception {
+        // Check if the declared type is compatible with Alignment
+        Class<?> declaredType;
+        try {
+            declaredType = loadClass(declaredTypeName);
+            if (!beast.base.evolution.alignment.Alignment.class.isAssignableFrom(declaredType)) {
+                throw new ClassCastException(
+                        "nexus() function must be assigned to Alignment or a subclass, not " + declaredTypeName
+                );
+            }
+        } catch (ClassNotFoundException e) {
+            logger.warning("Class not found: " + declaredTypeName);
+            throw new ClassNotFoundException("Declared type not found: " + declaredTypeName);
+        }
+
+        // Use the NexusFunctionHandler to process the nexus function
+        NexusFunctionHandler handler = new NexusFunctionHandler();
+        beast.base.evolution.alignment.Alignment alignment = handler.processFunction(nexusFunction, objectRegistry);
+
+        // Set the ID if it wasn't set by the handler
+        if (alignment.getID() == null || alignment.getID().isEmpty()) {
+            alignment.setID(variableName);
+        }
+
+        // Store the object in the registry with the variable name
+        objectRegistry.put(variableName, alignment);
+
+        logger.info("Created alignment from Nexus file: " + variableName);
+        return alignment;
+    }
+
+    /**
      * Handle array literal expressions and create appropriate arrays
      */
     private Object handleArrayLiteral(String declaredTypeName, String variableName,
                                       ArrayLiteral arrayLiteral, Map<String, Object> objectRegistry) throws Exception {
+        // Implementation not changed
         // Check if this is an array type
         if (!declaredTypeName.endsWith("[]")) {
             throw new IllegalArgumentException("Expected array type for array literal, got: " + declaredTypeName);

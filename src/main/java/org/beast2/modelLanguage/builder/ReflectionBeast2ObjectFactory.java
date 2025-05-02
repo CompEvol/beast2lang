@@ -3,7 +3,6 @@ package org.beast2.modelLanguage.builder;
 import org.beast2.modelLanguage.builder.handlers.DistributionAssignmentHandler;
 import org.beast2.modelLanguage.builder.handlers.VariableDeclarationHandler;
 import org.beast2.modelLanguage.model.*;
-import org.beast2.modelLanguage.data.NexusAlignment;
 
 import beast.base.inference.StateNode;
 
@@ -45,7 +44,6 @@ public class ReflectionBeast2ObjectFactory implements Beast2ObjectFactory, State
     private final List<String> randomVariables;
 
     private final Map<String, String> observedDataRefs = new HashMap<>();
-
 
     /**
      * Constructor that initializes handlers and object registry
@@ -159,6 +157,12 @@ public class ReflectionBeast2ObjectFactory implements Beast2ObjectFactory, State
                 return;
             }
 
+            // Special handling for NexusFunction
+            if (resolvedVarDecl.getValue() instanceof NexusFunction) {
+                handleNexusFunctionCall(resolvedVarDecl);
+                return;
+            }
+
             // Create the object
             Object beastObject = varDeclHandler.createObject(resolvedVarDecl, beastObjects);
 
@@ -226,8 +230,8 @@ public class ReflectionBeast2ObjectFactory implements Beast2ObjectFactory, State
 
             // Create the NexusAlignment directly
             logger.info("Creating NexusAlignment with file: " + filePath);
-            NexusAlignment alignment = new NexusAlignment(filePath);
-            alignment.setID(varName);
+            Object alignment = createAlignmentFromNexus(filePath, varName);
+            alignment.getClass().getMethod("setID", String.class).invoke(alignment, varName);
 
             // Store the alignment
             beastObjects.put(varName, alignment);
@@ -236,6 +240,73 @@ public class ReflectionBeast2ObjectFactory implements Beast2ObjectFactory, State
         } catch (Exception e) {
             logger.severe("Error creating NexusAlignment: " + e.getMessage());
             throw new RuntimeException("Failed to create NexusAlignment: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Handle nexus() function calls
+     */
+    private void handleNexusFunctionCall(VariableDeclaration varDecl) {
+        try {
+            String varName = varDecl.getVariableName();
+            NexusFunction nexusFunc = (NexusFunction) varDecl.getValue();
+
+            // Create and process the nexus function
+            logger.info("Processing nexus() function for variable: " + varName);
+
+            // Use the NexusFunctionHandler to process the function
+            org.beast2.modelLanguage.builder.handlers.NexusFunctionHandler handler =
+                    new org.beast2.modelLanguage.builder.handlers.NexusFunctionHandler();
+
+            // Process the function and get the alignment
+            beast.base.evolution.alignment.Alignment alignment =
+                    handler.processFunction(nexusFunc, beastObjects);
+
+            // Set the ID on the alignment if needed
+            if (alignment.getID() == null || !alignment.getID().equals(varName)) {
+                alignment.setID(varName);
+            }
+
+            // Store the alignment in the registry with the variable name
+            // This is crucial for observed variables that reference this data
+            beastObjects.put(varName, alignment);
+
+            logger.info("Created and stored Alignment from nexus() function: " + varName);
+
+        } catch (Exception e) {
+            logger.severe("Error processing nexus() function: " + e.getMessage());
+            throw new RuntimeException("Failed to process nexus() function: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Helper method to create an alignment from a Nexus file
+     */
+    private Object createAlignmentFromNexus(String filePath, String id) {
+        try {
+            // Create a NexusParser instance
+            Class<?> parserClass = Class.forName("beast.base.evolution.io.NexusParser");
+            Object parser = parserClass.getDeclaredConstructor().newInstance();
+
+            // Parse the file
+            java.io.File file = new java.io.File(filePath);
+            parserClass.getMethod("parseFile", java.io.File.class).invoke(parser, file);
+
+            // Get the alignment field
+            java.lang.reflect.Field alignmentField = parserClass.getField("m_alignment");
+            Object alignment = alignmentField.get(parser);
+
+            if (alignment == null) {
+                throw new RuntimeException("No alignment found in Nexus file: " + filePath);
+            }
+
+            // Set the ID
+            alignment.getClass().getMethod("setID", String.class).invoke(alignment, id);
+
+            return alignment;
+        } catch (Exception e) {
+            logger.severe("Error creating alignment from Nexus file: " + e.getMessage());
+            throw new RuntimeException("Failed to create alignment from Nexus file: " + filePath, e);
         }
     }
 
@@ -267,6 +338,11 @@ public class ReflectionBeast2ObjectFactory implements Beast2ObjectFactory, State
                 // Find the referenced data object from prior annotation processing
                 String dataRef = findDataReferenceForObserved(varName);
                 if (dataRef != null) {
+                    // Verify that the data reference exists in the registry
+                    if (!beastObjects.containsKey(dataRef)) {
+                        logger.severe("Data reference not found in object registry: " + dataRef);
+                        throw new IllegalArgumentException("Data reference not found: " + dataRef);
+                    }
                     distAssignHandler.createObservedObjects(resolvedDistAssign, beastObjects, dataRef);
                 } else {
                     logger.warning("No data reference found for observed variable: " + varName);
@@ -358,6 +434,20 @@ public class ReflectionBeast2ObjectFactory implements Beast2ObjectFactory, State
             }
 
             return new FunctionCall(resolvedClassName, resolvedArgs);
+        } else if (expr instanceof NexusFunction) {
+            NexusFunction nexusFunc = (NexusFunction) expr;
+
+            // Resolve class names in arguments
+            List<Argument> resolvedArgs = new ArrayList<>(nexusFunc.getArguments());
+            for (int i = 0; i < resolvedArgs.size(); i++) {
+                Argument arg = resolvedArgs.get(i);
+                Expression resolvedValue = resolveExpressionClassNames(arg.getValue());
+                if (resolvedValue != arg.getValue()) {
+                    resolvedArgs.set(i, new Argument(arg.getName(), resolvedValue));
+                }
+            }
+
+            return new NexusFunction(resolvedArgs);
         } else if (expr instanceof Identifier) {
             // Identifiers don't need resolution
             return expr;

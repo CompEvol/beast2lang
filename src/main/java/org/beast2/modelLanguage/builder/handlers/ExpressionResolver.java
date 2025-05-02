@@ -37,6 +37,9 @@ public class ExpressionResolver {
         } else if (expr instanceof FunctionCall) {
             // Nested function call - create a new object
             return createNestedObject((FunctionCall) expr, objectRegistry);
+        } else if (expr instanceof NexusFunction) {
+            // Handle nexus function
+            return handleNexusFunction((NexusFunction) expr, objectRegistry);
         }
 
         return null;
@@ -82,6 +85,19 @@ public class ExpressionResolver {
             return nestedObject;
         } catch (Exception e) {
             return null;
+        }
+    }
+
+    /**
+     * Handle a nexus function call
+     */
+    private static Object handleNexusFunction(NexusFunction nexusFunction, Map<String, Object> objectRegistry) {
+        try {
+            NexusFunctionHandler handler = new NexusFunctionHandler();
+            return handler.processFunction(nexusFunction, objectRegistry);
+        } catch (Exception e) {
+            logger.severe("Error processing nexus() function: " + e.getMessage());
+            throw new RuntimeException("Failed to process nexus() function", e);
         }
     }
 

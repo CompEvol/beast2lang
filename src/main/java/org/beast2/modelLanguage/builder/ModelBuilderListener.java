@@ -12,7 +12,8 @@ import java.util.logging.Logger;
 
 /**
  * ANTLR listener for building a Beast2Model from a parse tree.
- * This implementation supports the @data and @observed annotations.
+ * This implementation supports the @data and @observed annotations,
+ * as well as the built-in nexus() function.
  */
 public class ModelBuilderListener extends Beast2ModelLanguageBaseListener {
 
@@ -139,6 +140,10 @@ public class ModelBuilderListener extends Beast2ModelLanguageBaseListener {
             Beast2ModelLanguageParser.FunctionCallContext funcCtx =
                     ((Beast2ModelLanguageParser.FunctionCallExprContext) ctx).functionCall();
             return createFunctionCall(funcCtx);
+        } else if (ctx instanceof Beast2ModelLanguageParser.NexusFunctionExprContext) {
+            Beast2ModelLanguageParser.NexusFunctionContext nexusCtx =
+                    ((Beast2ModelLanguageParser.NexusFunctionExprContext) ctx).nexusFunction();
+            return createNexusFunction(nexusCtx);
         } else if (ctx instanceof Beast2ModelLanguageParser.IdentifierExprContext) {
             String name = ((Beast2ModelLanguageParser.IdentifierExprContext) ctx).identifier().getText();
             return new Identifier(name);
@@ -211,6 +216,25 @@ public class ModelBuilderListener extends Beast2ModelLanguageBaseListener {
         }
 
         return new FunctionCall(className, arguments);
+    }
+
+    /**
+     * Create a NexusFunction from its context
+     */
+    private NexusFunction createNexusFunction(Beast2ModelLanguageParser.NexusFunctionContext ctx) {
+        List<Argument> arguments = new ArrayList<>();
+
+        // Add arguments if present
+        if (ctx.argumentList() != null) {
+            for (Beast2ModelLanguageParser.ArgumentContext argCtx : ctx.argumentList().argument()) {
+                String name = argCtx.argumentName().getText();
+                Expression value = createExpressionFromArgumentValue(argCtx.argumentValue());
+                arguments.add(new Argument(name, value));
+            }
+        }
+
+        logger.info("Created nexus function with " + arguments.size() + " arguments");
+        return new NexusFunction(arguments);
     }
 
     /**
