@@ -13,6 +13,8 @@ Key features:
 - Direct integration with BEAST2's Java objects
 - Import mechanism for BEAST2 packages and classes
 - Support for PhyloSpec-compatible syntax
+- Built-in functions for common operations
+- Intelligent autoboxing between compatible types
 
 ## Philosophy
 
@@ -67,6 +69,65 @@ ClassName variableName = Constructor(...);
 import beast.package.name.*;
 ```
 
+### Built-in Functions
+
+BEAST2Lang currently provides one built-in function to allow reading an alignment from file:
+
+#### nexus() function
+Loads alignment data from a Nexus file:
+
+```
+Alignment alignment = nexus(file="primates.nex");
+```
+
+Parameters:
+- `file`: (Required) Path to the Nexus file
+
+The `nexus()` function provides a clean, simple way to load sequence alignments directly from Nexus files without needing additional imports or classes.
+
+## Automatic Type Conversion (Autoboxing)
+
+BEAST2Lang includes an intelligent autoboxing system that automatically converts compatible types, making models more concise and intuitive. This system eliminates the need for manual conversion or intermediate variables in many cases.
+
+### Supported Autoboxing Conversions
+
+The language supports these automatic conversions:
+
+1. **Literal to Parameter**: Numeric, Boolean, or String literals are converted to appropriate Parameter types.
+   ```
+   // This literal value is automatically converted to a RealParameter
+   RealParameter birthRate ~ LogNormalDistributionModel(M=1.0, S=1.0);
+   ```
+
+2. **ParametricDistribution to Prior**: Any ParametricDistribution automatically becomes a Prior when needed.
+   ```
+   // The LogNormalDistributionModel is automatically wrapped in a Prior
+   RealParameter birthRate ~ LogNormalDistributionModel(M=1.0, S=1.0);
+   ```
+
+3. **SubstitutionModel to SiteModel**: A SubstitutionModel can be used directly where a SiteModel is expected.
+   ```
+   // The JukesCantor model is automatically wrapped in a SiteModel
+   @observed(data=alignment_data)
+   Alignment alignment ~ TreeLikelihood(tree=tree, siteModel=jc);
+   ```
+
+4. **Alignment to TaxonSet**: An Alignment can be used where a TaxonSet is required.
+   ```
+   // The alignment_data is automatically converted to a TaxonSet
+   Tree tree ~ YuleModel(birthDiffRate=birthRate, taxonset=alignment_data);
+   ```
+
+5. **Array to List**: Any array type is automatically converted to an appropriate List.
+   ```
+   // String array is converted to a List<String>
+   String[] taxonNames = ["Homo_sapiens", "Pan"];
+   // Array elements are also autoboxed when needed
+   TaxonSet taxa = TaxonSet(taxon=taxonNames);
+   ```
+
+These autoboxing capabilities make models significantly more concise and readable while maintaining full compatibility with BEAST2's object model.
+
 ## Common Annotations
 
 - `@data`: Marks variables that represent data loaded from files
@@ -101,11 +162,10 @@ import beast.base.evolution.substitutionmodel.*;
 import beast.base.evolution.sitemodel.*;
 import beast.base.evolution.alignment.*;
 import beast.base.evolution.likelihood.*;
-import org.beast2.modelLanguage.data.NexusAlignment;
 
-// Data
+// Data using the built-in nexus() function
 @data
-Alignment alignment_data = NexusAlignment(file="primates.nex");
+Alignment alignment_data = nexus(file="primates.nex");
 
 @data
 TaxonSet taxa = TaxonSet(alignment=alignment_data);
@@ -130,7 +190,7 @@ SiteModel siteModel = SiteModel(substModel=jc);
 Alignment alignment ~ TreeLikelihood(tree=tree, siteModel=siteModel);
 ```
 
-### Simplified Syntax with Direct Distribution References
+### Simplified Syntax with Direct Distribution References and Autoboxing of SubstitutionModel and Alignment
 ```
 // Import BEAST2 types, distributions and calculation nodes
 import beast.base.inference.parameter.*;
@@ -141,30 +201,23 @@ import beast.base.evolution.substitutionmodel.*;
 import beast.base.evolution.sitemodel.*;
 import beast.base.evolution.alignment.*;
 import beast.base.evolution.likelihood.*;
-import org.beast2.modelLanguage.data.NexusAlignment;
 
-// Data
+// Data using the built-in nexus() function
 @data
-Alignment alignment_data = NexusAlignment(file="primates.nex");
-
-@data
-TaxonSet taxa = TaxonSet(alignment=alignment_data);
+Alignment alignment_data = nexus(file="primates.nex");
 
 // Define birth rate parameter directly with log-normal distribution
 RealParameter birthRate ~ LogNormalDistributionModel(M=1, S=1);
 
 // Define a Yule tree prior that uses the birth rate
-Tree tree ~ YuleModel(birthDiffRate=birthRate, taxonset=taxa);
+Tree tree ~ YuleModel(birthDiffRate=birthRate, taxonset=alignment_data);
 
 // Define a JC69 substitution model
 JukesCantor jc = JukesCantor();
 
-// Define site model with the JC69 substitution model
-SiteModel siteModel = SiteModel(substModel=jc);
-
 // Alignment sampled from TreeLikelihood
 @observed(data=alignment_data)
-Alignment alignment ~ TreeLikelihood(tree=tree, siteModel=siteModel);
+Alignment alignment ~ TreeLikelihood(tree=tree, siteModel=jc);
 ```
 
 ## PhyloSpec Support
@@ -185,12 +238,20 @@ git clone https://github.com/CompEvol/beast2lang.git
 cd beast2lang
 ```
 
-2. Install BEAST2 jars to local Maven repository:
+2. Clone the beastlauncher dependency:
+```
+git clone https://github.com/CompEvol/beastlauncher.git
+cd beastlauncher
+mvn clean install
+cd ..
+```
+
+3. Install BEAST2 jars to local Maven repository:
 ```
 ./install-beast-jars.sh
 ```
 
-3. Build with Maven:
+4. Build with Maven:
 ```
 mvn clean package
 ```
@@ -213,11 +274,14 @@ BEAST2Lang automatically handles:
 4. Setting up proper likelihood calculations
 5. Converting all elements to BEAST2's XML format
 
-## Requirements
+## Dependencies
 
 - Java 11 or higher
 - BEAST2 (for running the generated XML)
 - Maven (for building)
+- beastlauncher (for launching BEAST2 instances)
+
+The beastlauncher project provides infrastructure for launching BEAST2 instances from Java applications. It is a required dependency for running BEAST2Lang models directly without going through the XML generation step.
 
 ## License
 
