@@ -80,4 +80,3 @@ mvn install:install-file \
   -Dpackaging=jar
 
 echo "All BEAST2 dependencies installed successfully!"
-echo "You can now build the Codephy BEAST2 mapper with 'mvn clean package'"

@@ -195,14 +195,14 @@ public class Beast2Lang implements Callable<Integer> {
 
     @Command(name = "convert", description = "Convert between Beast2Lang and other formats")
     public Integer convert(
-            @Option(names = {"--from"}, description = "Source format: beast2, phylospec, lphy", defaultValue = "beast2") String fromFormat,
+            @Option(names = {"-i", "--input"}, description = "Input file", required = true) File inputFile,
+            @Option(names = {"--from"}, description = "Source format: beast2, phylospec, lphy, xml", defaultValue = "beast2") String fromFormat,
             @Option(names = {"--to"}, description = "Target format: beast2, phylospec, lphy, xml", defaultValue = "phylospec") String toFormat,
             @Option(names = {"-o", "--output"}, description = "Output file") File outputFile,
             @Option(names = {"--debug"}, description = "Enable debug logging", defaultValue = "false") boolean debug,
             @Option(names="--chainLength", defaultValue="10000000", description="Default MCMC chain length") long chainLength,
             @Option(names="--logEvery", defaultValue="1000", description="Default logging interval") int logEvery,
-            @Option(names="--traceFileName", defaultValue="trace.log", description="Default trace log file name") String traceFileName,
-            @Parameters(paramLabel = "FILE", description = "Input file to convert") File inputFile) {
+            @Option(names="--traceFileName", defaultValue="trace.log", description="Default trace log file name") String traceFileName) {
 
         // Set debug level if requested
         if (debug) {
@@ -417,7 +417,7 @@ public class Beast2Lang implements Callable<Integer> {
             return 1;
         }
     }
-
+    
     private void dumpModelStructure(Map<String, Object> objects) {
         System.out.println("\n----- MODEL STRUCTURE DUMP -----");
 
