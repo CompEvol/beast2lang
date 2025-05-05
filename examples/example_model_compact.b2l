@@ -11,7 +11,6 @@ Alignment alignment_data = nexus(file="primates.nex");
 
 RealParameter birthRate ~ LogNormalDistributionModel(M=1, S=1);
 Tree tree ~ YuleModel(birthDiffRate=birthRate, taxonset=alignment_data);
-
 JukesCantor jc = JukesCantor();
 
 @observed(data=alignment_data)
