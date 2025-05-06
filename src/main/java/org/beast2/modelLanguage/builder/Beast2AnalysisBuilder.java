@@ -6,21 +6,24 @@ import beast.base.evolution.alignment.Alignment;
 import beast.base.evolution.alignment.Taxon;
 import beast.base.evolution.alignment.TaxonSet;
 import beast.base.evolution.likelihood.TreeLikelihood;
-import beast.base.evolution.operator.*;
 import beast.base.evolution.tree.MRCAPrior;
 import beast.base.evolution.tree.Tree;
 import beast.base.evolution.tree.TreeInterface;
 import beast.base.evolution.tree.coalescent.ConstantPopulation;
 import beast.base.evolution.tree.coalescent.RandomTree;
 import beast.base.inference.*;
-import beast.base.inference.operator.DeltaExchangeOperator;
 import beast.base.inference.parameter.Parameter;
 import beast.base.inference.parameter.RealParameter;
 import org.beast2.modelLanguage.model.Beast2Analysis;
+import org.beast2.modelLanguage.operators.DefaultParameterOperator;
+import org.beast2.modelLanguage.operators.DefaultTreeOperator;
+import org.beast2.modelLanguage.operators.MCMCOperator;
 
 import java.util.*;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
+
+import static org.beast2.modelLanguage.BEASTObjectID.*;
 
 /**
  * Builds the BEAST2 MCMC run from a Beast2Analysis (model + defaults).
@@ -29,32 +32,9 @@ public class Beast2AnalysisBuilder {
 
     private static final Logger logger = Logger.getLogger(Beast2AnalysisBuilder.class.getName());
 
-    // BEAST2 object IDs
-    public static final String ID_PRIOR = "prior";
-    public static final String ID_LIKELIHOOD = "likelihood";
-    public static final String ID_POSTERIOR = "posterior";
-    public static final String ID_STATE = "state";
-    public static final String ID_MCMC = "mcmc";
-    public static final String ID_CONSOLE_LOGGER = "consoleLogger";
-    public static final String ID_FILE_LOGGER = "fileLogger";
-    public static final String ID_TREE_LOGGER = "treeLogger";
-
-    public static final String INPUT_STATE_NODE = "stateNode";
-    public static final String INPUT_PARAMETER = "parameter";
-    public static final String INPUT_WEIGHT = "weight";
-    public static final String INPUT_TREE = "tree";
-    public static final String INPUT_LOG_EVERY = "logEvery";
-    public static final String INPUT_LOG = "log";
-    public static final String INPUT_FILE_NAME = "fileName";
-    public static final String INPUT_MODE = "mode";
-    public static final String INPUT_CHAIN_LENGTH = "chainLength";
-    public static final String INPUT_STATE = "state";
-    public static final String INPUT_DISTRIBUTION = "distribution";
-    public static final String INPUT_OPERATOR = "operator";
-    public static final String INPUT_LOGGER = "logger";
-
     private final Beast2ModelBuilderReflection modelBuilder;
-    private final Map<String, Object> operatorCache = new HashMap<>();
+    // TODO: to Alexei : why Map<String, Object> not Map<String, Operator> ?
+    private final Map<String, Operator> operatorCache = new HashMap<>();
 
     public Beast2AnalysisBuilder(Beast2ModelBuilderReflection builder) {
         this.modelBuilder = builder;
@@ -541,12 +521,40 @@ public class Beast2AnalysisBuilder {
         return loggers;
     }
 
+
+
+    public boolean hasOperators(String key) {
+        return operatorCache.containsKey(key);
+    }
+
+    /**
+     * this key will be used by {@link Beast2AnalysisBuilder#hasOperators(String)}
+     */
+    public void addOperator(String key, Operator operator) {
+        operatorCache.put(key, operator);
+    }
+
+    public void clearOperatorCache() {
+        operatorCache.clear();
+    }
+
+    public void fine(String message) {
+        logger.fine(message);
+    }
+
+    public void warning(String message) {
+        logger.warning(message);
+    }
+
     /**
      * Set up MCMC operators.
      * Only creates operators for state nodes that are in the MCMC state.
      */
     private List<Operator> setupOperators() {
-        List<Operator> operators = new ArrayList<>();
+        // TODO hard code
+        MCMCOperator paramOpFactory = new DefaultParameterOperator(this);
+        MCMCOperator treeOpFactory = new DefaultTreeOperator(this);
+
         operatorCache.clear();
 
         // Get state nodes actually in the MCMC state
@@ -557,23 +565,25 @@ public class Beast2AnalysisBuilder {
             try {
                 if (stateNode instanceof Parameter && !(stateNode instanceof Tree)) {
                     Parameter param = (Parameter) stateNode;
-                    addParameterOperators(operators, param);
+                    // directly add to operatorCache
+                    paramOpFactory.addOperators(param);
 
                 } else if (stateNode instanceof Tree) {
                     Tree tree = (Tree) stateNode;
-                    addTreeOperators(operators, tree);
+                    // directly add to operatorCache
+                    treeOpFactory.addOperators(tree);
                 }
             } catch (Exception e) {
                 logger.warning("Could not create operators for " + stateNode.getID() + ": " + e.getMessage());
             }
         }
 
-        return operators;
+        return operatorCache.values().stream().toList();
     }
 
     /**
      * Add appropriate operators for a parameter.
-     */
+
     private void addParameterOperators(List<Operator> operators, Parameter param) {
         String paramID = param.getID();
 
@@ -607,7 +617,7 @@ public class Beast2AnalysisBuilder {
 
     /**
      * Add appropriate operators for a tree.
-     */
+
     private void addTreeOperators(List<Operator> operators, Tree tree) {
         String treeID = tree.getID();
 
@@ -671,7 +681,7 @@ public class Beast2AnalysisBuilder {
         } catch (Exception e) {
             logger.warning("Could not create operators for " + treeID + ": " + e.getMessage());
         }
-    }
+    }*/
 
     /**
      * Set up the likelihood distribution.
