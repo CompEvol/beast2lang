@@ -8,7 +8,7 @@ package org.beast2.modelLanguage.operators;
 public interface MCMCOperator<T> {
 
     /**
-     * @return add operators for that state node
+     * add operators for that state node
      */
     void addOperators(T input);
 
