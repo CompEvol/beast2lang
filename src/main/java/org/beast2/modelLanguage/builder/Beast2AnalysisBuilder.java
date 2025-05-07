@@ -3,7 +3,6 @@ package org.beast2.modelLanguage.builder;
 import beast.base.core.BEASTInterface;
 import beast.base.core.Input;
 import beast.base.evolution.alignment.Alignment;
-import beast.base.evolution.alignment.Taxon;
 import beast.base.evolution.alignment.TaxonSet;
 import beast.base.evolution.likelihood.TreeLikelihood;
 import beast.base.evolution.tree.MRCAPrior;
@@ -33,7 +32,6 @@ public class Beast2AnalysisBuilder {
     private static final Logger logger = Logger.getLogger(Beast2AnalysisBuilder.class.getName());
 
     private final Beast2ModelBuilderReflection modelBuilder;
-    // TODO: to Alexei : why Map<String, Object> not Map<String, Operator> ?
     private final Map<String, Operator> operatorCache = new HashMap<>();
 
     public Beast2AnalysisBuilder(Beast2ModelBuilderReflection builder) {
@@ -82,8 +80,7 @@ public class Beast2AnalysisBuilder {
 
             // Collect all MRCAPriors and organize them by tree
             for (Object obj : objects.values()) {
-                if (obj instanceof MRCAPrior) {
-                    MRCAPrior prior = (MRCAPrior) obj;
+                if (obj instanceof MRCAPrior prior) {
                     Tree priorTree = prior.treeInput.get();
                     if (priorTree != null) {
                         String treeId = priorTree.getID();
@@ -101,8 +98,7 @@ public class Beast2AnalysisBuilder {
 
             // Find TreeLikelihood objects to determine which alignment is used with which tree
             for (Object obj : objects.values()) {
-                if (obj instanceof TreeLikelihood) {
-                    TreeLikelihood likelihood = (TreeLikelihood) obj;
+                if (obj instanceof TreeLikelihood likelihood) {
                     TreeInterface tree = likelihood.treeInput.get();
                     Alignment data = likelihood.dataInput.get();
 
@@ -115,8 +111,7 @@ public class Beast2AnalysisBuilder {
 
             // Now create tree initializers for each tree
             for (Map.Entry<String, Object> entry : objects.entrySet()) {
-                if (entry.getValue() instanceof Tree) {
-                    Tree tree = (Tree) entry.getValue();
+                if (entry.getValue() instanceof Tree tree) {
                     String treeId = tree.getID();
 
                     // Find the alignment for this tree
@@ -258,95 +253,6 @@ public class Beast2AnalysisBuilder {
 
         logger.info("Total initializers found: " + initializers.size());
         return initializers;
-    }
-
-    /**
-     * Initialize a tree using RandomTree instead of manual construction
-     */
-    private void initializeWithRandomTree(Tree tree, Alignment alignment, String treeId) {
-        try {
-            // Get the tree's existing taxon set
-            TaxonSet taxonSet = tree.getTaxonset();
-
-            // If tree doesn't have a taxon set, try to find or create one
-            if (taxonSet == null) {
-                logger.info("No taxon set found for tree: " + treeId + ". Will try to find or create one.");
-
-                // Try to find taxon set from any tree likelihood that uses this tree
-                for (Object obj : modelBuilder.getAllObjects().values()) {
-                    if (obj instanceof TreeLikelihood) {
-                        TreeLikelihood likelihood = (TreeLikelihood) obj;
-                        if (likelihood.treeInput.get() == tree) {
-                            // Create taxon set from the alignment
-                            Alignment data = likelihood.dataInput.get();
-                            if (data != null) {
-                                List<String> taxaNames = data.getTaxaNames();
-                                taxonSet = new TaxonSet();
-                                taxonSet.setID(treeId + ".taxa");
-                                for (String taxName : taxaNames) {
-                                    Taxon taxon = new Taxon(taxName);
-                                    taxonSet.taxonsetInput.setValue(taxon, taxonSet);
-                                }
-                                // Store the taxon set in the tree
-                                tree.setInputValue("taxonset", taxonSet);
-                                modelBuilder.addObjectToModel(taxonSet.getID(), taxonSet);
-                                break;
-                            }
-                        }
-                    }
-                }
-
-                // If still no taxon set, we can't proceed
-                if (taxonSet == null) {
-                    logger.warning("Could not find or create taxon set for tree: " + treeId);
-                    return;
-                }
-            }
-
-            logger.info("Using taxon set with " + taxonSet.getTaxonCount() + " taxa for tree: " + treeId);
-
-            // Create constant population model
-            ConstantPopulation popModel = new ConstantPopulation();
-            String popModelId = "ConstantPopulation.t:" + treeId;
-            popModel.setID(popModelId);
-
-            // Create population size parameter
-            RealParameter popSize = new RealParameter();
-            String popSizeId = "randomPopSize.t:" + treeId;
-            popSize.setID(popSizeId);
-            popSize.initByName("value", "1.0");
-
-            // Add to the model
-            modelBuilder.addObjectToModel(popSizeId, popSize);
-
-            // Set up population model with the parameter
-            popModel.initByName("popSize", popSize);
-            modelBuilder.addObjectToModel(popModelId, popModel);
-
-            // Create and configure RandomTree
-            RandomTree randomTree = new RandomTree();
-            String randomTreeId = "RandomTree.t:" + treeId;
-            randomTree.setID(randomTreeId);
-
-            // Configure RandomTree with the tree's taxon set
-            randomTree.initByName(
-                    "taxa", taxonSet,
-                    "populationModel", popModel,
-                    "initial", tree,
-                    "estimate", false
-            );
-
-            // Add the RandomTree initializer to the model
-            modelBuilder.addObjectToModel(randomTreeId, randomTree);
-
-            // Initialize the tree
-            randomTree.initStateNodes();
-
-            logger.info("Successfully initialized tree using RandomTree: " + treeId);
-        } catch (Exception e) {
-            logger.warning("Failed to initialize tree with RandomTree: " + e.getMessage());
-            e.printStackTrace();
-        }
     }
 
     // Original filterTreeLikelihoods method unchanged
@@ -563,15 +469,16 @@ public class Beast2AnalysisBuilder {
         // Create operators only for state nodes that are in the state
         for (StateNode stateNode : stateNodes) {
             try {
-                if (stateNode instanceof Parameter && !(stateNode instanceof Tree)) {
+                if (stateNode instanceof Tree tree) {
+                    // directly add to operatorCache
+                    treeOpFactory.addOperators(tree);
+                } else if (stateNode instanceof Parameter) {
                     Parameter param = (Parameter) stateNode;
                     // directly add to operatorCache
                     paramOpFactory.addOperators(param);
 
-                } else if (stateNode instanceof Tree) {
-                    Tree tree = (Tree) stateNode;
-                    // directly add to operatorCache
-                    treeOpFactory.addOperators(tree);
+                } else {
+                    logger.warning("Unhandled stateNode in setupOperators " + stateNode.getID());
                 }
             } catch (Exception e) {
                 logger.warning("Could not create operators for " + stateNode.getID() + ": " + e.getMessage());
@@ -580,108 +487,6 @@ public class Beast2AnalysisBuilder {
 
         return operatorCache.values().stream().toList();
     }
-
-    /**
-     * Add appropriate operators for a parameter.
-
-    private void addParameterOperators(List<Operator> operators, Parameter param) {
-        String paramID = param.getID();
-
-        // Skip if we've already created operators for this parameter
-        if (operatorCache.containsKey(paramID + "Operator")) {
-            return;
-        }
-
-        try {
-            if (param.getDimension() > 1) {
-                // Use Delta Exchange operator for multidimensional parameters
-                DeltaExchangeOperator deltaOperator = new DeltaExchangeOperator();
-                deltaOperator.setID(paramID + "Operator");
-                deltaOperator.initByName(INPUT_PARAMETER, param, INPUT_WEIGHT, 1.0);
-                operators.add(deltaOperator);
-                operatorCache.put(paramID + "Operator", deltaOperator);
-                logger.fine("Added DeltaExchangeOperator for " + paramID);
-            } else {
-                // Use Scale operator for scalar parameters
-                ScaleOperator operator = new ScaleOperator();
-                operator.setID(paramID + "Operator");
-                operator.initByName(INPUT_PARAMETER, param, INPUT_WEIGHT, 1.0);
-                operators.add(operator);
-                operatorCache.put(paramID + "Operator", operator);
-                logger.fine("Added ScaleOperator for " + paramID);
-            }
-        } catch (Exception e) {
-            logger.warning("Could not create operator for " + paramID + ": " + e.getMessage());
-        }
-    }
-
-    /**
-     * Add appropriate operators for a tree.
-
-    private void addTreeOperators(List<Operator> operators, Tree tree) {
-        String treeID = tree.getID();
-
-        // Skip if we've already created operators for this tree
-        if (operatorCache.containsKey(treeID + "SubtreeSlide")) {
-            return;
-        }
-
-        try {
-            // SubtreeSlide operator
-            SubtreeSlide subtreeSlide = new SubtreeSlide();
-            subtreeSlide.setID(treeID + "SubtreeSlide");
-            subtreeSlide.initByName(INPUT_TREE, tree, INPUT_WEIGHT, 5.0);
-            operators.add(subtreeSlide);
-            operatorCache.put(treeID + "SubtreeSlide", subtreeSlide);
-
-            // Narrow Exchange operator
-            Exchange narrowExchange = new Exchange();
-            narrowExchange.setID(treeID + "NarrowExchange");
-            narrowExchange.initByName(INPUT_TREE, tree, INPUT_WEIGHT, 5.0, "isNarrow", true);
-            operators.add(narrowExchange);
-            operatorCache.put(treeID + "NarrowExchange", narrowExchange);
-
-            // Wide Exchange operator
-            Exchange wideExchange = new Exchange();
-            wideExchange.setID(treeID + "WideExchange");
-            wideExchange.initByName(INPUT_TREE, tree, INPUT_WEIGHT, 3.0, "isNarrow", false);
-            operators.add(wideExchange);
-            operatorCache.put(treeID + "WideExchange", wideExchange);
-
-            // Wilson-Balding operator
-            WilsonBalding wilsonBalding = new WilsonBalding();
-            wilsonBalding.setID(treeID + "WilsonBalding");
-            wilsonBalding.initByName(INPUT_TREE, tree, INPUT_WEIGHT, 3.0);
-            operators.add(wilsonBalding);
-            operatorCache.put(treeID + "WilsonBalding", wilsonBalding);
-
-            // Tree Scaler operator
-            ScaleOperator treeScaler = new ScaleOperator();
-            treeScaler.setID(treeID + "TreeScaler");
-            treeScaler.initByName(INPUT_TREE, tree, INPUT_WEIGHT, 3.0, "scaleFactor", 0.95);
-            operators.add(treeScaler);
-            operatorCache.put(treeID + "TreeScaler", treeScaler);
-
-            // Root Height Scaler operator
-            ScaleOperator rootHeightScaler = new ScaleOperator();
-            rootHeightScaler.setID(treeID + "RootHeightScaler");
-            rootHeightScaler.initByName(INPUT_TREE, tree, INPUT_WEIGHT, 3.0,
-                    "scaleFactor", 0.95, "rootOnly", true);
-            operators.add(rootHeightScaler);
-            operatorCache.put(treeID + "RootHeightScaler", rootHeightScaler);
-
-            // Uniform operator (for internal node heights)
-            Uniform uniform = new Uniform();
-            uniform.setID(treeID + "Uniform");
-            uniform.initByName(INPUT_TREE, tree, INPUT_WEIGHT, 30.0);
-            operators.add(uniform);
-            operatorCache.put(treeID + "Uniform", uniform);
-
-            logger.fine("Added 7 operators for tree " + treeID);
-        } catch (Exception e) {
-            logger.warning("Could not create operators for " + treeID + ": " + e.getMessage());
-        }
-    }*/
 
     /**
      * Set up the likelihood distribution.

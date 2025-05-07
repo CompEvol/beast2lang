@@ -199,7 +199,6 @@
 
                                     # Run the application using the generic launcher
                                     "$JAVA" -Dlauncher.wait.for.exit=true -Xss256m -Xmx4g \
-                                    -Dbeast.user.package.dir=user.pkgs \
                                     -DBEAST_PACKAGE_PATH="${BEAST_PACKAGE_PATH}" \
                                     -cp "$CP" beast.app.launcher.BeastGenericLauncher \
                                     --main org.beast2.modelLanguage.Beast2Lang "$@"
@@ -269,6 +268,8 @@
                 <version>3.13.0</version>
                 <configuration>
                     <release>${maven.compiler.release}</release>
+                    <source>16</source>
+                    <target>16</target>
                 </configuration>
             </plugin>
 
