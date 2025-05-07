@@ -9,10 +9,7 @@ import org.beast2.modelLanguage.builder.Beast2ModelBuilderReflection;
 import org.beast2.modelLanguage.builder.Beast2LangParserWithPhyloSpec;
 import org.beast2.modelLanguage.builder.Beast2LangParser;
 import org.beast2.modelLanguage.builder.Beast2LangParserImpl;
-import org.beast2.modelLanguage.converter.Beast2ModelWriter;
-import org.beast2.modelLanguage.converter.Beast2ToBeast2LangConverter;
-import org.beast2.modelLanguage.converter.Beast2ToPhyloSpecConverter;
-import org.beast2.modelLanguage.converter.PhyloSpecToBeast2Converter;
+import org.beast2.modelLanguage.converter.*;
 import org.beast2.modelLanguage.model.Beast2Model;
 import org.beast2.modelLanguage.model.Beast2Analysis;
 import org.beast2.modelLanguage.builder.Beast2AnalysisBuilder;
@@ -193,6 +190,59 @@ public class Beast2Lang implements Callable<Integer> {
         }
     }
 
+    @Command(name = "lphy", description = "Convert Beast2Lang to LinguaPhylo (LPHY)")
+    public Integer convertToLPHY(
+            @Option(names = {"-i", "--input"}, description = "Input Beast2Lang file", required = true) File inputFile,
+            @Option(names = {"-o", "--output"}, description = "Output LPHY file") File outputFile,
+            @Option(names = {"--debug"}, description = "Enable debug logging", defaultValue = "false") boolean debug) {
+
+        // Set debug level if requested
+        if (debug) {
+            java.util.logging.Logger rootLogger = java.util.logging.Logger.getLogger("");
+            rootLogger.setLevel(Level.FINE);
+            for (java.util.logging.Handler handler : rootLogger.getHandlers()) {
+                handler.setLevel(Level.FINE);
+            }
+        }
+
+        try {
+            System.out.println("Converting Beast2Lang to LPHY: " + inputFile.getPath());
+
+            // If output file is not specified, derive from input
+            if (outputFile == null) {
+                String baseName = inputFile.getName();
+                if (baseName.endsWith(".b2l")) {
+                    baseName = baseName.substring(0, baseName.length() - 4);
+                }
+                outputFile = new File(baseName + ".lphy");
+            }
+
+            // Create the converter
+            Beast2ToLPHYConverter converter = new Beast2ToLPHYConverter();
+
+            // Convert the file
+            converter.convertToFile(inputFile.getPath(), outputFile.getPath());
+
+            System.out.println("Beast2Lang file successfully converted to LPHY: " + outputFile);
+            return 0;
+
+        } catch (Exception e) {
+            System.err.println("Error converting Beast2Lang to LPHY: " + e.getMessage());
+
+            if (debug) {
+                e.printStackTrace();
+            } else {
+                // Print a more useful stack trace
+                StringWriter sw = new StringWriter();
+                PrintWriter pw = new PrintWriter(sw);
+                e.printStackTrace(pw);
+                logger.severe("Detailed error: " + sw.toString());
+            }
+
+            return 1;
+        }
+    }
+
     @Command(name = "convert", description = "Convert between Beast2Lang and other formats")
     public Integer convert(
             @Option(names = {"-i", "--input"}, description = "Input file", required = true) File inputFile,
@@ -220,6 +270,7 @@ public class Beast2Lang implements Callable<Integer> {
             Beast2ToPhyloSpecConverter toPhyloSpecConverter = new Beast2ToPhyloSpecConverter();
             PhyloSpecToBeast2Converter toBeast2Converter = new PhyloSpecToBeast2Converter();
             Beast2ModelBuilderReflection reflectionBuilder = new Beast2ModelBuilderReflection();
+            Beast2ToLPHYConverter toLPHYConverter = new Beast2ToLPHYConverter();
 
             // Perform conversion
             if ("beast2".equals(fromFormat) && "phylospec".equals(toFormat)) {
@@ -321,6 +372,15 @@ public class Beast2Lang implements Callable<Integer> {
                 writeOutput(outputFile, scriptContent);
                 System.out.println("BEAST2 XML file successfully converted to Beast2Lang script: " + outputFile);
                 return 0;
+            } else if ("beast2".equals(fromFormat) && "lphy".equals(toFormat)) {
+                // Convert Beast2Lang to LPHY
+                try {
+                    toLPHYConverter.convertToFile(inputFile.getPath(), outputFile.getPath());
+                    System.out.println("Beast2Lang file successfully converted to LPHY: " + outputFile);
+                    return 0;
+                } catch (IOException e) {
+                    throw new RuntimeException("Error converting to LPHY", e);
+                }
             } else if ("lphy".equals(fromFormat)) {
                 // Handle LinguaPhylo format conversion if needed
                 System.err.println("LinguaPhylo conversion not yet implemented");

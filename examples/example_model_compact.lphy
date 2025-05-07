@@ -1,10 +1,10 @@
 data {
-  alignment = readNexus(file="primates.nex");
+  alignment = readNexus(file=primates.nex);
 }
+
 model {
   birthRate ~ LogNormal(meanlog=1, sdlog=1);
-  tree ~ Yule(lambda=birthRate, taxa=alignment);
+  tree ~ Yule(lambda=birthRate, taxa=alignment_data);
   jc = jukesCantor();
-
-  alignment ~ PhyloCTMC(tree=tree, Q=jc, L=alignment.nchar());
+  alignment ~ phyloCTMC(tree=tree, Q=jc, L=alignment.nchar());
 }
