@@ -100,6 +100,7 @@ public class BEASTUtils {
         values.add(value != null ? value : 0.0);
         try {
             param.initByName("value", values);
+            param.initAndValidate();
             return param;
         } catch (Exception e) {
             logger.severe("Failed to create RealParameter: " + e.getMessage());

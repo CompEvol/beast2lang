@@ -3,6 +3,7 @@ package org.beast2.modelLanguage.builder.util;
 import beast.base.core.BEASTInterface;
 import beast.base.core.Input;
 import beast.base.evolution.alignment.Taxon;
+import beast.base.inference.parameter.RealParameter;
 
 import java.lang.reflect.*;
 import java.util.*;
@@ -422,19 +423,13 @@ public class AutoboxingRegistry {
         }
 
         @Override
-        public Object autobox(Object value, Type targetType, Map<String, Object> objectRegistry) throws Exception {
+        public Object autobox(Object value, Type targetType, Map<String, Object> objectRegistry) {
             Class<?> targetClass = TypeUtils.getRawType(targetType);
             return BEASTUtils.createParameterForType(value, targetClass);
         }
 
         private boolean isParameterType(Class<?> type) {
-            try {
-                Class<?> parameterClass = Class.forName("beast.base.inference.parameter.Parameter");
-                // Check if Parameter is assignable to the target type
-                return type.isAssignableFrom(parameterClass);
-            } catch (ClassNotFoundException e) {
-                return false;
-            }
+            return type.isAssignableFrom(beast.base.inference.parameter.Parameter.class);
         }
     }
 
@@ -597,18 +592,11 @@ public class AutoboxingRegistry {
         public Object autobox(Object value, Type targetType, Map<String, Object> objectRegistry) throws Exception {
             Double[] doubleArray = (Double[]) value;
 
-            // Convert to double[] (primitive array)
-            double[] primitiveArray = new double[doubleArray.length];
-            for (int i = 0; i < doubleArray.length; i++) {
-                primitiveArray[i] = doubleArray[i] != null ? doubleArray[i] : 0.0;
-            }
+            logger.info("Constructed real parameter from double array: " + Arrays.toString(doubleArray));
+            RealParameter realParameter = new RealParameter(doubleArray);
+            logger.info("  Dimension of realParameter is: " + realParameter.getDimension());
 
-            // Create RealParameter from the array
-            Class<?> realParamClass = Class.forName("beast.base.inference.parameter.RealParameter");
-            Constructor<?> constructor = realParamClass.getConstructor(double[].class);
-            Object realParam = constructor.newInstance((Object) primitiveArray);
-
-            return realParam;
+            return realParameter;
         }
     }
 
