@@ -177,9 +177,7 @@ public class DistributionAssignmentHandler extends BaseHandler {
                     // Store the prior and update prior list
                     objectRegistry.put(priorName, priorObject);
                     addDistributionForObject(varName, priorName, objectRegistry);
-
-                    initializeParameterFromDistribution(paramObject, priorObject);
-
+                    
                     return;
                 }
             } catch (ClassNotFoundException e) {
@@ -234,140 +232,46 @@ public class DistributionAssignmentHandler extends BaseHandler {
 
     /**
      * Initializes parameter values based on the associated distribution
-     * Handles both single and multi-dimensional distributions properly
      */
     private void initializeParameterFromDistribution(Object paramObject, Object priorObject) {
         // Input validation
-        if (paramObject == null || !(paramObject instanceof BEASTInterface) ||
+        if (paramObject == null || !(paramObject instanceof Parameter) ||
                 priorObject == null || !(priorObject instanceof beast.base.inference.distribution.Prior)) {
             return;
         }
 
-        BEASTInterface param = (BEASTInterface) paramObject;
+        Parameter<?> param = (Parameter<?>) paramObject;
         beast.base.inference.distribution.Prior prior = (beast.base.inference.distribution.Prior) priorObject;
         beast.base.inference.distribution.ParametricDistribution dist = prior.distInput.get();
 
         if (dist != null) {
-            try {
-                if (param instanceof beast.base.inference.parameter.RealParameter) {
-                    beast.base.inference.parameter.RealParameter realParam = (beast.base.inference.parameter.RealParameter) param;
-
-                    // Handle multi-dimensional distributions (like Dirichlet)
-                    if (dist instanceof beast.base.inference.distribution.Dirichlet dirichlet) {
-                        // For Dirichlet, initialize with equal values that sum to 1
-
-                        int dimension = dirichlet.alphaInput.get().getDimension();
-                        
-                        double equalValue = 1.0 / dimension;
-                        for (int i = 0; i < dimension; i++) {
-                            realParam.setValue(i, equalValue);
-                        }
-                        logger.info("Initialized Dirichlet parameter " + param.getID() +
-                                " with " + dimension + " equal values of " + equalValue);
-                    } else {
-                        int dimension = realParam.getDimension();
-
-                        // For other distributions, use the median value for all dimensions
-                        double median = dist.inverseCumulativeProbability(0.5);
-                        if (!Double.isNaN(median) && !Double.isInfinite(median)) {
-                            // Set median value for all dimensions
-                            for (int i = 0; i < dimension; i++) {
-                                realParam.setValue(i, median);
-                            }
-                            logger.info("Initialized parameter " + param.getID() +
-                                    " with median " + median + " from distribution");
-                        }
-                    }
-
-                    // Could add other distribution-specific initializations here as needed
-                }
-            } catch (Exception e) {
-                logger.warning("Failed to sample from distribution: " + e.getMessage());
+            if (ParameterInitializer.initializeParameter(param, dist)) {
+                logger.info("Successfully initialized parameter " + param.getID() + " from distribution");
             }
         }
     }
 
     /**
-     * Initializes parameter values based on the associated distribution
-     * Handles both single and multi-dimensional distributions properly
+     * Initializes parameter values based on the parametric distribution
      */
-    private void initializeParameterFromParametricDistribution(Parameter param, ParametricDistribution dist) {
-
-        if (dist != null) {
-            try {
-                if (param instanceof beast.base.inference.parameter.RealParameter) {
-                    beast.base.inference.parameter.RealParameter realParam = (beast.base.inference.parameter.RealParameter) param;
-
-                    // Handle multi-dimensional distributions (like Dirichlet)
-                    if (dist instanceof beast.base.inference.distribution.Dirichlet dirichlet) {
-                        // For Dirichlet, initialize with equal values that sum to 1
-
-                        int dimension = dirichlet.alphaInput.get().getDimension();
-
-                        double equalValue = 1.0 / dimension;
-                        Double[] values = new Double[dimension];
-
-                        Arrays.fill(values, equalValue);
-                        realParam.initByName("value", List.of(values));
-
-                        logger.info("Initialized Dirichlet parameter " + param.getID() +
-                                " with " + dimension + " equal values of " + equalValue);
-                    } else {
-                        int dimension = 1;
-
-                        // For other distributions, use the median value for all dimensions
-                        double median = dist.inverseCumulativeProbability(0.5);
-
-                        Double[] values = new Double[dimension];
-
-                        Arrays.fill(values, median);
-
-                        realParam.initByName("value", List.of(values));
-
-                        if (!Double.isNaN(median) && !Double.isInfinite(median)) {
-                            // Set median value for all dimensions
-                            for (int i = 0; i < dimension; i++) {
-                                realParam.setValue(i, median);
-                            }
-                            logger.info("Initialized parameter " + param.getID() +
-                                    " with median " + median + " from distribution");
-                        }
-                    }
-
-                    // Could add other distribution-specific initializations here as needed
-                }
-            } catch (Exception e) {
-                logger.warning("Failed to sample from distribution: " + e.getMessage());
+    private void initializeParameterFromParametricDistribution(Parameter<?> param, ParametricDistribution dist) {
+        if (dist != null && param != null) {
+            if (ParameterInitializer.initializeParameter(param, dist)) {
+                logger.info("Successfully initialized parameter " + param.getID() + " from parametric distribution");
             }
         }
     }
 
-    // Add this method to initialize RealParameter objects properly
+    /**
+     * Initialize RealParameter objects with default values
+     */
     private void initializeRealParameter(Object paramObject) {
-        if (!(paramObject instanceof BEASTInterface)) {
-            return;
-        }
+        if (paramObject instanceof RealParameter) {
+            RealParameter realParameter = (RealParameter) paramObject;
+            logger.info("Initializing real parameter " + realParameter.getID());
 
-        if (paramObject instanceof RealParameter realParameter) {
-
-            logger.info("Trying to initialize real parameter " + realParameter.getID());
-
-            if (realParameter.getDimension() == 1) {
-                try {
-                    // Initialize with a default value of 1.0 (a reasonable starting point)
-                    ((BEASTInterface)paramObject).initByName("value", List.of(0.5));
-                    logger.info("Initialized parameter with default value 0.5");
-                } catch (Exception e) {
-                    logger.warning("Failed to initialize parameter: " + e.getMessage());
-                }
-            } else {
-                ArrayList<Double> values = new ArrayList<>();
-                for (int i = 0; i < realParameter.getDimension(); i++) {
-                    values.add(1.0/ realParameter.getDimension());
-                }
-
-                ((BEASTInterface)paramObject).initByName("value", values);
-
+            if (ParameterInitializer.initializeRealParameterWithDefault(realParameter)) {
+                logger.info("Successfully initialized parameter with default values");
             }
         }
     }
