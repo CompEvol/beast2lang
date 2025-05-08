@@ -78,6 +78,15 @@ public class AutoboxingRegistry {
 
         // Rule 5: String array to Taxon list (more specific than general rule)
         addRule(new StringArrayToTaxonListRule());
+
+        // Rule 6: Double[] to RealParameter autoboxing
+        addRule(new DoubleArrayToRealParameterRule());
+
+        // Rule 7: RealParameter to Frequencies autoboxing
+        addRule(new RealParameterToFrequenciesRule());
+
+        // Rule 8: Direct Double[] to Frequencies autoboxing (combines Rules 6 and 7)
+        addRule(new DoubleArrayToFrequenciesRule());
     }
 
     /**
@@ -552,6 +561,133 @@ public class AutoboxingRegistry {
             }
 
             return null;
+        }
+    }
+
+    /**
+     * Enhanced rule for autoboxing Double[] to RealParameter or Function
+     */
+    public static class DoubleArrayToRealParameterRule implements AutoboxingRule {
+        @Override
+        public boolean canAutobox(Object value, Type targetType) {
+            // Check if value is a Double array
+            if (!(value instanceof Double[])) {
+                return false;
+            }
+
+            // Check if target is a RealParameter or Function
+            Class<?> targetClass = TypeUtils.getRawType(targetType);
+            if (targetClass == null) {
+                return false;
+            }
+
+            try {
+                Class<?> realParamClass = Class.forName("beast.base.inference.parameter.RealParameter");
+                Class<?> functionClass = Class.forName("beast.base.core.Function");
+
+                // Return true if target is either RealParameter or Function
+                return realParamClass.isAssignableFrom(targetClass) ||
+                        functionClass.isAssignableFrom(targetClass);
+            } catch (ClassNotFoundException e) {
+                return false;
+            }
+        }
+
+        @Override
+        public Object autobox(Object value, Type targetType, Map<String, Object> objectRegistry) throws Exception {
+            Double[] doubleArray = (Double[]) value;
+
+            // Convert to double[] (primitive array)
+            double[] primitiveArray = new double[doubleArray.length];
+            for (int i = 0; i < doubleArray.length; i++) {
+                primitiveArray[i] = doubleArray[i] != null ? doubleArray[i] : 0.0;
+            }
+
+            // Create RealParameter from the array
+            Class<?> realParamClass = Class.forName("beast.base.inference.parameter.RealParameter");
+            Constructor<?> constructor = realParamClass.getConstructor(double[].class);
+            Object realParam = constructor.newInstance((Object) primitiveArray);
+
+            return realParam;
+        }
+    }
+
+    /**
+     * Rule for autoboxing RealParameter to Frequencies
+     */
+    public static class RealParameterToFrequenciesRule implements AutoboxingRule {
+        @Override
+        public boolean canAutobox(Object value, Type targetType) {
+            try {
+                // Check if value is a RealParameter
+                Class<?> realParamClass = Class.forName("beast.base.inference.parameter.RealParameter");
+                if (!realParamClass.isAssignableFrom(value.getClass())) {
+                    return false;
+                }
+
+                // Check if target is Frequencies
+                Class<?> freqsClass = Class.forName("beast.base.evolution.substitutionmodel.Frequencies");
+                Class<?> targetClass = TypeUtils.getRawType(targetType);
+
+                return targetClass != null && freqsClass.isAssignableFrom(targetClass);
+            } catch (ClassNotFoundException e) {
+                return false;
+            }
+        }
+
+        @Override
+        public Object autobox(Object value, Type targetType, Map<String, Object> objectRegistry) throws Exception {
+            // Create Frequencies object
+            Class<?> freqsClass = Class.forName("beast.base.evolution.substitutionmodel.Frequencies");
+            Object freqs = freqsClass.getDeclaredConstructor().newInstance();
+
+            // Set frequencies input
+            BEASTInterface freqsObj = (BEASTInterface) freqs;
+            Input<?> freqsInput = freqsObj.getInput("frequencies");
+
+            if (freqsInput != null) {
+                BEASTUtils.setInputValue(freqsInput, value, freqsObj);
+                BEASTUtils.callInitAndValidate(freqs, freqsClass);
+                return freqs;
+            }
+
+            return null;
+        }
+    }
+
+    /**
+     * Rule for direct autoboxing Double[] to Frequencies (combines both rules)
+     */
+    public static class DoubleArrayToFrequenciesRule implements AutoboxingRule {
+        @Override
+        public boolean canAutobox(Object value, Type targetType) {
+            // Check if value is a Double array
+            if (!(value instanceof Double[])) {
+                return false;
+            }
+
+            // Check if target is Frequencies
+            try {
+                Class<?> freqsClass = Class.forName("beast.base.evolution.substitutionmodel.Frequencies");
+                Class<?> targetClass = TypeUtils.getRawType(targetType);
+
+                return targetClass != null && freqsClass.isAssignableFrom(targetClass);
+            } catch (ClassNotFoundException e) {
+                return false;
+            }
+        }
+
+        @Override
+        public Object autobox(Object value, Type targetType, Map<String, Object> objectRegistry) throws Exception {
+            // First convert Double[] to RealParameter
+            DoubleArrayToRealParameterRule paramRule = new DoubleArrayToRealParameterRule();
+            Object realParam = paramRule.autobox(value,
+                    Class.forName("beast.base.inference.parameter.RealParameter"),
+                    objectRegistry);
+
+            // Then convert RealParameter to Frequencies
+            RealParameterToFrequenciesRule freqRule = new RealParameterToFrequenciesRule();
+            return freqRule.autobox(realParam, targetType, objectRegistry);
         }
     }
 }
