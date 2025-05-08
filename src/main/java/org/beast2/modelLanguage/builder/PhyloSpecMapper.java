@@ -44,6 +44,7 @@ public class PhyloSpecMapper {
         DISTRIBUTION_MAP.put("Yule", "beast.base.evolution.speciation.YuleModel");
         DISTRIBUTION_MAP.put("BirthDeath", "beast.base.evolution.speciation.BirthDeathModel");
         DISTRIBUTION_MAP.put("Coalescent", "beast.base.evolution.tree.coalescent.Coalescent");
+        DISTRIBUTION_MAP.put("ConstantPopulation", "beast.base.evolution.tree.coalescent.ConstantPopulation");
 
         // Sequence models
         DISTRIBUTION_MAP.put("PhyloCTMC", "beast.base.evolution.likelihood.TreeLikelihood");
@@ -57,6 +58,7 @@ public class PhyloSpecMapper {
         DISTRIBUTION_MAP.put("WAG", "beast.base.evolution.substitutionmodel.WAG");
         DISTRIBUTION_MAP.put("JTT", "beast.base.evolution.substitutionmodel.JTT");
         DISTRIBUTION_MAP.put("LG", "beast.base.evolution.substitutionmodel.LG");
+        DISTRIBUTION_MAP.put("Frequencies", "beast.base.evolution.substitutionmodel.Frequencies");
 
         // Site models
         DISTRIBUTION_MAP.put("SiteModel", "beast.base.evolution.sitemodel.SiteModel");
