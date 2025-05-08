@@ -1,0 +1,27 @@
+import beast.base.inference.parameter.*;
+import beast.base.inference.distribution.*;
+import beast.base.evolution.tree.*;
+import beast.base.evolution.tree.coalescent.*;
+import beast.base.evolution.substitutionmodel.*;
+import beast.base.evolution.alignment.*;
+import beast.base.evolution.likelihood.*;
+import beast.base.evolution.branchratemodel.*;
+
+@data
+Alignment alignment_data = nexus(file="RSV2.nex");
+
+// TODO partitions
+
+RealParameter kappa ~ LogNormalDistributionModel(M=1, S=0.5);
+RealParameter freqs ~ Dirichlet(alpha=[2.0, 2.0, 2.0, 2.0]);
+HKY hky = HKY(kappa=kappa, frequencies=freqs);
+
+RealParameter theta ~ LogNormalDistributionModel(M=3, S=2);
+PopulationFunction popFunc = ConstantPopulation(popSize=theta);
+Tree tree ~ Coalescent(populationModel=popFunc);
+
+RealParameter clockRate ~ LogNormalDistributionModel(M=-5, S=1.25);
+StrictClockModel clockModel = StrictClockModel(clock.rate=clockRate);
+
+@observed(data=alignment_data)
+Alignment alignment ~ TreeLikelihood(tree=tree, siteModel=hky, branchRateModel=clockModel);
