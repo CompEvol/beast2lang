@@ -4,16 +4,21 @@ import beast.base.core.BEASTInterface;
 import beast.base.core.Input;
 import beast.base.evolution.likelihood.TreeLikelihood;
 import beast.base.evolution.tree.MRCAPrior;
+import beast.base.evolution.tree.TreeDistribution;
 import beast.base.inference.distribution.ParametricDistribution;
 import beast.base.inference.distribution.Prior;
-import beast.base.evolution.speciation.SpeciesTreeDistribution;
-
 import beast.base.inference.parameter.Parameter;
 import org.beast2.modelLanguage.builder.util.BEASTUtils;
-import org.beast2.modelLanguage.model.*;
+import org.beast2.modelLanguage.model.Argument;
+import org.beast2.modelLanguage.model.DistributionAssignment;
+import org.beast2.modelLanguage.model.Expression;
+import org.beast2.modelLanguage.model.FunctionCall;
 
 import java.lang.reflect.Type;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Handler for DistributionAssignment statements, responsible for creating BEAST2 objects
@@ -29,7 +34,8 @@ public class DistributionAssignmentHandler extends BaseHandler {
     // Initialize the map with known mappings
     static {
         CLASS_TO_ARGUMENT_INPUT.put(Prior.class, "x");
-        CLASS_TO_ARGUMENT_INPUT.put(SpeciesTreeDistribution.class, "tree");
+//        CLASS_TO_ARGUMENT_INPUT.put(SpeciesTreeDistribution.class, "tree");
+        CLASS_TO_ARGUMENT_INPUT.put(TreeDistribution.class, "tree");
         CLASS_TO_ARGUMENT_INPUT.put(MRCAPrior.class, "tree");
         CLASS_TO_ARGUMENT_INPUT.put(TreeLikelihood.class, "data");
     }
