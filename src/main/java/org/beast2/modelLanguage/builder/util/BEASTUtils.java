@@ -12,10 +12,7 @@ import org.beast2.modelLanguage.model.Expression;
 import org.beast2.modelLanguage.model.FunctionCall;
 
 import java.lang.reflect.*;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.logging.Logger;
 
 /**
@@ -354,56 +351,80 @@ public class BEASTUtils {
      * @param inputName   The name of the input
      * @return The expected Type for the input, or null if it cannot be determined
      */
+    /**
+     * Get the expected type for an Input field, properly handling nested generic types
+     */
     public static Type getInputExpectedType(Input<?> input, BEASTInterface beastObject, String inputName) {
         if (input == null) {
             return null;
         }
 
+        // Add debug logging
+        Logger logger = Logger.getLogger(BEASTUtils.class.getName());
+        logger.info("getInputExpectedType: Called for input '" + inputName +
+                "' on object of type " + beastObject.getClass().getName());
+
         // First try the direct approach to get raw class
         Class<?> rawType = input.getType();
         if (rawType != null) {
-            return rawType; // Return as Type
+            logger.info("getInputExpectedType: Raw type from input.getType(): " + rawType.getName());
         }
 
-        // Get the class containing this input
+        // Look for the field in the object's class and superclasses
         Class<?> clazz = beastObject.getClass();
-
-        // Use reflection to find the field and examine its generic type
         while (clazz != null) {
-            // Try to find the field in this class
             try {
                 for (Field field : clazz.getDeclaredFields()) {
-                    // Check if this is an Input field with the right name
+                    field.setAccessible(true);
                     if (Input.class.isAssignableFrom(field.getType())) {
-                        field.setAccessible(true);
-                        Input<?> fieldInput = (Input<?>) field.get(beastObject);
+                        try {
+                            Input<?> fieldInput = (Input<?>) field.get(beastObject);
+                            if (fieldInput != null &&
+                                    (fieldInput == input || fieldInput.getName().equals(inputName))) {
 
-                        // Confirm this is the input we're looking for
-                        if (fieldInput != null && fieldInput.getName().equals(inputName)) {
-                            // Extract the generic parameter from Input<T>
-                            Type genericType = field.getGenericType();
-                            if (genericType instanceof ParameterizedType) {
-                                ParameterizedType paramType = (ParameterizedType) genericType;
-                                Type[] typeArgs = paramType.getActualTypeArguments();
+                                Type genericType = field.getGenericType();
+                                logger.info("getInputExpectedType: Found field '" + field.getName() +
+                                        "' with generic type: " + genericType);
 
-                                if (typeArgs.length > 0) {
-                                    // Return the actual Type argument instead of trying to convert it to a Class
-                                    return typeArgs[0];
+                                if (genericType instanceof ParameterizedType) {
+                                    ParameterizedType paramType = (ParameterizedType) genericType;
+                                    logger.info("getInputExpectedType: It's a parameterized type with raw type: " +
+                                            paramType.getRawType());
+
+                                    Type[] typeArgs = paramType.getActualTypeArguments();
+                                    if (typeArgs.length > 0) {
+                                        logger.info("getInputExpectedType: First type arg: " + typeArgs[0]);
+
+                                        if (typeArgs[0] instanceof ParameterizedType) {
+                                            ParameterizedType nestedType = (ParameterizedType) typeArgs[0];
+                                            logger.info("getInputExpectedType: Nested parameterized type with raw type: " +
+                                                    nestedType.getRawType() + " and args: " +
+                                                    java.util.Arrays.toString(nestedType.getActualTypeArguments()));
+                                        }
+
+                                        return typeArgs[0];
+                                    }
                                 }
                             }
+                        } catch (Exception e) {
+                            logger.warning("getInputExpectedType: Error examining field: " + e.getMessage());
                         }
                     }
                 }
             } catch (Exception e) {
-                // Just log and continue searching in parent classes
-                logger.fine("Exception examining field in " + clazz.getName() + ": " + e.getMessage());
+                logger.warning("getInputExpectedType: Error getting fields: " + e.getMessage());
             }
 
-            // Move up to the parent class
             clazz = clazz.getSuperclass();
         }
 
-        // Could not determine the type
-        return null;
+        // If we couldn't find the type through reflection, use a fallback
+        if (rawType != null) {
+            return rawType;
+        }
+
+        logger.warning("getInputExpectedType: Could not determine expected type for input '" +
+                inputName + "', defaulting to Object.class");
+        return Object.class;
     }
 }

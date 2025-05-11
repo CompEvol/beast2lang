@@ -240,8 +240,17 @@ public class AutoboxingRegistry {
          * Check if a type represents a Collection
          */
         public static boolean isCollection(Type type) {
+            Logger logger = Logger.getLogger(TypeUtils.class.getName());
+            logger.info("TypeUtils.isCollection: Checking if " + type + " is a Collection");
+
             Class<?> rawType = getRawType(type);
-            return rawType != null && Collection.class.isAssignableFrom(rawType);
+            boolean result = rawType != null && Collection.class.isAssignableFrom(rawType);
+
+            logger.info("TypeUtils.isCollection: Raw type is " +
+                    (rawType != null ? rawType.getName() : "null") +
+                    ", result: " + result);
+
+            return result;
         }
 
         /**
@@ -281,19 +290,28 @@ public class AutoboxingRegistry {
         public boolean canAutobox(Object value, Type targetType) {
             // Check if value is an array
             if (value == null || !value.getClass().isArray()) {
+                logger.fine("Not an array: " + (value != null ? value.getClass().getName() : "null"));
                 return false;
             }
 
             // Check if target is a Collection
             if (!TypeUtils.isCollection(targetType)) {
+                logger.fine("Target is not a Collection: " + targetType);
                 return false;
             }
+
+            logger.info("ArrayToListAutoboxingRule checking: array of " +
+                    value.getClass().getComponentType().getName() +
+                    " to " + targetType);
 
             // Get element type of the collection
             Type targetElementType = TypeUtils.getCollectionElementType(targetType);
             if (targetElementType == null) {
+                logger.fine("Could not determine collection element type for " + targetType);
                 return false;
             }
+
+            logger.info("Collection element type: " + targetElementType);
 
             // Get element type of the array
             Class<?> arrayElementType = value.getClass().getComponentType();
@@ -303,19 +321,23 @@ public class AutoboxingRegistry {
 
             // Return true if array elements can be directly assigned to the list
             if (targetElementClass != null && targetElementClass.isAssignableFrom(arrayElementType)) {
+                logger.info("Direct assignment possible: " + arrayElementType.getName() +
+                        " to " + targetElementClass.getName());
                 return true;
             }
 
-            // Also check if there's an autoboxing rule for array elements to collection elements
-            // This allows for more complex conversions
+            // Check for autoboxing rules for array elements
             if (Array.getLength(value) > 0) {
                 for (AutoboxingRule rule : getInstance().rules) {
                     if (rule != this && rule.canAutobox(Array.get(value, 0), targetElementType)) {
+                        logger.info("Element autoboxing possible with rule: " +
+                                rule.getClass().getSimpleName());
                         return true;
                     }
                 }
             }
 
+            logger.fine("Cannot autobox array to collection");
             return false;
         }
 

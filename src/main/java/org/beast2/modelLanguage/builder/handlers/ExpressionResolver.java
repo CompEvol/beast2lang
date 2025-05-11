@@ -22,6 +22,9 @@ public class ExpressionResolver {
     /**
      * Resolve an Expression to its corresponding value
      */
+    /**
+     * Resolve an Expression to its corresponding value
+     */
     public static Object resolveValue(Expression expr, Map<String, Object> objectRegistry) {
         if (expr == null) {
             return null;
@@ -34,6 +37,9 @@ public class ExpressionResolver {
         } else if (expr instanceof Literal) {
             // Literal value
             return ((Literal) expr).getValue();
+        } else if (expr instanceof ArrayLiteral) {
+            // Handle array literals
+            return resolveArrayLiteral((ArrayLiteral) expr, objectRegistry);
         } else if (expr instanceof FunctionCall) {
             // Nested function call - create a new object
             return createNestedObject((FunctionCall) expr, objectRegistry);
@@ -43,6 +49,91 @@ public class ExpressionResolver {
         }
 
         return null;
+    }
+
+    /**
+     * Resolve an array literal to an array of objects
+     */
+    public static Object resolveArrayLiteral(ArrayLiteral arrayLiteral, Map<String, Object> objectRegistry) {
+        logger.info("Resolving array literal with " + arrayLiteral.getElements().size() + " elements");
+
+        // Get all elements
+        java.util.List<Expression> elements = arrayLiteral.getElements();
+        if (elements.isEmpty()) {
+            return new Object[0]; // Empty array
+        }
+
+        // Resolve all elements
+        Object[] values = new Object[elements.size()];
+        for (int i = 0; i < elements.size(); i++) {
+            values[i] = resolveValue(elements.get(i), objectRegistry);
+        }
+
+        // Determine component type from values
+        Class<?> componentType = determineComponentType(values);
+        logger.info("Determined component type: " + componentType.getName());
+
+        // Create and fill properly typed array
+        Object typedArray = java.lang.reflect.Array.newInstance(componentType, values.length);
+        for (int i = 0; i < values.length; i++) {
+            Object value = values[i];
+
+            // Convert numeric types if needed
+            if (componentType == Double.class && value instanceof Number) {
+                value = ((Number) value).doubleValue();
+            } else if (componentType == Integer.class && value instanceof Number) {
+                value = ((Number) value).intValue();
+            }
+
+            java.lang.reflect.Array.set(typedArray, i, value);
+        }
+
+        logger.info("Created array of type " + typedArray.getClass().getName());
+        return typedArray;
+    }
+
+    /**
+     * Determine the most specific common component type for an array of values
+     */
+    private static Class<?> determineComponentType(Object[] values) {
+        if (values.length == 0) {
+            return Object.class;
+        }
+
+        // Check if all elements are numbers
+        boolean allNumbers = true;
+        for (Object value : values) {
+            if (!(value instanceof Number)) {
+                allNumbers = false;
+                break;
+            }
+        }
+
+        // For numeric arrays, prefer Double
+        if (allNumbers) {
+            return Double.class;
+        }
+
+        // Otherwise, try to find common superclass
+        Class<?> commonType = values[0] != null ? values[0].getClass() : Object.class;
+        for (int i = 1; i < values.length; i++) {
+            if (values[i] == null) {
+                continue;
+            }
+
+            Class<?> valueClass = values[i].getClass();
+            if (!commonType.isAssignableFrom(valueClass)) {
+                if (valueClass.isAssignableFrom(commonType)) {
+                    commonType = valueClass;
+                } else {
+                    // Find nearest common superclass
+                    commonType = Object.class;
+                    break;
+                }
+            }
+        }
+
+        return commonType;
     }
 
     public static Object resolveValueWithAutoboxing(Expression expr, Map<String, Object> objectRegistry, Type targetType) {
