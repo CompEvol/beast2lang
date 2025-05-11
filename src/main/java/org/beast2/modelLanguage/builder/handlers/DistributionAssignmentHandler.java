@@ -5,6 +5,7 @@ import beast.base.core.Input;
 import beast.base.evolution.likelihood.TreeLikelihood;
 import beast.base.evolution.tree.MRCAPrior;
 import beast.base.evolution.tree.TreeDistribution;
+import beast.base.evolution.tree.coalescent.Coalescent;
 import beast.base.inference.distribution.ParametricDistribution;
 import beast.base.inference.distribution.Prior;
 import beast.base.inference.parameter.Parameter;
@@ -14,6 +15,7 @@ import org.beast2.modelLanguage.model.Argument;
 import org.beast2.modelLanguage.model.DistributionAssignment;
 import org.beast2.modelLanguage.model.Expression;
 import org.beast2.modelLanguage.model.FunctionCall;
+import org.beast2.modelLanguage.builder.util.AutoboxingRegistry;
 
 import java.lang.reflect.Type;
 import java.util.*;
@@ -32,6 +34,7 @@ public class DistributionAssignmentHandler extends BaseHandler {
     // Initialize the map with known mappings
     static {
         CLASS_TO_ARGUMENT_INPUT.put(Prior.class, "x");
+        CLASS_TO_ARGUMENT_INPUT.put(Coalescent.class, "treeIntervals");
         CLASS_TO_ARGUMENT_INPUT.put(TreeDistribution.class, "tree");
         CLASS_TO_ARGUMENT_INPUT.put(MRCAPrior.class, "tree");
         CLASS_TO_ARGUMENT_INPUT.put(TreeLikelihood.class, "data");
@@ -44,6 +47,13 @@ public class DistributionAssignmentHandler extends BaseHandler {
         super(DistributionAssignmentHandler.class.getName());
     }
 
+    /**
+     * Determines the input name for the primary parameter that a distribution is defined over.
+     *
+     * @param distribution The distribution object for which to find the primary parameter input name
+     * @return The name of the input that should receive the primary parameter (the "x" in p(x | y, z)),
+     *         or null if no matching input is found
+     */
     private String getArgumentInputName(Object distribution) {
         // Log what we're trying to match
         logger.info("Finding argument input name for: " + distribution.getClass().getName());
@@ -74,6 +84,63 @@ public class DistributionAssignmentHandler extends BaseHandler {
 
         logger.warning("No matching argument input name found for: " + distribution.getClass().getName());
         return null;
+    }
+
+    /**
+     * Connects a primary parameter to a distribution or likelihood object with proper autoboxing.
+     *
+     * @param primaryObject The primary parameter/data object to connect
+     * @param targetObject The distribution/likelihood object to connect to
+     * @param objectRegistry The registry of objects
+     * @return true if the connection was successful, false otherwise
+     */
+    private boolean connectPrimaryParameter(Object primaryObject, Object targetObject,
+                                            Map<String, Object> objectRegistry) {
+        if (!(targetObject instanceof BEASTInterface)) {
+            logger.warning("Target object is not a BEASTInterface");
+            return false;
+        }
+
+        // Find the appropriate input name
+        String inputName = getArgumentInputName(targetObject);
+        if (inputName == null) {
+            logger.warning("Could not determine input name for " + targetObject.getClass().getSimpleName());
+            return false;
+        }
+
+        // Get the input
+        BEASTInterface targetInterface = (BEASTInterface) targetObject;
+        Input<?> input = targetInterface.getInput(inputName);
+        if (input == null) {
+            logger.warning("Could not find input '" + inputName + "' in " +
+                    targetObject.getClass().getSimpleName());
+            return false;
+        }
+
+        try {
+            logger.info("Connecting " + primaryObject.getClass().getSimpleName() +
+                    " to " + targetObject.getClass().getSimpleName() +
+                    " via input '" + inputName + "'");
+
+            // Get expected type for the input
+            Type expectedType = BEASTUtils.getInputExpectedType(input, targetInterface, inputName);
+
+            // Check if autoboxing is needed
+            Object valueToSet = primaryObject;
+            if (!AutoboxingRegistry.isDirectlyAssignable(primaryObject, expectedType)) {
+                // Apply autoboxing if needed
+                valueToSet = AutoboxingRegistry.getInstance().autobox(primaryObject, expectedType, objectRegistry);
+                logger.info("Autoboxed parameter from " + primaryObject.getClass().getSimpleName() +
+                        " to " + (valueToSet != null ? valueToSet.getClass().getSimpleName() : "null"));
+            }
+
+            // Now set the input with proper autoboxing
+            BEASTUtils.setInputValue(input, valueToSet, targetInterface);
+            return true;
+        } catch (Exception e) {
+            logger.warning("Failed to connect parameter: " + e.getMessage());
+            return false;
+        }
     }
 
     /**
@@ -371,20 +438,13 @@ public class DistributionAssignmentHandler extends BaseHandler {
 
         // Connect data to likelihood
         String inputName = getArgumentInputName(likelihoodObject);
-        boolean dataConnected = false;
 
-        if (inputName != null) {
-            Input<?> input = likelihoodInputMap.get(inputName);
-            if (input != null) {
-                try {
-                    BEASTUtils.setInputValue(input, dataObject, (BEASTInterface) likelihoodObject);
-                    dataConnected = true;
-                } catch (Exception e) {
-                    logger.warning("Failed to connect data to input: " + e.getMessage());
-                }
-            }
+        // Connect data to likelihood
+        boolean dataConnected = connectPrimaryParameter(dataObject, likelihoodObject, objectRegistry);
+        if (!dataConnected) {
+            logger.warning("Could not connect data to likelihood");
         }
-
+        
         // Configure function call arguments
         for (Argument arg : funcCall.getArguments()) {
             String name = arg.getName();
@@ -438,27 +498,11 @@ public class DistributionAssignmentHandler extends BaseHandler {
         }
 
         // THEN connect parameter to distribution
-        String inputName = getArgumentInputName(distObject);
-        boolean parameterConnected = false;
-
-        if (inputName != null && distObject instanceof BEASTInterface) {
-            Input<?> input = ((BEASTInterface) distObject).getInput(inputName);
-            if (input != null) {
-                try {
-                    logger.info("Connecting " + paramObject.getClass().getSimpleName() +
-                            " to " + distObject.getClass().getSimpleName() +
-                            " via input '" + inputName + "'");
-                    BEASTUtils.setInputValue(input, paramObject, (BEASTInterface) distObject);
-                    parameterConnected = true;
-                } catch (Exception e) {
-                    logger.warning("Failed to connect parameter: " + e.getMessage());
-                }
-            } else {
-                logger.warning("Could not find input '" + inputName + "' in " +
-                        distObject.getClass().getSimpleName());
-            }
+        boolean parameterConnected = connectPrimaryParameter(paramObject, distObject, objectRegistry);
+        if (!parameterConnected) {
+            logger.warning("Could not connect parameter to distribution");
         }
-
+        
         // Initialize distribution object
         BEASTUtils.callInitAndValidate(distObject, distObject.getClass());
     }

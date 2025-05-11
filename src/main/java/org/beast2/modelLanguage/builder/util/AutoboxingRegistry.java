@@ -62,31 +62,16 @@ public class AutoboxingRegistry {
      * Initialize default autoboxing rules
      */
     private void initializeDefaultRules() {
-        // General array to list autoboxing rule (add this first as it's most general)
         addRule(new ArrayToListAutoboxingRule());
+        addRule(new TreeToTreeIntervalsRule());
 
-        // Rule 1: Literal to Parameter autoboxing
         addRule(new LiteralToParameterRule());
-
-        // Rule 2: ParametricDistribution to Prior autoboxing
         addRule(new ParametricDistributionToPriorRule());
-
-        // Rule 3: SubstitutionModel to SiteModel autoboxing
         addRule(new SubstitutionModelToSiteModelRule());
-
-        // Rule 4: Alignment to TaxonSet autoboxing
         addRule(new AlignmentToTaxonSetRule());
-
-        // Rule 5: String array to Taxon list (more specific than general rule)
         addRule(new StringArrayToTaxonListRule());
-
-        // Rule 6: Double[] to RealParameter autoboxing
         addRule(new DoubleArrayToRealParameterRule());
-
-        // Rule 7: RealParameter to Frequencies autoboxing
         addRule(new RealParameterToFrequenciesRule());
-
-        // Rule 8: Direct Double[] to Frequencies autoboxing (combines Rules 6 and 7)
         addRule(new DoubleArrayToFrequenciesRule());
     }
 
@@ -698,6 +683,59 @@ public class AutoboxingRegistry {
             // Then convert RealParameter to Frequencies
             RealParameterToFrequenciesRule freqRule = new RealParameterToFrequenciesRule();
             return freqRule.autobox(realParam, targetType, objectRegistry);
+        }
+    }
+
+    /**
+     * Rule for autoboxing Tree to TreeIntervals
+     */
+    public static class TreeToTreeIntervalsRule implements AutoboxingRule {
+        @Override
+        public boolean canAutobox(Object value, Type targetType) {
+            try {
+                // Check if value is a Tree or TreeInterface
+                Class<?> treeClass = Class.forName("beast.base.evolution.tree.Tree");
+                Class<?> treeInterfaceClass = Class.forName("beast.base.evolution.tree.TreeInterface");
+                if (!(treeClass.isInstance(value) || treeInterfaceClass.isInstance(value))) {
+                    return false;
+                }
+
+                // Check if target is TreeIntervals
+                Class<?> treeIntervalsClass = Class.forName("beast.base.evolution.tree.TreeIntervals");
+                Class<?> targetClass = TypeUtils.getRawType(targetType);
+
+                return targetClass != null && treeIntervalsClass.isAssignableFrom(targetClass);
+            } catch (ClassNotFoundException e) {
+                return false;
+            }
+        }
+
+        @Override
+        public Object autobox(Object value, Type targetType, Map<String, Object> objectRegistry) throws Exception {
+            try {
+                // Create TreeIntervals object
+                Class<?> treeIntervalsClass = Class.forName("beast.base.evolution.tree.TreeIntervals");
+                Object treeIntervals = treeIntervalsClass.getDeclaredConstructor().newInstance();
+
+                // Set the tree on the TreeIntervals
+                BEASTInterface treeIntervalsInterface = (BEASTInterface) treeIntervals;
+                Input<?> treeInput = treeIntervalsInterface.getInput("tree");
+
+                if (treeInput != null) {
+                    // Connect the tree to the TreeIntervals
+                    BEASTUtils.setInputValue(treeInput, value, treeIntervalsInterface);
+
+                    // Initialize the TreeIntervals object
+                    BEASTUtils.callInitAndValidate(treeIntervals, treeIntervalsClass);
+
+                    return treeIntervals;
+                }
+
+                return null;
+            } catch (Exception e) {
+                logger.warning("Error creating TreeIntervals: " + e.getMessage());
+                return null;
+            }
         }
     }
 }
