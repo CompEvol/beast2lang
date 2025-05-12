@@ -2,13 +2,13 @@ package org.beast2.modelLanguage.builder.handlers;
 
 import beast.base.core.BEASTInterface;
 import beast.base.core.Input;
+import beast.pkgmgmt.BEASTClassLoader;
 import org.beast2.modelLanguage.builder.util.AutoboxingRegistry;
 import org.beast2.modelLanguage.builder.util.BEASTUtils;
-import org.beast2.modelLanguage.model.*;
+import org.beast2.modelLanguage.model.Argument;
+import org.beast2.modelLanguage.model.Expression;
 
-import java.lang.reflect.Field;
 import java.lang.reflect.Type;
-import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
 
@@ -40,7 +40,7 @@ public abstract class BaseHandler {
      * Load a class by name
      */
     protected Class<?> loadClass(String className) throws ClassNotFoundException {
-        return Class.forName(className);
+        return BEASTClassLoader.forName(className);
     }
 
     /**

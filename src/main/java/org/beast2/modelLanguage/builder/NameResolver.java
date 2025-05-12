@@ -1,13 +1,9 @@
 package org.beast2.modelLanguage.builder;
 
+import beast.pkgmgmt.BEASTClassLoader;
 import org.beast2.modelLanguage.model.ImportStatement;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.logging.Logger;
 
 /**
@@ -108,7 +104,7 @@ public class NameResolver {
 
         try {
             // Use a less aggressive class loading approach that doesn't initialize the class
-            Class.forName(className, false, getClass().getClassLoader());
+            BEASTClassLoader.forName(className);
             return true;
         } catch (ClassNotFoundException e) {
             return false;

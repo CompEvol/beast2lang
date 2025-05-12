@@ -6,8 +6,9 @@ import beast.base.evolution.substitutionmodel.*;
 import beast.base.evolution.alignment.*;
 import beast.base.evolution.likelihood.*;
 import beast.base.evolution.branchratemodel.*;
+import feast.fileio.*;
 
-
+// TODO use feast
 Alignment alignment_data = nexus(file="RSV2.nex");
 @data
 Alignment codon1 = FilteredAlignment(data=alignment_data, filter="3-629\3");
@@ -18,15 +19,28 @@ Alignment codon3 = FilteredAlignment(data=alignment_data, filter="2-629\3");
 @data
 TaxonSet taxa = TaxonSet(alignment=alignment_data);
 
-RealParameter kappa ~ LogNormalDistributionModel(M=1, S=0.5);
-Double[] alpha = [2.0, 2.0, 2.0, 2.0];
-RealParameter freqs ~ Dirichlet(alpha=alpha);
-HKY hky = HKY(kappa=kappa, frequencies=freqs);
+// the earliest AUSA2s61=41.0
+TraitSet traitSet = TraitSetFromTaxonSet(delimiter="s", everythingAfterLast="true", traitname="date", dateFormat="yy", taxa=taxa);
+
+//TODO another issue
+Tree tree = Tree(trait=traitSet, taxonset=taxa);
+
+// unlink subst models
+RealParameter kappa1 ~ LogNormalDistributionModel(M=1, S=0.5);
+RealParameter freqs1 ~ Dirichlet(alpha=[2.0, 2.0, 2.0, 2.0]);
+HKY hky1 = HKY(kappa=kappa1, frequencies=freqs1);
+
+RealParameter kappa2 ~ LogNormalDistributionModel(M=1, S=0.5);
+RealParameter freqs2 ~ Dirichlet(alpha=[2.0, 2.0, 2.0, 2.0]);
+HKY hky2 = HKY(kappa=kappa2, frequencies=freqs2);
+
+RealParameter kappa3 ~ LogNormalDistributionModel(M=1, S=0.5);
+RealParameter freqs3 ~ Dirichlet(alpha=[2.0, 2.0, 2.0, 2.0]);
+HKY hky3 = HKY(kappa=kappa3, frequencies=freqs3);
 
 // link tree
 RealParameter theta ~ LogNormalDistributionModel(M=3, S=2);
 PopulationFunction popFunc = ConstantPopulation(popSize=theta);
-// TODO TreeIntervals ?
 Tree tree ~ Coalescent(populationModel=popFunc, taxonset=taxa);
 
 // link clock model
@@ -34,8 +48,8 @@ RealParameter clockRate ~ LogNormalDistributionModel(M=-5, S=1.25);
 StrictClockModel clockModel = StrictClockModel(clock.rate=clockRate);
 
 @observed(data=codon1)
-Alignment codon1 ~ TreeLikelihood(tree=tree, siteModel=hky, branchRateModel=clockModel);
+Alignment codon1 ~ TreeLikelihood(siteModel=hky1, tree=tree, branchRateModel=clockModel);
 @observed(data=codon2)
-Alignment codon2 ~ TreeLikelihood(tree=tree, siteModel=hky, branchRateModel=clockModel);
+Alignment codon2 ~ TreeLikelihood(siteModel=hky2, tree=tree, branchRateModel=clockModel);
 @observed(data=codon3)
-Alignment codon3 ~ TreeLikelihood(tree=tree, siteModel=hky, branchRateModel=clockModel);
+Alignment codon3 ~ TreeLikelihood(siteModel=hky3, tree=tree, branchRateModel=clockModel);
