@@ -5,15 +5,23 @@ grammar Beast2ModelLanguage;
 
 // Parser Rules
 program
-    : importStatement* statement+ EOF
+    : (importStatement | requiresStatement)* statement+ EOF
     ;
 
 importStatement
     : IMPORT importName SEMICOLON
     ;
 
+requiresStatement
+    : REQUIRES packageName SEMICOLON
+    ;
+
 importName
     : qualifiedName (DOT STAR)?
+    ;
+
+packageName
+    : identifier
     ;
 
 statement
@@ -123,6 +131,7 @@ DOT         : '.';
 AT          : '@';
 STAR        : '*';
 IMPORT      : 'import';
+REQUIRES    : 'requires';
 NEXUS       : 'nexus';
 
 BOOLEAN_LITERAL

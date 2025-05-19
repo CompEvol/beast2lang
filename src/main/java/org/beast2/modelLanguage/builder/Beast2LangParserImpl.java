@@ -13,7 +13,7 @@ import java.util.logging.Logger;
 
 /**
  * Implementation of Beast2LangParser that uses ANTLR to parse Beast2Lang syntax.
- * This implementation has been updated to support @data and @observed annotations.
+ * This implementation has been updated to handle the new 'requires' statement.
  */
 public class Beast2LangParserImpl implements Beast2LangParser {
 

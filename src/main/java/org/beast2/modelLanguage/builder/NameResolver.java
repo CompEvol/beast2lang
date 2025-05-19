@@ -8,6 +8,7 @@ import java.util.logging.Logger;
 
 /**
  * Resolves short class names to fully qualified names based on import statements.
+ * Enhanced to support 'requires' statements for BEAST2 packages.
  */
 public class NameResolver {
 
@@ -23,6 +24,7 @@ public class NameResolver {
     private final Map<String, String> explicitImports;
     private final List<String> wildcardImports;
     private final Map<String, String> resolvedCache;
+    private final Set<String> processedPackages;
 
     /**
      * Constructor that initializes empty import collections
@@ -31,6 +33,7 @@ public class NameResolver {
         this.explicitImports = new HashMap<>();
         this.wildcardImports = new ArrayList<>();
         this.resolvedCache = new HashMap<>();
+        this.processedPackages = new HashSet<>();
     }
 
     /**
@@ -73,6 +76,71 @@ public class NameResolver {
     public void addWildcardImport(String packageName) {
         wildcardImports.add(packageName);
         logger.fine("Added wildcard import: " + packageName + ".*");
+    }
+
+    /**
+     * Add all BEASTInterface classes from a required package.
+     * This method is called when processing a 'requires' statement.
+     *
+     * @param packageName the BEAST2 package name to require
+     */
+    public void addRequiredPackage(String packageName) {
+        if (processedPackages.contains(packageName)) {
+            logger.fine("Package already processed: " + packageName);
+            return;
+        }
+
+        processedPackages.add(packageName);
+        logger.info("Processing required package: " + packageName);
+
+        // Try different package patterns for BEAST2 packages
+        String[] packagePatterns = {
+                "beast." + packageName,
+                packageName + ".beast",
+                packageName,
+                "beast.evolution." + packageName,
+                "beast.base." + packageName
+        };
+
+        boolean foundAnyPackage = false;
+
+        // Try each pattern to find a valid package
+        for (String pattern : packagePatterns) {
+            // Add as a wildcard import
+            wildcardImports.add(pattern);
+            logger.info("Added wildcard import for required package: " + pattern);
+
+            // Check if the pattern resolves to any known BEAST classes
+            if (packageContainsAnyBeastClasses(pattern)) {
+                foundAnyPackage = true;
+                logger.info("Found BEAST2 classes in package: " + pattern);
+            }
+        }
+
+        if (!foundAnyPackage) {
+            logger.warning("Could not locate any BEAST2 classes in package: " + packageName);
+        }
+    }
+
+    /**
+     * Check if a package contains any known BEAST2 classes
+     */
+    private boolean packageContainsAnyBeastClasses(String packageName) {
+        // Common class name patterns in BEAST2 packages
+        String[] commonClassPatterns = {
+                "Model", "Distribution", "Likelihood", "Parameter", "Plugin",
+                "Operator", "Logger", "Util", "Factory", "Processor"
+        };
+
+        for (String pattern : commonClassPatterns) {
+            String className = packageName + "." + pattern;
+            if (classExists(className)) {
+                logger.fine("Found BEAST2 class: " + className);
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

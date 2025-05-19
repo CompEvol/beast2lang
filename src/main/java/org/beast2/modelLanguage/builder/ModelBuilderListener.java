@@ -13,7 +13,7 @@ import java.util.logging.Logger;
 /**
  * ANTLR listener for building a Beast2Model from a parse tree.
  * This implementation supports the @data and @observed annotations,
- * as well as the built-in nexus() function.
+ * the built-in nexus() function, and the new requires statement.
  */
 public class ModelBuilderListener extends Beast2ModelLanguageBaseListener {
 
@@ -41,6 +41,19 @@ public class ModelBuilderListener extends Beast2ModelLanguageBaseListener {
         model.addImport(importStmt);
 
         logger.fine("Added import: " + importStmt);
+    }
+
+    /**
+     * Handle requires statements
+     */
+    @Override
+    public void exitRequiresStatement(Beast2ModelLanguageParser.RequiresStatementContext ctx) {
+        String packageName = ctx.packageName().identifier().getText();
+
+        RequiresStatement requiresStmt = new RequiresStatement(packageName);
+        model.addRequires(requiresStmt);
+
+        logger.info("Added requires statement for package: " + packageName);
     }
 
     /**
