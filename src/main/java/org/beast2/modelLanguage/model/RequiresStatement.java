@@ -5,15 +5,15 @@ package org.beast2.modelLanguage.model;
  * all BEASTInterface classes from a specified BEAST2 package.
  */
 public class RequiresStatement {
-    private final String packageName;
+    private final String pluginName;
 
     /**
      * Constructor for a requires statement
      *
-     * @param packageName the name of the BEAST2 package to import
+     * @param pluginName the name of the BEAST2 package to import
      */
-    public RequiresStatement(String packageName) {
-        this.packageName = packageName;
+    public RequiresStatement(String pluginName) {
+        this.pluginName = pluginName;
     }
 
     /**
@@ -21,8 +21,8 @@ public class RequiresStatement {
      *
      * @return the package name
      */
-    public String getPackageName() {
-        return packageName;
+    public String getPluginName() {
+        return pluginName;
     }
 
     /**
@@ -30,6 +30,6 @@ public class RequiresStatement {
      */
     @Override
     public String toString() {
-        return "requires " + packageName + ";";
+        return "requires " + pluginName + ";";
     }
 }

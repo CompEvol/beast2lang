@@ -73,6 +73,10 @@ public class ReflectionBeast2ObjectFactory implements Beast2ObjectFactory, State
         // Process imports
         processImports(model.getImports());
 
+        // Process requires statements first to ensure proper class loading
+        // before creating any objects
+        processRequiresStatements(model);
+
         // Phase 1: Create all objects by visiting all statements
         model.accept(this);
 
@@ -87,6 +91,18 @@ public class ReflectionBeast2ObjectFactory implements Beast2ObjectFactory, State
 
         // Phase 5: Find and return the root object
         return findRootObject();
+    }
+
+    /**
+     * Process all requires statements to load necessary BEAST packages
+     */
+    private void processRequiresStatements(Beast2Model model) {
+        for (Statement stmt : model.getStatements()) {
+            if (stmt instanceof RequiresStatement) {
+                RequiresStatement requiresStmt = (RequiresStatement) stmt;
+                visit(requiresStmt);
+            }
+        }
     }
 
     @Override
@@ -133,6 +149,24 @@ public class ReflectionBeast2ObjectFactory implements Beast2ObjectFactory, State
         logger.info("Found " + randomVariables.size() + " random variables");
         logger.info("Found " + observedVariables.size() + " observed variables");
         logger.info("Found " + dataAnnotatedVars.size() + " data-annotated variables");
+    }
+
+    /**
+     * Handle RequiresStatement statements
+     */
+    public void visit(RequiresStatement requiresStmt) {
+        try {
+            String pluginName = requiresStmt.getPluginName();
+            logger.info("Processing requires statement for BEAST package: " + pluginName);
+
+            // Add the required package to the name resolver for proper class resolution
+            nameResolver.addRequiredPackage(pluginName);
+
+            logger.info("Added required BEAST package: " + pluginName);
+        } catch (Exception e) {
+            logger.severe("Error processing requires statement: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 
     /**

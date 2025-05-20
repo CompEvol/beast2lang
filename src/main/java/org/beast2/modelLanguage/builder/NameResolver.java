@@ -1,6 +1,7 @@
 package org.beast2.modelLanguage.builder;
 
 import beast.pkgmgmt.BEASTClassLoader;
+import beast.pkgmgmt.PackageManager;
 import org.beast2.modelLanguage.model.ImportStatement;
 
 import java.util.*;
@@ -79,68 +80,47 @@ public class NameResolver {
     }
 
     /**
-     * Add all BEASTInterface classes from a required package.
+     * Add all BEASTInterface classes from a required BEAST plugin.
      * This method is called when processing a 'requires' statement.
      *
-     * @param packageName the BEAST2 package name to require
+     * @param pluginName the BEAST2 plugin name to require (e.g., "SNAPP", "ORC")
      */
-    public void addRequiredPackage(String packageName) {
-        if (processedPackages.contains(packageName)) {
-            logger.fine("Package already processed: " + packageName);
+    public void addRequiredPackage(String pluginName) {
+        if (processedPackages.contains(pluginName)) {
+            logger.fine("BEAST plugin already processed: " + pluginName);
             return;
         }
 
-        processedPackages.add(packageName);
-        logger.info("Processing required package: " + packageName);
+        processedPackages.add(pluginName);
+        logger.info("Processing required BEAST plugin: " + pluginName);
 
-        // Try different package patterns for BEAST2 packages
-        String[] packagePatterns = {
-                "beast." + packageName,
-                packageName + ".beast",
-                packageName,
-                "beast.evolution." + packageName,
-                "beast.base." + packageName
-        };
+        // Search for BEASTInterface classes directly in the plugin
+        List<String> beastClasses = PackageManager.find("beast.base.core.BEASTInterface", pluginName);
 
-        boolean foundAnyPackage = false;
-
-        // Try each pattern to find a valid package
-        for (String pattern : packagePatterns) {
-            // Add as a wildcard import
-            wildcardImports.add(pattern);
-            logger.info("Added wildcard import for required package: " + pattern);
-
-            // Check if the pattern resolves to any known BEAST classes
-            if (packageContainsAnyBeastClasses(pattern)) {
-                foundAnyPackage = true;
-                logger.info("Found BEAST2 classes in package: " + pattern);
+        if (beastClasses != null && !beastClasses.isEmpty()) {
+            // Get the unique Java packages from the found classes
+            Set<String> javaPackages = new HashSet<>();
+            for (String className : beastClasses) {
+                int lastDot = className.lastIndexOf('.');
+                if (lastDot > 0) {
+                    String javaPackage = className.substring(0, lastDot);
+                    javaPackages.add(javaPackage);
+                }
             }
-        }
 
-        if (!foundAnyPackage) {
-            logger.warning("Could not locate any BEAST2 classes in package: " + packageName);
-        }
-    }
-
-    /**
-     * Check if a package contains any known BEAST2 classes
-     */
-    private boolean packageContainsAnyBeastClasses(String packageName) {
-        // Common class name patterns in BEAST2 packages
-        String[] commonClassPatterns = {
-                "Model", "Distribution", "Likelihood", "Parameter", "Plugin",
-                "Operator", "Logger", "Util", "Factory", "Processor"
-        };
-
-        for (String pattern : commonClassPatterns) {
-            String className = packageName + "." + pattern;
-            if (classExists(className)) {
-                logger.fine("Found BEAST2 class: " + className);
-                return true;
+            // Add wildcard imports for each Java package found
+            for (String javaPackage : javaPackages) {
+                wildcardImports.add(javaPackage);
+                logger.info("Added wildcard import for Java package: " + javaPackage);
             }
+
+            logger.info("Found " + beastClasses.size() + " BEAST2 classes in plugin: " + pluginName);
+            return;
         }
 
-        return false;
+        // If no BEASTInterface classes were found, log a warning
+        logger.warning("Could not locate any BEASTInterface classes in plugin: " + pluginName);
+
     }
 
     /**

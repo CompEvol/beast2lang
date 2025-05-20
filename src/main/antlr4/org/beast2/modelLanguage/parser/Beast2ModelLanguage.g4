@@ -13,15 +13,15 @@ importStatement
     ;
 
 requiresStatement
-    : REQUIRES packageName SEMICOLON
+    : REQUIRES pluginName SEMICOLON
     ;
 
 importName
     : qualifiedName (DOT STAR)?
     ;
 
-packageName
-    : identifier
+pluginName
+    : IDENTIFIER (DOT IDENTIFIER)*   // Allow periods for plugin names like "BEAST.base"
     ;
 
 statement

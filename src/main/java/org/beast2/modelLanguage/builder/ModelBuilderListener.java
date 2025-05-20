@@ -48,7 +48,7 @@ public class ModelBuilderListener extends Beast2ModelLanguageBaseListener {
      */
     @Override
     public void exitRequiresStatement(Beast2ModelLanguageParser.RequiresStatementContext ctx) {
-        String packageName = ctx.packageName().identifier().getText();
+        String packageName = ctx.pluginName().getText();
 
         RequiresStatement requiresStmt = new RequiresStatement(packageName);
         model.addRequires(requiresStmt);
