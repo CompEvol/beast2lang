@@ -94,6 +94,9 @@ public class NameResolver {
         processedPackages.add(pluginName);
         logger.info("Processing required BEAST plugin: " + pluginName);
 
+        PackageManager.
+
+
         // Search for BEASTInterface classes directly in the plugin
         List<String> beastClasses = PackageManager.find("beast.base.core.BEASTInterface", pluginName);
 

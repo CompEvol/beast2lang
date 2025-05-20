@@ -60,7 +60,7 @@ public class ReflectionBeast2ObjectFactory implements Beast2ObjectFactory, State
     }
 
     @Override
-    public Object buildFromModel(Beast2Model model) throws Exception {
+    public Object buildFromModel(Beast2Model model) {
         logger.info("Building BEAST2 objects from model...");
 
         // Clear any existing objects
@@ -97,11 +97,8 @@ public class ReflectionBeast2ObjectFactory implements Beast2ObjectFactory, State
      * Process all requires statements to load necessary BEAST packages
      */
     private void processRequiresStatements(Beast2Model model) {
-        for (Statement stmt : model.getStatements()) {
-            if (stmt instanceof RequiresStatement) {
-                RequiresStatement requiresStmt = (RequiresStatement) stmt;
-                visit(requiresStmt);
-            }
+        for (RequiresStatement stmt : model.getRequires()) {
+            visit(stmt);
         }
     }
 
