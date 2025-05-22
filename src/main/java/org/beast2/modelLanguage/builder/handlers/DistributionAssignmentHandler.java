@@ -298,27 +298,6 @@ public class DistributionAssignmentHandler extends BaseHandler {
     }
 
     /**
-     * Initializes parameter values based on the associated distribution
-     */
-    private void initializeParameterFromDistribution(Object paramObject, Object priorObject) {
-        // Input validation
-        if (paramObject == null || !(paramObject instanceof Parameter) ||
-                priorObject == null || !(priorObject instanceof beast.base.inference.distribution.Prior)) {
-            return;
-        }
-
-        Parameter<?> param = (Parameter<?>) paramObject;
-        beast.base.inference.distribution.Prior prior = (beast.base.inference.distribution.Prior) priorObject;
-        beast.base.inference.distribution.ParametricDistribution dist = prior.distInput.get();
-
-        if (dist != null) {
-            if (ParameterInitializer.initializeParameter(param, dist)) {
-                logger.info("Successfully initialized parameter " + param.getID() + " from distribution");
-            }
-        }
-    }
-
-    /**
      * Initializes parameter values based on the parametric distribution
      */
     private void initializeParameterFromParametricDistribution(Parameter<?> param, ParametricDistribution dist) {
