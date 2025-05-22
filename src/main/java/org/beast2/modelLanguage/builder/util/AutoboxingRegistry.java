@@ -3,6 +3,7 @@ package org.beast2.modelLanguage.builder.util;
 import beast.base.core.BEASTInterface;
 import beast.base.core.Input;
 import beast.base.evolution.alignment.Taxon;
+import beast.base.inference.parameter.IntegerParameter;
 import beast.base.inference.parameter.RealParameter;
 
 import java.lang.reflect.*;
@@ -71,6 +72,7 @@ public class AutoboxingRegistry {
         addRule(new AlignmentToTaxonSetRule());
         addRule(new StringArrayToTaxonListRule());
         addRule(new DoubleArrayToRealParameterRule());
+        addRule(new IntegerArrayToIntegerParameterRule());
         addRule(new RealParameterToFrequenciesRule());
         addRule(new DoubleArrayToFrequenciesRule());
     }
@@ -604,6 +606,48 @@ public class AutoboxingRegistry {
             logger.info("  Dimension of realParameter is: " + realParameter.getDimension());
 
             return realParameter;
+        }
+    }
+
+    /**
+     * Rule for autoboxing Integer[] to IntegerParameter
+     */
+    public static class IntegerArrayToIntegerParameterRule implements AutoboxingRule {
+        @Override
+        public boolean canAutobox(Object value, Type targetType) {
+            // Check if value is an Integer array
+            if (!(value instanceof Integer[])) {
+                return false;
+            }
+
+            // Check if target is an IntegerParameter
+            Class<?> targetClass = TypeUtils.getRawType(targetType);
+            if (targetClass == null) {
+                return false;
+            }
+
+            try {
+                Class<?> integerParamClass = Class.forName("beast.base.inference.parameter.IntegerParameter");
+
+                // Return true if target is IntegerParameter
+                return integerParamClass.isAssignableFrom(targetClass);
+            } catch (ClassNotFoundException e) {
+                return false;
+            }
+        }
+
+        @Override
+        public Object autobox(Object value, Type targetType, Map<String, Object> objectRegistry) throws Exception {
+            Integer[] integerArray = (Integer[]) value;
+
+            logger.info("Constructed integer parameter from integer array: " + Arrays.toString(integerArray));
+
+            // Create IntegerParameter directly (assuming it has a constructor like RealParameter)
+            IntegerParameter integerParameter = new IntegerParameter(integerArray);
+
+            logger.info("  Dimension of integerParameter is: " + integerParameter.getDimension());
+
+            return integerParameter;
         }
     }
 

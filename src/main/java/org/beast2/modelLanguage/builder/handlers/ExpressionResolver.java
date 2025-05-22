@@ -109,9 +109,28 @@ public class ExpressionResolver {
             }
         }
 
-        // For numeric arrays, prefer Double
+        // For numeric arrays, determine the most appropriate numeric type
         if (allNumbers) {
-            return Double.class;
+            boolean allIntegers = true;
+
+            for (Object value : values) {
+                Number num = (Number) value;
+
+                // If it's already a Double or Float, keep it as Double
+                if (num instanceof Double || num instanceof Float) {
+                    allIntegers = false;
+                    break;
+                } else if (num instanceof Long) {
+                    long longVal = num.longValue();
+                    if (longVal > Integer.MAX_VALUE || longVal < Integer.MIN_VALUE) {
+                        allIntegers = false;
+                        break;
+                    }
+                }
+                // Integer, Short, Byte are already within integer range
+            }
+
+            return allIntegers ? Integer.class : Double.class;
         }
 
         // Otherwise, try to find common superclass
@@ -120,7 +139,6 @@ public class ExpressionResolver {
             if (values[i] == null) {
                 continue;
             }
-
             Class<?> valueClass = values[i].getClass();
             if (!commonType.isAssignableFrom(valueClass)) {
                 if (valueClass.isAssignableFrom(commonType)) {
@@ -132,7 +150,6 @@ public class ExpressionResolver {
                 }
             }
         }
-
         return commonType;
     }
 
