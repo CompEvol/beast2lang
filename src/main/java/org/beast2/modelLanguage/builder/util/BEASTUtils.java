@@ -361,13 +361,13 @@ public class BEASTUtils {
 
         // Add debug logging
         Logger logger = Logger.getLogger(BEASTUtils.class.getName());
-        logger.info("getInputExpectedType: Called for input '" + inputName +
+        logger.fine("getInputExpectedType: Called for input '" + inputName +
                 "' on object of type " + beastObject.getClass().getName());
 
         // First try the direct approach to get raw class
         Class<?> rawType = input.getType();
         if (rawType != null) {
-            logger.info("getInputExpectedType: Raw type from input.getType(): " + rawType.getName());
+            logger.fine("getInputExpectedType: Raw type from input.getType(): " + rawType.getName());
         }
 
         // Look for the field in the object's class and superclasses
@@ -382,28 +382,32 @@ public class BEASTUtils {
                             if (fieldInput != null &&
                                     (fieldInput == input || fieldInput.getName().equals(inputName))) {
 
-                                Type genericType = field.getGenericType();
-                                logger.info("getInputExpectedType: Found field '" + field.getName() +
-                                        "' with generic type: " + genericType);
+                                try {
+                                    Type genericType = field.getGenericType();
+                                    logger.fine("getInputExpectedType: Found field '" + field.getName() +
+                                            "' with generic type: " + genericType);
 
-                                if (genericType instanceof ParameterizedType) {
-                                    ParameterizedType paramType = (ParameterizedType) genericType;
-                                    logger.info("getInputExpectedType: It's a parameterized type with raw type: " +
-                                            paramType.getRawType());
+                                    if (genericType instanceof ParameterizedType) {
+                                        ParameterizedType paramType = (ParameterizedType) genericType;
+                                        logger.fine("getInputExpectedType: It's a parameterized type with raw type: " +
+                                                paramType.getRawType());
 
-                                    Type[] typeArgs = paramType.getActualTypeArguments();
-                                    if (typeArgs.length > 0) {
-                                        logger.info("getInputExpectedType: First type arg: " + typeArgs[0]);
+                                        Type[] typeArgs = paramType.getActualTypeArguments();
+                                        if (typeArgs.length > 0) {
+                                            logger.fine("getInputExpectedType: First type arg: " + typeArgs[0]);
 
-                                        if (typeArgs[0] instanceof ParameterizedType) {
-                                            ParameterizedType nestedType = (ParameterizedType) typeArgs[0];
-                                            logger.info("getInputExpectedType: Nested parameterized type with raw type: " +
-                                                    nestedType.getRawType() + " and args: " +
-                                                    java.util.Arrays.toString(nestedType.getActualTypeArguments()));
+                                            if (typeArgs[0] instanceof ParameterizedType) {
+                                                ParameterizedType nestedType = (ParameterizedType) typeArgs[0];
+                                                logger.fine("getInputExpectedType: Nested parameterized type with raw type: " +
+                                                        nestedType.getRawType() + " and args: " +
+                                                        java.util.Arrays.toString(nestedType.getActualTypeArguments()));
+                                            }
+
+                                            return typeArgs[0];
                                         }
-
-                                        return typeArgs[0];
                                     }
+                                } catch (NoClassDefFoundError err) {
+                                    return Object.class;
                                 }
                             }
                         } catch (Exception e) {
