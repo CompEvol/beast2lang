@@ -1,11 +1,7 @@
 package org.beast2.modelLanguage.builder.handlers;
 
-import beast.base.core.BEASTInterface;
-import beast.base.core.Input;
-import beast.base.inference.parameter.Parameter;
 import org.beast2.modelLanguage.builder.NameResolver;
 import org.beast2.modelLanguage.builder.util.AutoboxingRegistry;
-import org.beast2.modelLanguage.builder.util.BEASTUtils;
 import org.beast2.modelLanguage.model.*;
 
 import java.lang.reflect.Array;
@@ -14,7 +10,7 @@ import java.util.Map;
 import java.util.logging.Logger;
 
 /**
- * Handler for VariableDeclaration statements, responsible for creating BEAST2 objects.
+ * Handler for VariableDeclaration statements, responsible for creating model objects.
  */
 public class VariableDeclarationHandler extends BaseHandler {
 
@@ -54,11 +50,10 @@ public class VariableDeclarationHandler extends BaseHandler {
         }
 
         // Handle function calls
-        if (!(value instanceof FunctionCall)) {
+        if (!(value instanceof FunctionCall funcCall)) {
             throw new IllegalArgumentException("Value must be a function call, literal, array literal, or nexus function");
         }
 
-        FunctionCall funcCall = (FunctionCall) value;
         String implementationClassName = funcCall.getClassName();
 
         // Load and check classes
@@ -71,14 +66,14 @@ public class VariableDeclarationHandler extends BaseHandler {
             );
         }
 
-        // Create and configure the object
-        Object beastObject = instantiateClass(implementationClass);
-        BEASTUtils.setObjectId(beastObject, implementationClass, variableName);
-        Map<String, Input<?>> inputMap = BEASTUtils.buildInputMap(beastObject, implementationClass);
-        configureInputs(beastObject, funcCall, inputMap, objectRegistry);
-        BEASTUtils.callInitAndValidate(beastObject, implementationClass);
+        // Create and configure the object using factory
+        Object modelObject = factory.createObject(implementationClassName, variableName);
 
-        return beastObject;
+        // Configure using factory method
+        factory.configureFromFunctionCall(modelObject, funcCall, objectRegistry);
+        factory.initAndValidate(modelObject);
+
+        return modelObject;
     }
 
     /**
@@ -90,11 +85,8 @@ public class VariableDeclarationHandler extends BaseHandler {
         Class<?> declaredType;
         try {
             declaredType = loadClass(declaredTypeName);
-            if (!beast.base.evolution.alignment.Alignment.class.isAssignableFrom(declaredType)) {
-                throw new ClassCastException(
-                        "nexus() function must be assigned to Alignment or a subclass, not " + declaredTypeName
-                );
-            }
+            // Check if it's an alignment type - we'll need to add a method to factory for this
+            // For now, we'll just proceed
         } catch (ClassNotFoundException e) {
             logger.warning("Class not found: " + declaredTypeName);
             throw new ClassNotFoundException("Declared type not found: " + declaredTypeName);
@@ -102,11 +94,16 @@ public class VariableDeclarationHandler extends BaseHandler {
 
         // Use the NexusFunctionHandler to process the nexus function
         NexusFunctionHandler handler = new NexusFunctionHandler();
-        beast.base.evolution.alignment.Alignment alignment = handler.processFunction(nexusFunction, objectRegistry);
+        Object alignment = handler.processFunction(nexusFunction, objectRegistry);
 
         // Set the ID if it wasn't set by the handler
-        if (alignment.getID() == null || alignment.getID().isEmpty()) {
-            alignment.setID(variableName);
+        try {
+            String currentId = factory.getID(alignment);
+            if (currentId == null || currentId.isEmpty()) {
+                factory.setID(alignment, variableName);
+            }
+        } catch (Exception e) {
+            logger.warning("Could not set ID on alignment: " + e.getMessage());
         }
 
         // Store the object in the registry with the variable name
@@ -121,7 +118,6 @@ public class VariableDeclarationHandler extends BaseHandler {
      */
     private Object handleArrayLiteral(String declaredTypeName, String variableName,
                                       ArrayLiteral arrayLiteral, Map<String, Object> objectRegistry) throws Exception {
-        // Implementation not changed
         // Check if this is an array type
         if (!declaredTypeName.endsWith("[]")) {
             throw new IllegalArgumentException("Expected array type for array literal, got: " + declaredTypeName);
@@ -131,7 +127,7 @@ public class VariableDeclarationHandler extends BaseHandler {
         String componentTypeName = declaredTypeName.substring(0, declaredTypeName.length() - 2);
 
         // Use NameResolver instance to resolve the component type name
-        NameResolver resolver = new NameResolver();  // Use an empty resolver - it will use fallbacks
+        NameResolver resolver = new NameResolver();
         String resolvedComponentTypeName = resolver.resolveClassName(componentTypeName);
 
         try {
@@ -150,22 +146,22 @@ public class VariableDeclarationHandler extends BaseHandler {
                 // For primitive component types, we need additional conversion
                 if (componentClass.isPrimitive()) {
                     if (componentClass == int.class) {
-                        Array.setInt(array, i, BEASTUtils.convertToInteger(resolvedValue));
+                        Array.setInt(array, i, factory.convertToInteger(resolvedValue));
                     } else if (componentClass == double.class) {
-                        Array.setDouble(array, i, BEASTUtils.convertToDouble(resolvedValue));
+                        Array.setDouble(array, i, factory.convertToDouble(resolvedValue));
                     } else if (componentClass == boolean.class) {
-                        Array.setBoolean(array, i, BEASTUtils.convertToBoolean(resolvedValue));
+                        Array.setBoolean(array, i, factory.convertToBoolean(resolvedValue));
                     } else if (componentClass == byte.class) {
-                        Array.setByte(array, i, (byte) BEASTUtils.convertToInteger(resolvedValue));
+                        Array.setByte(array, i, (byte) factory.convertToInteger(resolvedValue));
                     } else if (componentClass == char.class) {
                         char charValue = resolvedValue != null ? resolvedValue.toString().charAt(0) : '\0';
                         Array.setChar(array, i, charValue);
                     } else if (componentClass == short.class) {
-                        Array.setShort(array, i, (short) BEASTUtils.convertToInteger(resolvedValue));
+                        Array.setShort(array, i, (short) factory.convertToInteger(resolvedValue));
                     } else if (componentClass == long.class) {
-                        Array.setLong(array, i, (long) BEASTUtils.convertToInteger(resolvedValue));
+                        Array.setLong(array, i, (long) factory.convertToInteger(resolvedValue));
                     } else if (componentClass == float.class) {
-                        Array.setFloat(array, i, (float) BEASTUtils.convertToDouble(resolvedValue));
+                        Array.setFloat(array, i, (float) factory.convertToDouble(resolvedValue));
                     }
                 } else {
                     // For object types, check if the value is assignable to the component type
@@ -185,43 +181,6 @@ public class VariableDeclarationHandler extends BaseHandler {
         } catch (ClassNotFoundException e) {
             throw new ClassNotFoundException("Could not find component class: " + componentTypeName +
                     " (resolved as " + resolvedComponentTypeName + ")", e);
-        }
-    }
-
-    /**
-     * Configure inputs for the BEAST object
-     */
-    private void configureInputs(Object object, FunctionCall funcCall, Map<String, Input<?>> inputMap,
-                                 Map<String, Object> objectRegistry) throws Exception {
-        if (!(object instanceof BEASTInterface)) {
-            return;
-        }
-
-        BEASTInterface beastObject = (BEASTInterface) object;
-
-        for (Argument arg : funcCall.getArguments()) {
-            String name = arg.getName();
-            Input<?> input = inputMap.get(name);
-
-            if (input == null) {
-                throw new RuntimeException("No input named '" + name + "' found");
-            }
-
-            // Resolve the value (without autoboxing first)
-            Object resolvedValue = ExpressionResolver.resolveValue(arg.getValue(), objectRegistry);
-
-            Type expectedType = BEASTUtils.getInputExpectedType(input,beastObject,name);
-
-            // Apply autoboxing if needed
-            Object autoboxedValue = AutoboxingRegistry.getInstance().autobox(resolvedValue, expectedType, objectRegistry);
-
-            // Set the input value
-            try {
-                BEASTUtils.setInputValue(input, autoboxedValue, beastObject);
-            } catch (Exception e) {
-                logger.warning("Error setting input '" + name + "': " + e.getMessage());
-                throw e;
-            }
         }
     }
 }

@@ -1,10 +1,7 @@
 package org.beast2.modelLanguage.builder.handlers;
 
-import beast.base.core.BEASTInterface;
-import beast.base.core.Input;
-import beast.pkgmgmt.BEASTClassLoader;
-import org.beast2.modelLanguage.builder.util.AutoboxingRegistry;
-import org.beast2.modelLanguage.builder.util.BEASTUtils;
+import org.beast2.modelLanguage.builder.ObjectFactory;
+import org.beast2.modelLanguage.builder.BeastObjectFactoryImpl;
 import org.beast2.modelLanguage.model.Argument;
 import org.beast2.modelLanguage.model.Expression;
 
@@ -13,20 +10,27 @@ import java.util.Map;
 import java.util.logging.Logger;
 
 /**
- * Base handler class providing common functionality for all BEAST2 object handlers.
+ * Base handler class providing common functionality for all model object handlers.
+ * Uses ObjectFactory interface to remain independent of BEAST2 framework details.
+ *
+ * @author Alexei Drummond
  */
 public abstract class BaseHandler {
     protected final Logger logger;
+    protected final ObjectFactory factory;
 
     /**
      * Constructor with logger name
+     *
+     * @param loggerName Name for the logger
      */
     protected BaseHandler(String loggerName) {
         this.logger = Logger.getLogger(loggerName);
+        this.factory = new BeastObjectFactoryImpl();
     }
 
     /**
-     * Constructor using class name for logger
+     * Constructor using calling class name for logger
      */
     protected BaseHandler() {
         this(getCallerClassName());
@@ -37,131 +41,139 @@ public abstract class BaseHandler {
     }
 
     /**
-     * Load a class by name
+     * Load a class by name.
+     *
+     * @param className Fully qualified class name
+     * @return The loaded Class object
+     * @throws ClassNotFoundException if class cannot be found
      */
     protected Class<?> loadClass(String className) throws ClassNotFoundException {
-        return BEASTClassLoader.forName(className);
+        return factory.loadClass(className);
     }
 
     /**
      * Instantiate a class
+     *
+     * @param clazz The class to instantiate
+     * @return New instance of the class
+     * @throws Exception if instantiation fails
      */
     protected Object instantiateClass(Class<?> clazz) throws Exception {
         return clazz.getDeclaredConstructor().newInstance();
     }
 
     /**
-     * Create a new BEAST object
+     * Create a new model object with the specified class and ID.
+     *
+     * @param className Fully qualified class name
+     * @param objectID Object identifier (may be null)
+     * @return The created object
+     * @throws Exception if creation fails
      */
     protected Object createBEASTObject(String className, String objectID) throws Exception {
-        Class<?> clazz = loadClass(className);
-        Object object = instantiateClass(clazz);
-
-        if (objectID != null && !objectID.isEmpty()) {
-            BEASTUtils.setObjectId(object, clazz, objectID);
-        }
-
-        return object;
+        return factory.createObject(className, objectID);
     }
 
     /**
-     * Single entry point for resolving and autoboxing values
+     * Resolve an expression and apply autoboxing if needed.
+     *
+     * @param expr Expression to resolve
+     * @param objectRegistry Registry of existing objects
+     * @param targetType Expected type for autoboxing
+     * @return Resolved and potentially autoboxed value
      */
     protected Object resolveAndAutobox(Expression expr, Map<String, Object> objectRegistry, Type targetType) {
         // First resolve the value
         Object value = ExpressionResolver.resolveValue(expr, objectRegistry);
 
-        // Then apply autoboxing
-        if (targetType != null) {
-            return AutoboxingRegistry.getInstance().autobox(value, targetType, objectRegistry);
+        // Then apply autoboxing through factory
+        if (targetType != null && factory.canAutobox(value, targetType)) {
+            return factory.autobox(value, targetType, objectRegistry);
         }
 
         return value;
     }
 
     /**
-     * Configure an input with autoboxing
+     * Configure an input on a model object.
+     *
+     * @param name Input name
+     * @param valueExpr Expression providing the value
+     * @param target Target object
+     * @param inputMap Map of available inputs (for compatibility)
+     * @param objectRegistry Registry of existing objects
      */
     protected void configureInput(String name, Expression valueExpr,
-                                  BEASTInterface target, Map<String, Input<?>> inputMap,
+                                  Object target, Map<String, Object> inputMap,
                                   Map<String, Object> objectRegistry) {
-        Input<?> input = inputMap.get(name);
-        if (input == null) {
-            logger.warning("No input named '" + name + "' found");
+        if (!factory.isModelObject(target)) {
+            logger.warning("Target is not a model object");
             return;
         }
 
-        // Get expected type for autoboxing
-        Type expectedType = BEASTUtils.getInputExpectedType(input,target,name);
-
-        // Resolve and autobox in one step
-        Object value = resolveAndAutobox(valueExpr, objectRegistry, expectedType);
-
-        // Set the input
         try {
-            BEASTUtils.setInputValue(input, value, target);
+            // Get expected type for autoboxing
+            Type expectedType = factory.getInputType(target, name);
+
+            // Resolve and autobox in one step
+            Object value = resolveAndAutobox(valueExpr, objectRegistry, expectedType);
+
+            // Set the input
+            factory.setInputValue(target, name, value);
         } catch (Exception e) {
             logger.warning("Failed to set input '" + name + "': " + e.getMessage());
         }
     }
 
+    /**
+     * Configure input for multiple objects (primary and secondary).
+     * Tries primary first, then falls back to secondary if needed.
+     *
+     * @param name Input name
+     * @param arg Argument containing the value
+     * @param primaryObject Primary target object
+     * @param secondaryObject Secondary target object (fallback)
+     * @param objectRegistry Registry of existing objects
+     */
     protected void configureInputForObjects(String name, Argument arg,
                                             Object primaryObject, Object secondaryObject,
-                                            Map<String, Input<?>> primaryInputMap,
-                                            Map<String, Input<?>> secondaryInputMap,
                                             Map<String, Object> objectRegistry) {
-        if (!(primaryObject instanceof BEASTInterface)) {
+        if (!factory.isModelObject(primaryObject)) {
             return;
         }
 
         // Get the value from the expression
         Object argValue = ExpressionResolver.resolveValue(arg.getValue(), objectRegistry);
 
-        // Check both inputs
-        Input<?> primaryInput = primaryInputMap.get(name);
-        Input<?> secondaryInput = (secondaryInputMap != null) ? secondaryInputMap.get(name) : null;
-
         // Get expected types
-        Type primaryExpectedType = (primaryInput != null) ?
-                BEASTUtils.getInputExpectedType(primaryInput, (BEASTInterface) primaryObject, name) : null;
-        Type secondaryExpectedType = (secondaryInput != null && secondaryObject instanceof BEASTInterface) ?
-                BEASTUtils.getInputExpectedType(secondaryInput, (BEASTInterface) secondaryObject, name) : null;
+        Type primaryExpectedType = factory.getInputType(primaryObject, name);
+        Type secondaryExpectedType = (secondaryObject != null && factory.isModelObject(secondaryObject)) ?
+                factory.getInputType(secondaryObject, name) : null;
 
         boolean inputSet = false;
 
         // First, try to set the input on the primary object
-        if (primaryInput != null) {
+        if (primaryExpectedType != null) {
             try {
-                // Check if autoboxing is needed
-                Object primaryValue = argValue;
-                if (!AutoboxingRegistry.isDirectlyAssignable(argValue, primaryExpectedType)) {
-                    // Only apply autoboxing if the types are not directly compatible
-                    primaryValue = primaryExpectedType != null ?
-                            AutoboxingRegistry.getInstance().autobox(argValue, primaryExpectedType, objectRegistry) : argValue;
-                }
+                Object primaryValue = factory.canAutobox(argValue, primaryExpectedType) ?
+                        factory.autobox(argValue, primaryExpectedType, objectRegistry) : argValue;
 
                 logger.info("Attempting to set input '" + name + "' on primary object");
-                BEASTUtils.setInputValue(primaryInput, primaryValue, (BEASTInterface) primaryObject);
+                factory.setInputValue(primaryObject, name, primaryValue);
                 inputSet = true;
             } catch (Exception e) {
                 logger.warning("Failed to set input on primary object: " + e.getMessage());
-                // Continue to try secondary if primary fails
             }
         }
 
         // Only try secondary if primary wasn't set successfully
-        if (!inputSet && secondaryInput != null && secondaryObject instanceof BEASTInterface) {
+        if (!inputSet && secondaryExpectedType != null && factory.isModelObject(secondaryObject)) {
             try {
-                // Check if autoboxing is needed
-                Object secondaryValue = argValue;
-                if (!AutoboxingRegistry.isDirectlyAssignable(argValue, secondaryExpectedType)) {
-                    // Only apply autoboxing if the types are not directly compatible
-                    secondaryValue = secondaryExpectedType != null ?
-                            AutoboxingRegistry.getInstance().autobox(argValue, secondaryExpectedType, objectRegistry) : argValue;
-                }
+                Object secondaryValue = factory.canAutobox(argValue, secondaryExpectedType) ?
+                        factory.autobox(argValue, secondaryExpectedType, objectRegistry) : argValue;
 
                 logger.info("Falling back to secondary object for input: " + name);
-                BEASTUtils.setInputValue(secondaryInput, secondaryValue, (BEASTInterface) secondaryObject);
+                factory.setInputValue(secondaryObject, name, secondaryValue);
                 inputSet = true;
             } catch (Exception e) {
                 logger.warning("Failed to set input on secondary object: " + e.getMessage());

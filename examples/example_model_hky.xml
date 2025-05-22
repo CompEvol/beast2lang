@@ -20,9 +20,9 @@
                     </alignment>
                 </taxonset>
             </tree>
-            <parameter id="birthRate" spec="parameter.RealParameter" name="stateNode">12.21705499854557</parameter>
-            <parameter id="freqs" spec="parameter.RealParameter" dimension="4" name="stateNode">0.13574552280301347 0.3450795128444837 0.28014182531871784 0.23903313903378495</parameter>
-            <parameter id="kappa" spec="parameter.RealParameter" name="stateNode">2.9731203291133173</parameter>
+            <parameter id="birthRate" spec="parameter.RealParameter" name="stateNode">3.4270982261018053</parameter>
+            <parameter id="freqs" spec="parameter.RealParameter" dimension="4" name="stateNode">0.26817907495862797 0.33820569946357926 0.2836208503948464 0.10999437518294644</parameter>
+            <parameter id="kappa" spec="parameter.RealParameter" name="stateNode">1.568027812140115</parameter>
         </state>
         <distribution id="posterior" spec="CompoundDistribution">
             <distribution id="prior" spec="CompoundDistribution">
@@ -58,7 +58,7 @@
         <operator id="tree.BICEPSEpochTop" spec="EpochFlexOperator" scaleFactor="0.1" tree="@tree" weight="1.0"/>
         <operator id="tree.BICEPSTreeFlex" spec="TreeStretchOperator" scaleFactor="0.01" tree="@tree" weight="5.357656669484113"/>
         <operator id="tree.wideExchange" spec="Exchange" isNarrow="false" tree="@tree" weight="1.615394266202178"/>
-        <operator id="tree.subtreeSlide" spec="kernel.BactrianSubtreeSlide" size="0.030550685987490566" tree="@tree" weight="5.357656669484113"/>
+        <operator id="tree.subtreeSlide" spec="kernel.BactrianSubtreeSlide" size="0.31769283775377566" tree="@tree" weight="5.357656669484113"/>
         <operator id="birthRate.randomWalk" spec="operator.kernel.BactrianRandomWalkOperator" parameter="@birthRate" scaleFactor="0.75" weight="1.0"/>
         <operator id="tree.BICEPSEpochAll" spec="EpochFlexOperator" fromOldestTipOnly="false" scaleFactor="0.1" tree="@tree" weight="1.624504792712471"/>
         <operator id="freqs.deltaExchange" spec="operator.kernel.BactrianDeltaExchangeOperator" delta="0.25" weight="2.157669279974593">

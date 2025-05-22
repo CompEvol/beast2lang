@@ -1,10 +1,11 @@
 package org.beast2.modelLanguage.builder;
 
+import beast.base.core.BEASTInterface;
+import beast.base.inference.StateNode;
+
 import org.beast2.modelLanguage.builder.handlers.DistributionAssignmentHandler;
 import org.beast2.modelLanguage.builder.handlers.VariableDeclarationHandler;
 import org.beast2.modelLanguage.model.*;
-
-import beast.base.inference.StateNode;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -182,12 +183,6 @@ public class ReflectionBeast2ObjectFactory implements Beast2ObjectFactory, State
                     resolveExpressionClassNames(varDecl.getValue())
             );
 
-            // Special handling for NexusAlignment with @data annotation
-            if (isDataAnnotatedNexusAlignment(resolvedVarDecl)) {
-                handleNexusAlignmentCreation(resolvedVarDecl);
-                return;
-            }
-
             // Special handling for NexusFunction
             if (resolvedVarDecl.getValue() instanceof NexusFunction) {
                 handleNexusFunctionCall(resolvedVarDecl);
@@ -216,65 +211,6 @@ public class ReflectionBeast2ObjectFactory implements Beast2ObjectFactory, State
     }
 
     /**
-     * Check if this is a NexusAlignment with @data annotation
-     */
-    private boolean isDataAnnotatedNexusAlignment(VariableDeclaration varDecl) {
-        // Check if this is a NexusAlignment class
-        String className = varDecl.getClassName();
-        boolean isNexusAlignment = className.endsWith("NexusAlignment") ||
-                className.endsWith(".NexusAlignment");
-
-        // Check if it has @data annotation
-        String varName = varDecl.getVariableName();
-        boolean hasDataAnnotation = dataAnnotatedVars.containsKey(varName);
-
-        return isNexusAlignment && hasDataAnnotation;
-    }
-
-    /**
-     * Special handling for NexusAlignment with file parameter
-     */
-    private void handleNexusAlignmentCreation(VariableDeclaration varDecl) {
-        try {
-            String varName = varDecl.getVariableName();
-            Expression expr = varDecl.getValue();
-
-            if (!(expr instanceof FunctionCall)) {
-                throw new RuntimeException("NexusAlignment must be created with a function call");
-            }
-
-            FunctionCall funcCall = (FunctionCall) expr;
-            String filePath = null;
-
-            // Find the file parameter
-            for (Argument arg : funcCall.getArguments()) {
-                if ("file".equals(arg.getName()) && arg.getValue() instanceof Literal) {
-                    Literal literal = (Literal) arg.getValue();
-                    filePath = literal.getValue().toString();
-                    break;
-                }
-            }
-
-            if (filePath == null) {
-                throw new RuntimeException("NexusAlignment requires a 'file' parameter");
-            }
-
-            // Create the NexusAlignment directly
-            logger.info("Creating NexusAlignment with file: " + filePath);
-            Object alignment = createAlignmentFromNexus(filePath, varName);
-            alignment.getClass().getMethod("setID", String.class).invoke(alignment, varName);
-
-            // Store the alignment
-            beastObjects.put(varName, alignment);
-            logger.info("Created and stored NexusAlignment: " + varName);
-
-        } catch (Exception e) {
-            logger.severe("Error creating NexusAlignment: " + e.getMessage());
-            throw new RuntimeException("Failed to create NexusAlignment: " + e.getMessage(), e);
-        }
-    }
-
-    /**
      * Handle nexus() function calls
      */
     private void handleNexusFunctionCall(VariableDeclaration varDecl) {
@@ -290,8 +226,8 @@ public class ReflectionBeast2ObjectFactory implements Beast2ObjectFactory, State
                     new org.beast2.modelLanguage.builder.handlers.NexusFunctionHandler();
 
             // Process the function and get the alignment
-            beast.base.evolution.alignment.Alignment alignment =
-                    handler.processFunction(nexusFunc, beastObjects);
+            BEASTInterface alignment =
+                    (BEASTInterface) handler.processFunction(nexusFunc, beastObjects);
 
             // Set the ID on the alignment if needed
             if (alignment.getID() == null || !alignment.getID().equals(varName)) {
@@ -307,37 +243,6 @@ public class ReflectionBeast2ObjectFactory implements Beast2ObjectFactory, State
         } catch (Exception e) {
             logger.severe("Error processing nexus() function: " + e.getMessage());
             throw new RuntimeException("Failed to process nexus() function: " + e.getMessage(), e);
-        }
-    }
-
-    /**
-     * Helper method to create an alignment from a Nexus file
-     */
-    private Object createAlignmentFromNexus(String filePath, String id) {
-        try {
-            // Create a NexusParser instance
-            Class<?> parserClass = Class.forName("beast.base.evolution.io.NexusParser");
-            Object parser = parserClass.getDeclaredConstructor().newInstance();
-
-            // Parse the file
-            java.io.File file = new java.io.File(filePath);
-            parserClass.getMethod("parseFile", java.io.File.class).invoke(parser, file);
-
-            // Get the alignment field
-            java.lang.reflect.Field alignmentField = parserClass.getField("m_alignment");
-            Object alignment = alignmentField.get(parser);
-
-            if (alignment == null) {
-                throw new RuntimeException("No alignment found in Nexus file: " + filePath);
-            }
-
-            // Set the ID
-            alignment.getClass().getMethod("setID", String.class).invoke(alignment, id);
-
-            return alignment;
-        } catch (Exception e) {
-            logger.severe("Error creating alignment from Nexus file: " + e.getMessage());
-            throw new RuntimeException("Failed to create alignment from Nexus file: " + filePath, e);
         }
     }
 

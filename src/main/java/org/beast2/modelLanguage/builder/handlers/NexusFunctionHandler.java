@@ -1,11 +1,8 @@
 package org.beast2.modelLanguage.builder.handlers;
 
-import beast.base.evolution.alignment.Alignment;
-import beast.base.parser.NexusParser;
 import org.beast2.modelLanguage.model.Argument;
 import org.beast2.modelLanguage.model.NexusFunction;
 
-import java.io.File;
 import java.util.Map;
 import java.util.logging.Logger;
 
@@ -31,7 +28,7 @@ public class NexusFunctionHandler extends BaseHandler {
      * @return An Alignment object loaded from the Nexus file
      * @throws Exception If there is an error processing the function
      */
-    public Alignment processFunction(NexusFunction nexusFunction, Map<String, Object> objectRegistry) throws Exception {
+    public Object processFunction(NexusFunction nexusFunction, Map<String, Object> objectRegistry) {
         logger.info("Processing nexus() function");
 
         // Extract parameters
@@ -59,31 +56,15 @@ public class NexusFunctionHandler extends BaseHandler {
 
         logger.info("Loading Nexus file: " + filePath);
 
-        // Create a NexusParser and parse the file
-        NexusParser parser = new NexusParser();
-        File file = new File(filePath);
-
-        if (!file.exists()) {
-            logger.severe("Nexus file not found: " + filePath);
-            throw new IllegalArgumentException("Nexus file not found: " + filePath);
-        }
-
         try {
-            parser.parseFile(file);
-
-            if (parser.m_alignment == null) {
-                logger.severe("No alignment found in Nexus file: " + filePath);
-                throw new RuntimeException("No alignment found in Nexus file: " + filePath);
-            }
-
-            // Set the ID on the alignment
-            parser.m_alignment.setID(alignmentId);
+            // Use factory to create alignment
+            Object alignment = factory.createAlignment(filePath, alignmentId);
 
             // Add the alignment to the object registry
-            objectRegistry.put(alignmentId, parser.m_alignment);
+            objectRegistry.put(alignmentId, alignment);
 
             logger.info("Successfully loaded alignment from Nexus file: " + filePath + " with ID: " + alignmentId);
-            return parser.m_alignment;
+            return alignment;
         } catch (Exception e) {
             logger.severe("Error parsing Nexus file: " + e.getMessage());
             throw new RuntimeException("Failed to parse Nexus file: " + filePath, e);

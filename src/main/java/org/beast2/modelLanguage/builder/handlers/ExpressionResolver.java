@@ -1,16 +1,13 @@
 package org.beast2.modelLanguage.builder.handlers;
 
-import java.lang.reflect.Method;
 import java.lang.reflect.Type;
 import java.util.Map;
 import java.util.logging.Logger;
 
-import beast.base.core.Input;
+import org.beast2.modelLanguage.builder.ObjectFactory;
+import org.beast2.modelLanguage.builder.BeastObjectFactoryImpl;
 import org.beast2.modelLanguage.builder.util.AutoboxingRegistry;
-import org.beast2.modelLanguage.builder.util.BEASTUtils;
 import org.beast2.modelLanguage.model.*;
-
-import beast.base.core.BEASTInterface;
 
 /**
  * Utility class for resolving Expression values to Java objects
@@ -18,10 +15,8 @@ import beast.base.core.BEASTInterface;
 public class ExpressionResolver {
 
     private static final Logger logger = Logger.getLogger(ExpressionResolver.class.getName());
+    private static final ObjectFactory factory = new BeastObjectFactoryImpl();
 
-    /**
-     * Resolve an Expression to its corresponding value
-     */
     /**
      * Resolve an Expression to its corresponding value
      */
@@ -178,20 +173,19 @@ public class ExpressionResolver {
         }
 
         try {
-            Class<?> beastClass = Class.forName(className);
-            Object nestedObject = beastClass.getDeclaredConstructor().newInstance();
+            Object nestedObject = factory.createObject(className, null);
 
-            // Configure the object
-            if (nestedObject instanceof BEASTInterface) {
-                Map<String, beast.base.core.Input<?>> inputMap = BEASTUtils.buildInputMap(nestedObject, beastClass);
-                BEASTUtils.configureFromFunctionCall(nestedObject, funcCall, inputMap, objectRegistry);
-                BEASTUtils.callInitAndValidate(nestedObject, beastClass);
+            // Configure the object using factory
+            if (factory.isModelObject(nestedObject)) {
+                factory.configureFromFunctionCall(nestedObject, funcCall, objectRegistry);
+                factory.initAndValidate(nestedObject);
             } else {
-                throw new RuntimeException("Must be BEASTInterface!");
+                logger.warning("Created object is not a model object: " + className);
             }
 
             return nestedObject;
         } catch (Exception e) {
+            logger.warning("Failed to create nested object: " + e.getMessage());
             return null;
         }
     }
@@ -207,20 +201,5 @@ public class ExpressionResolver {
             logger.severe("Error processing nexus() function: " + e.getMessage());
             throw new RuntimeException("Failed to process nexus() function", e);
         }
-    }
-
-    /**
-     * Get parameter type from setter methods
-     */
-    private static Class<?> getParameterTypeFromSetters(Class<?> objectClass, String paramName) {
-        String setterName = "set" + Character.toUpperCase(paramName.charAt(0)) + paramName.substring(1);
-
-        for (Method method : objectClass.getMethods()) {
-            if (method.getName().equals(setterName) && method.getParameterCount() == 1) {
-                return method.getParameterTypes()[0];
-            }
-        }
-
-        return null;
     }
 }
