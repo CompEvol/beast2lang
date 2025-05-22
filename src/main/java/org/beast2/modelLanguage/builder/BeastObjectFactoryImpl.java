@@ -1,6 +1,7 @@
 package org.beast2.modelLanguage.builder;
 
 import beast.base.core.BEASTInterface;
+import beast.base.core.Function;
 import beast.base.core.Input;
 import beast.base.inference.distribution.ParametricDistribution;
 import beast.base.parser.NexusParser;
@@ -42,7 +43,7 @@ import java.util.stream.Collectors;
  * @author [Your name]
  * @version 1.0
  */
-public class BeastObjectFactoryImpl implements ObjectFactory {
+public class BeastObjectFactoryImpl implements ModelObjectFactory {
 
     private static final Logger logger = Logger.getLogger(BeastObjectFactoryImpl.class.getName());
 
@@ -148,6 +149,10 @@ public class BeastObjectFactoryImpl implements ObjectFactory {
     @Override
     public boolean isParameter(Object obj) {
         return obj instanceof Parameter;
+    }
+
+    public boolean isFunction(Object obj) {
+        return obj instanceof Function;
     }
 
     @Override
@@ -323,7 +328,7 @@ public class BeastObjectFactoryImpl implements ObjectFactory {
      * Used by PackageUtils to discover available functionality.
      */
     @Override
-    public Map<String, Object> getAllPackages() {
+    public Map<String, Object> getAllPlugins() {
         Map<String, Package> packageMap = new TreeMap<>(PackageManager::comparePackageNames);
         PackageManager.addInstalledPackages(packageMap);
         try {
@@ -558,7 +563,7 @@ public class BeastObjectFactoryImpl implements ObjectFactory {
     }
 
     @Override
-    public boolean isRealParameterType(Object obj) {
+    public boolean isRealParameter(Object obj) {
         return obj instanceof RealParameter;
     }
 }

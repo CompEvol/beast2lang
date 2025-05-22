@@ -1,7 +1,7 @@
 package org.beast2.modelLanguage.builder.handlers;
 
-import org.beast2.modelLanguage.builder.ObjectFactory;
 import org.beast2.modelLanguage.builder.BeastObjectFactoryImpl;
+import org.beast2.modelLanguage.builder.ModelObjectFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -16,7 +16,7 @@ import java.util.logging.Logger;
 public class ParameterInitializer {
 
     private static final Logger logger = Logger.getLogger(ParameterInitializer.class.getName());
-    private static final ObjectFactory factory = new BeastObjectFactoryImpl();
+    private static final ModelObjectFactory factory = new BeastObjectFactoryImpl();
 
     /**
      * Initializes a parameter based on a distribution
@@ -32,7 +32,7 @@ public class ParameterInitializer {
 
         try {
             // Determine parameter type and delegate to appropriate method
-            if (factory.isRealParameterType(param)) {
+            if (factory.isRealParameter(param)) {
                 return initializeRealParameter(param, dist);
             }
             // Could add handlers for other parameter types here

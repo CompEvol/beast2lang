@@ -1,7 +1,7 @@
 package org.beast2.modelLanguage.builder.handlers;
 
-import org.beast2.modelLanguage.builder.ObjectFactory;
 import org.beast2.modelLanguage.builder.BeastObjectFactoryImpl;
+import org.beast2.modelLanguage.builder.ModelObjectFactory;
 import org.beast2.modelLanguage.model.Argument;
 import org.beast2.modelLanguage.model.Expression;
 
@@ -17,7 +17,7 @@ import java.util.logging.Logger;
  */
 public abstract class BaseHandler {
     protected final Logger logger;
-    protected final ObjectFactory factory;
+    protected final ModelObjectFactory factory;
 
     /**
      * Constructor with logger name

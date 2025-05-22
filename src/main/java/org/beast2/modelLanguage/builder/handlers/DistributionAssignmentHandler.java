@@ -120,7 +120,7 @@ public class DistributionAssignmentHandler extends BaseHandler {
                     // 3. Create or get the parameter object
                     Object paramObject;
                     Object existingParam = objectRegistry.get(varName);
-                    if (existingParam != null && factory.isParameter(existingParam)) {
+                    if (existingParam != null && factory.isFunction(existingParam)) {
                         // Reuse existing parameter
                         logger.info("Using existing parameter object: " + varName);
                         paramObject = existingParam;
@@ -170,7 +170,7 @@ public class DistributionAssignmentHandler extends BaseHandler {
             // Create the object if it doesn't exist
             beastObject = createBEASTObject(className, varName);
 
-            if (factory.isRealParameterType(beastObject)) {
+            if (factory.isRealParameter(beastObject)) {
                 initializeRealParameter(beastObject);
             }
 
@@ -260,7 +260,7 @@ public class DistributionAssignmentHandler extends BaseHandler {
      * Initialize RealParameter objects with default values
      */
     private void initializeRealParameter(Object paramObject) {
-        if (paramObject != null && factory.isRealParameterType(paramObject)) {
+        if (paramObject != null && factory.isRealParameter(paramObject)) {
             try {
                 String paramId = factory.getID(paramObject);
                 logger.info("Initializing real parameter " + paramId);
