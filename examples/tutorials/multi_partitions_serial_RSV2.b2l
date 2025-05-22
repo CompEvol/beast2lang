@@ -38,7 +38,8 @@ RealParameter r_1 = RealParameter(value=1.0);
 RealParameter r_2 = RealParameter(value=1.0);
 RealParameter r_3 = RealParameter(value=1.0);
 Function r = Concatenate(arg=[r_1, r_2, r_3]);
-RealParameter r ~ WeightedDirichlet(alpha=[1.0, 1.0, 1.0], weights=[209, 210, 210]);
+// RealParameter r ~ WeightedDirichlet(alpha=[1.0, 1.0, 1.0], weights=[209, 210, 210]);
+Function r ~ WeightedDirichlet(alpha=[1.0, 1.0, 1.0], weights=[209, 210, 210]);
 
 SiteModel siteModel1 = SiteModel(substModel=hky1, mutationRate=r_1);
 SiteModel siteModel2 = SiteModel(substModel=hky2, mutationRate=r_2);
