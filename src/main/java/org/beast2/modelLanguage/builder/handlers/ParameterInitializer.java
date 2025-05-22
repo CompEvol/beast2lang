@@ -1,6 +1,5 @@
 package org.beast2.modelLanguage.builder.handlers;
 
-import beast.base.core.BEASTInterface;
 import beast.base.inference.parameter.Parameter;
 import beast.base.inference.parameter.RealParameter;
 import beast.base.inference.distribution.ParametricDistribution;
@@ -49,87 +48,8 @@ public class ParameterInitializer {
      */
     private static boolean initializeRealParameter(RealParameter param, ParametricDistribution dist) {
         // Handle specific distribution types
-        if (dist instanceof beast.base.inference.distribution.Dirichlet) {
-            return initializeFromDirichlet(param, (beast.base.inference.distribution.Dirichlet) dist);
-        } else {
-            return initializeFromGenericDistribution(param, dist);
-        }
-    }
 
-    /**
-     * Initializes a parameter from a Dirichlet distribution
-     */
-    private static boolean initializeFromDirichlet(RealParameter param, beast.base.inference.distribution.Dirichlet dirichlet) {
-        try {
-            // For Dirichlet, initialize with equal values that sum to 1
-            int dimension;
-            try {
-                dimension = dirichlet.alphaInput.get().getDimension();
-                if (dimension <= 0) {
-                    Logger.getLogger(ParameterInitializer.class.getName())
-                            .warning("Invalid dimension from Dirichlet distribution: " + dimension);
-                    return false;
-                }
-            } catch (Exception e) {
-                Logger.getLogger(ParameterInitializer.class.getName())
-                        .warning("Could not determine dimension from Dirichlet: " + e.getMessage());
-                return false;
-            }
-
-            // Calculate equal value
-            double equalValue = 1.0 / dimension;
-
-            // Create values list
-            List<Double> values = new ArrayList<>(dimension);
-            for (int i = 0; i < dimension; i++) {
-                values.add(equalValue);
-            }
-
-            try {
-                // Always try initByName first - it's safer when parameter may not be fully initialized
-                param.initByName("value", values);
-
-                Logger.getLogger(ParameterInitializer.class.getName())
-                        .info("Initialized Dirichlet parameter " + param.getID() +
-                                " with " + dimension + " equal values of " + equalValue);
-
-                return true;
-            } catch (RuntimeException re) {
-                // If initByName fails, fall back to trying setValue for each element
-                Logger.getLogger(ParameterInitializer.class.getName())
-                        .fine("Could not initialize Dirichlet parameter directly, attempting to set values individually");
-
-                try {
-                    // First check if dimensions match
-                    int paramDimension = param.getDimension();
-                    if (paramDimension != dimension) {
-                        Logger.getLogger(ParameterInitializer.class.getName())
-                                .warning("Parameter dimension (" + paramDimension +
-                                        ") doesn't match Dirichlet dimension (" + dimension + ")");
-                        return false;
-                    }
-
-                    // Set each value individually
-                    for (int i = 0; i < dimension; i++) {
-                        param.setValue(i, equalValue);
-                    }
-
-                    Logger.getLogger(ParameterInitializer.class.getName())
-                            .info("Set all values in Dirichlet parameter " + param.getID() +
-                                    " to " + equalValue);
-
-                    return true;
-                } catch (Exception e) {
-                    Logger.getLogger(ParameterInitializer.class.getName())
-                            .warning("Failed to set Dirichlet parameter values: " + e.getMessage());
-                    return false;
-                }
-            }
-        } catch (Exception e) {
-            Logger.getLogger(ParameterInitializer.class.getName())
-                    .warning("Failed to initialize from Dirichlet: " + e.getMessage());
-            return false;
-        }
+        return initializeFromGenericDistribution(param, dist);
     }
 
     /**
@@ -137,34 +57,51 @@ public class ParameterInitializer {
      */
     private static boolean initializeFromGenericDistribution(RealParameter param, ParametricDistribution dist) {
         try {
-            // Sample median value from distribution
-            double median;
+            // Sample from distribution to determine dimension
+            Double[][] sample;
             try {
-                median = dist.inverseCumulativeProbability(0.5);
-
-                // Check for valid value
-                if (Double.isNaN(median) || Double.isInfinite(median)) {
+                sample = dist.sample(1);
+                if (sample == null || sample.length == 0 || sample[0] == null) {
                     Logger.getLogger(ParameterInitializer.class.getName())
                             .warning("Distribution " + dist.getClass().getSimpleName() +
-                                    " returned invalid median: " + median);
-                    median = 0.5; // Use default value
+                                    " returned null or empty sample");
+                    return false;
                 }
             } catch (Exception e) {
-                // If sampling fails, use default value
-                median = 0.5;
                 Logger.getLogger(ParameterInitializer.class.getName())
-                        .warning("Failed to sample from distribution, using default value 0.5: " + e.getMessage());
+                        .warning("Failed to sample from distribution: " + e.getMessage());
+                return false;
             }
 
-            // Initialize with a single median value
-            // We have no reliable way to know the intended dimension at this stage
-            param.initByName("value", List.of(median));
+            // Determine dimension from sample
+            int dimension = sample[0].length;
+            Logger.getLogger(ParameterInitializer.class.getName())
+                    .info("Detected dimension " + dimension + " from distribution sample");
+
+            // Use the actual sample values as initial values
+            List<Double> sampleValues = Arrays.asList(sample[0]);
+
+            // Validate sample values
+            for (int i = 0; i < sampleValues.size(); i++) {
+                Double value = sampleValues.get(i);
+                if (value == null || Double.isNaN(value) || Double.isInfinite(value)) {
+                    Logger.getLogger(ParameterInitializer.class.getName())
+                            .warning("Sample value at dimension " + i + " is invalid: " + value +
+                                    ", replacing with default value 0.5");
+                    sampleValues.set(i, 0.5);
+                }
+            }
+
+            // Initialize parameter with sample values
+            param.initByName("value", sampleValues);
 
             Logger.getLogger(ParameterInitializer.class.getName())
                     .info("Initialized parameter " + param.getID() +
-                            " with median " + median + " from distribution");
+                            " with " + dimension + " dimensions using sample values " + sampleValues +
+                            " from distribution");
 
             return true;
+
         } catch (Exception e) {
             Logger.getLogger(ParameterInitializer.class.getName())
                     .warning("Failed to initialize from distribution: " + e.getMessage());

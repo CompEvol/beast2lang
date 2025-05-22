@@ -20,7 +20,7 @@
                     </alignment>
                 </taxonset>
             </tree>
-            <parameter id="birthRate" spec="parameter.RealParameter" name="stateNode">2.718281828459045</parameter>
+            <parameter id="birthRate" spec="parameter.RealParameter" name="stateNode">35.15400958054401</parameter>
         </state>
         <distribution id="posterior" spec="CompoundDistribution">
             <distribution id="prior" spec="CompoundDistribution">
@@ -43,7 +43,7 @@
         <operator id="tree.BICEPSEpochTop" spec="EpochFlexOperator" scaleFactor="0.1" tree="@tree" weight="1.0"/>
         <operator id="tree.BICEPSTreeFlex" spec="TreeStretchOperator" scaleFactor="0.01" tree="@tree" weight="5.357656669484113"/>
         <operator id="tree.wideExchange" spec="Exchange" isNarrow="false" tree="@tree" weight="1.615394266202178"/>
-        <operator id="tree.subtreeSlide" spec="kernel.BactrianSubtreeSlide" size="0.18678583517205352" tree="@tree" weight="5.357656669484113"/>
+        <operator id="tree.subtreeSlide" spec="kernel.BactrianSubtreeSlide" size="0.4876935203975611" tree="@tree" weight="5.357656669484113"/>
         <operator id="birthRate.randomWalk" spec="operator.kernel.BactrianRandomWalkOperator" parameter="@birthRate" scaleFactor="0.75" weight="1.0"/>
         <operator id="tree.BICEPSEpochAll" spec="EpochFlexOperator" fromOldestTipOnly="false" scaleFactor="0.1" tree="@tree" weight="1.624504792712471"/>
         <operator id="tree.narrowExchange" spec="Exchange" tree="@tree" weight="5.357656669484113"/>
