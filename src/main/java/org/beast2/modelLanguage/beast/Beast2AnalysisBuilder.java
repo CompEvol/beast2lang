@@ -1,9 +1,12 @@
 package org.beast2.modelLanguage.beast;
 
 import beast.base.core.BEASTInterface;
+import beast.base.core.Function;
 import beast.base.core.Input;
 import beast.base.evolution.alignment.Alignment;
 import beast.base.evolution.alignment.TaxonSet;
+import beast.base.evolution.branchratemodel.BranchRateModel;
+import beast.base.evolution.likelihood.GenericTreeLikelihood;
 import beast.base.evolution.likelihood.TreeLikelihood;
 import beast.base.evolution.tree.MRCAPrior;
 import beast.base.evolution.tree.Tree;
@@ -16,6 +19,7 @@ import beast.base.inference.parameter.RealParameter;
 import org.beast2.modelLanguage.model.Beast2Analysis;
 import org.beast2.modelLanguage.operators.DefaultParameterOperator;
 import org.beast2.modelLanguage.operators.DefaultTreeOperator;
+import org.beast2.modelLanguage.operators.ExtraOperator;
 import org.beast2.modelLanguage.operators.MCMCOperator;
 
 import java.util.*;
@@ -460,6 +464,7 @@ public class Beast2AnalysisBuilder {
         // TODO hard code
         MCMCOperator paramOpFactory = new DefaultParameterOperator(this);
         MCMCOperator treeOpFactory = new DefaultTreeOperator(this);
+        MCMCOperator extraOpFactory = new ExtraOperator(this);
 
         operatorCache.clear();
 
@@ -483,6 +488,31 @@ public class Beast2AnalysisBuilder {
             } catch (Exception e) {
                 logger.warning("Could not create operators for " + stateNode.getID() + ": " + e.getMessage());
             }
+        }
+
+        //*** special cases ***//
+
+        List<GenericTreeLikelihood> treeLikelihoods = modelBuilder.getAllObjects().values().stream()
+                .filter(o -> o instanceof GenericTreeLikelihood)
+                .map(o -> (GenericTreeLikelihood)o)
+                .toList();
+
+        // TODO only working for strict clock
+        for (GenericTreeLikelihood treeLikelihood : treeLikelihoods) {
+            // add UpDownOperator for each pair of clock rate and tree in a same treeLikelihood
+            BranchRateModel.Base branchRateModel = treeLikelihood.branchRateModelInput.get();
+            Function meanRate = branchRateModel.meanRateInput.get();
+
+            // if clockRate is StateNode
+            if (stateNodes.contains(meanRate) && meanRate instanceof Parameter clockRate) {
+                TreeInterface treeInterface = treeLikelihood.treeInput.get();
+                // need tree to be StateNode
+                if (treeInterface instanceof StateNode tree) {
+                    // add UpDown operator
+                    extraOpFactory.addOperators(List.of(clockRate, tree));
+                }
+            }
+
         }
 
         return operatorCache.values().stream().toList();
