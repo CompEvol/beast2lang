@@ -1,7 +1,9 @@
-package org.beast2.modelLanguage.builder;
+package org.beast2.modelLanguage.beast;
 
 import beast.base.inference.Distribution;
 import beast.base.inference.StateNode;
+import org.beast2.modelLanguage.builder.Beast2LangParser;
+import org.beast2.modelLanguage.builder.Beast2LangParserImpl;
 import org.beast2.modelLanguage.model.*;
 
 import java.io.IOException;

@@ -1,4 +1,4 @@
-package org.beast2.modelLanguage.builder;
+package org.beast2.modelLanguage.beast;
 
 import beast.base.core.BEASTInterface;
 import beast.base.core.Function;
@@ -20,9 +20,8 @@ import beast.pkgmgmt.BEASTClassLoader;
 import beast.pkgmgmt.Package;
 import beast.pkgmgmt.PackageManager;
 
+import org.beast2.modelLanguage.builder.ModelObjectFactory;
 import org.beast2.modelLanguage.builder.handlers.ExpressionResolver;
-import org.beast2.modelLanguage.builder.util.AutoboxingRegistry;
-import org.beast2.modelLanguage.builder.util.BEASTUtils;
 import org.beast2.modelLanguage.model.Argument;
 import org.beast2.modelLanguage.model.FunctionCall;
 

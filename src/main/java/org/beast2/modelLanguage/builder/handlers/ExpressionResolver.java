@@ -5,8 +5,8 @@ import java.util.Map;
 import java.util.logging.Logger;
 
 import org.beast2.modelLanguage.builder.ModelObjectFactory;
-import org.beast2.modelLanguage.builder.BeastObjectFactoryImpl;
-import org.beast2.modelLanguage.builder.util.AutoboxingRegistry;
+import org.beast2.modelLanguage.beast.BeastObjectFactoryImpl;
+import org.beast2.modelLanguage.beast.AutoboxingRegistry;
 import org.beast2.modelLanguage.model.*;
 
 /**

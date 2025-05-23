@@ -1,4 +1,4 @@
-package org.beast2.modelLanguage.builder;
+package org.beast2.modelLanguage.beast;
 
 import beast.base.core.BEASTInterface;
 import beast.base.core.Input;

@@ -1,13 +1,11 @@
 package org.beast2.modelLanguage.builder.handlers;
 
 import org.beast2.modelLanguage.builder.NameResolver;
-import org.beast2.modelLanguage.builder.util.AutoboxingRegistry;
+import org.beast2.modelLanguage.beast.AutoboxingRegistry;
 import org.beast2.modelLanguage.model.*;
 
 import java.lang.reflect.Array;
-import java.lang.reflect.Type;
 import java.util.Map;
-import java.util.logging.Logger;
 
 /**
  * Handler for VariableDeclaration statements, responsible for creating model objects.

@@ -1,7 +1,7 @@
 package org.beast2.modelLanguage.builder;
 
-import beast.pkgmgmt.BEASTClassLoader;
-import beast.pkgmgmt.PackageManager;
+import org.beast2.modelLanguage.beast.BeastObjectFactoryImpl;
+import org.beast2.modelLanguage.beast.PackageUtils;
 import org.beast2.modelLanguage.model.ImportStatement;
 
 import java.util.*;
@@ -15,12 +15,8 @@ public class NameResolver {
 
     private static final Logger logger = Logger.getLogger(NameResolver.class.getName());
 
-    // Classes known to have problematic static initializers
-    private static final Set<String> PROBLEMATIC_CLASSES = new HashSet<>();
-    static {
-        PROBLEMATIC_CLASSES.add("beast.base.evolution.alignment.Alignment");
-        PROBLEMATIC_CLASSES.add("beast.base.evolution.alignment.FilteredAlignment");
-    }
+    private final TypeSystem typeSystem = new BeastObjectFactoryImpl();
+    private final DependencyManager dependencyManager  = new BeastObjectFactoryImpl();
 
     private final Map<String, String> explicitImports;
     private final List<String> wildcardImports;
@@ -98,7 +94,7 @@ public class NameResolver {
         PackageUtils.printBEASTInterfacesByPackage();
 
         // Search for BEASTInterface classes directly in the plugin -- don't forget plugin name must be lowercase for this method!
-        List<String> beastClasses = PackageManager.find(beast.base.core.BEASTInterface.class, pluginName.toLowerCase());
+        List<String> beastClasses = dependencyManager.findModelObjectClasses(pluginName);
 
         if (!beastClasses.isEmpty()) {
             // Get the unique Java packages from the found classes
@@ -138,38 +134,6 @@ public class NameResolver {
             return fullyQualifiedName.substring(lastDot + 1);
         }
         return fullyQualifiedName;
-    }
-
-    /**
-     * Safe way to check if a class exists without triggering static initializers
-     *
-     * @param className the class name to check
-     * @return true if the class exists in the classpath
-     */
-    private boolean classExists(String className) {
-        // If it's known to be problematic, don't try to load it
-        if (PROBLEMATIC_CLASSES.contains(className)) {
-            // For problematic classes, just assume they exist if they're in BEAST2 packages
-            return className.startsWith("beast.");
-        }
-
-        try {
-            // Use a less aggressive class loading approach that doesn't initialize the class
-            BEASTClassLoader.forName(className);
-            return true;
-        } catch (ClassNotFoundException e) {
-            return false;
-        } catch (ExceptionInInitializerError e) {
-            // This shouldn't happen with initialize=false, but just in case
-            logger.warning("Static initializer error for " + className + " despite initialize=false");
-            // Add it to the problematic classes for future reference
-            PROBLEMATIC_CLASSES.add(className);
-            return true;  // It exists, but has initialization problems
-        } catch (NoClassDefFoundError e) {
-            // This can happen if a referenced class is missing
-            logger.warning("NoClassDefFoundError for " + className + ": " + e.getMessage());
-            return false;
-        }
     }
 
     /**
@@ -220,7 +184,7 @@ public class NameResolver {
             String qualifiedName = wildcardPackage + "." + className;
             logger.fine("Trying wildcard resolution: " + qualifiedName);
 
-            if (classExists(qualifiedName)) {
+            if (typeSystem.classExists(qualifiedName)) {
                 logger.fine("Successfully resolved " + className + " to " + qualifiedName);
                 resolvedCache.put(className, qualifiedName);
                 return qualifiedName;

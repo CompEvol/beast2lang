@@ -1,5 +1,7 @@
-package org.beast2.modelLanguage.builder;
+package org.beast2.modelLanguage.phylospec;
 
+import org.beast2.modelLanguage.builder.Beast2LangParser;
+import org.beast2.modelLanguage.builder.Beast2LangParserImpl;
 import org.beast2.modelLanguage.model.Beast2Model;
 import java.io.IOException;
 import java.io.InputStream;

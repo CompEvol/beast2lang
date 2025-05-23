@@ -9,7 +9,7 @@ import beast.base.evolution.operator.kernel.BactrianScaleOperator;
 import beast.base.evolution.operator.kernel.BactrianSubtreeSlide;
 import beast.base.evolution.tree.Tree;
 import beast.base.inference.Operator;
-import org.beast2.modelLanguage.builder.Beast2AnalysisBuilder;
+import org.beast2.modelLanguage.beast.Beast2AnalysisBuilder;
 
 import static org.beast2.modelLanguage.BEASTObjectID.*;
 import static org.beast2.modelLanguage.operators.MCMCOperator.getOperatorWeight;

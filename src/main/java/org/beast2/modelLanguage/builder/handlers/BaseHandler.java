@@ -1,6 +1,6 @@
 package org.beast2.modelLanguage.builder.handlers;
 
-import org.beast2.modelLanguage.builder.BeastObjectFactoryImpl;
+import org.beast2.modelLanguage.beast.BeastObjectFactoryImpl;
 import org.beast2.modelLanguage.builder.ModelObjectFactory;
 import org.beast2.modelLanguage.model.Argument;
 import org.beast2.modelLanguage.model.Expression;

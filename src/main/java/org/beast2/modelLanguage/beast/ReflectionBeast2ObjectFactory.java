@@ -1,8 +1,10 @@
-package org.beast2.modelLanguage.builder;
+package org.beast2.modelLanguage.beast;
 
 import beast.base.core.BEASTInterface;
 import beast.base.inference.StateNode;
 
+import org.beast2.modelLanguage.builder.Beast2ObjectFactory;
+import org.beast2.modelLanguage.builder.NameResolver;
 import org.beast2.modelLanguage.builder.handlers.DistributionAssignmentHandler;
 import org.beast2.modelLanguage.builder.handlers.VariableDeclarationHandler;
 import org.beast2.modelLanguage.model.*;

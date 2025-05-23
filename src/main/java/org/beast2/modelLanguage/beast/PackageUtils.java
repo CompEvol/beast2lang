@@ -1,4 +1,4 @@
-package org.beast2.modelLanguage.builder;
+package org.beast2.modelLanguage.beast;
 
 import beast.base.core.BEASTInterface;
 import beast.base.core.Input;
@@ -7,7 +7,7 @@ import beast.pkgmgmt.Package;
 import beast.pkgmgmt.PackageManager;
 import beast.pkgmgmt.PackageVersion;
 import beast.pkgmgmt.PackageManager.PackageListRetrievalException;
-import org.beast2.modelLanguage.builder.util.BEASTUtils;
+import org.beast2.modelLanguage.beast.BEASTUtils;
 
 import java.lang.reflect.Type;
 import java.util.*;

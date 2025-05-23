@@ -1,4 +1,4 @@
-package org.beast2.modelLanguage.builder;
+package org.beast2.modelLanguage.phylospec;
 
 import org.beast2.modelLanguage.model.*;
 import java.util.*;

@@ -1,6 +1,6 @@
 package org.beast2.modelLanguage.builder.handlers;
 
-import org.beast2.modelLanguage.builder.util.AutoboxingRegistry;
+import org.beast2.modelLanguage.beast.AutoboxingRegistry;
 import org.beast2.modelLanguage.model.Argument;
 import org.beast2.modelLanguage.model.DistributionAssignment;
 import org.beast2.modelLanguage.model.Expression;
