@@ -1,6 +1,6 @@
 package org.beast2.modelLanguage.builder;
 
-import org.beast2.modelLanguage.beast.Beast2ModelBuilderReflection;
+import org.beast2.modelLanguage.beast.Beast2ModelBuilder;
 import org.beast2.modelLanguage.model.*;
 import org.junit.Before;
 import org.junit.Test;
@@ -13,13 +13,13 @@ import static org.junit.Assert.*;
  * Unit tests for the Beast2ModelBuilderReflection class that uses reflection
  * to build a BEAST2 model from a Beast2Lang definition.
  */
-public class Beast2ModelBuilderReflectionTest {
+public class Beast2ModelBuilderTest {
 
-    private Beast2ModelBuilderReflection builder;
+    private Beast2ModelBuilder builder;
 
     @Before
     public void setUp() {
-        builder = new Beast2ModelBuilderReflection();
+        builder = new Beast2ModelBuilder();
     }
 
     @Test
@@ -84,7 +84,7 @@ public class Beast2ModelBuilderReflectionTest {
         Beast2Model model = builder.buildFromString(modelString);
 
         // Build BEAST2 objects using reflection - use buildModel instead of buildBeast2Objects
-        Object rootObject = builder.buildModel(model);
+        builder.buildModel(model);
 
         // Verify beast objects were created
         Map<String, Object> beastObjects = builder.getAllObjects();
@@ -200,7 +200,7 @@ public class Beast2ModelBuilderReflectionTest {
 
         // Build BEAST2 objects using reflection - use buildModel instead of buildBeast2Objects
         try {
-            Object rootObject = builder.buildModel(model);
+            builder.buildModel(model);
 
             // Verify beast objects were created
             Map<String, Object> beastObjects = builder.getAllObjects();

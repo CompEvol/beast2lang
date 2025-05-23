@@ -31,10 +31,10 @@ public class Beast2AnalysisBuilder {
 
     private static final Logger logger = Logger.getLogger(Beast2AnalysisBuilder.class.getName());
 
-    private final Beast2ModelBuilderReflection modelBuilder;
+    private final Beast2ModelBuilder modelBuilder;
     private final Map<String, Operator> operatorCache = new HashMap<>();
 
-    public Beast2AnalysisBuilder(Beast2ModelBuilderReflection builder) {
+    public Beast2AnalysisBuilder(Beast2ModelBuilder builder) {
         this.modelBuilder = builder;
     }
 

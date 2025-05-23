@@ -36,16 +36,15 @@ import java.util.stream.Collectors;
  * BEAST2 implementation of the ObjectFactory interface.
  * This class consolidates ALL BEAST2 framework dependencies for the handler classes.
  * <p>
- * This is the ONLY class (besides Beast2AnalysisBuilder and PhyloSpecMapper)
- * that has direct BEAST imports. All other handler and utility classes should
+ * All handler and utility classes should
  * use this factory through the ObjectFactory interface.
  *
- * @author [Your name]
+ * @author Alexei Drummond
  * @version 1.0
  */
-public class BeastObjectFactoryImpl implements ModelObjectFactory {
+public class BeastObjectFactory implements ModelObjectFactory {
 
-    private static final Logger logger = Logger.getLogger(BeastObjectFactoryImpl.class.getName());
+    private static final Logger logger = Logger.getLogger(BeastObjectFactory.class.getName());
 
     /**
      * Cache for loaded classes to improve performance

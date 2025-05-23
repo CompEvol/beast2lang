@@ -4,34 +4,34 @@ import beast.base.inference.Distribution;
 import beast.base.inference.StateNode;
 import org.beast2.modelLanguage.builder.Beast2LangParser;
 import org.beast2.modelLanguage.builder.Beast2LangParserImpl;
+import org.beast2.modelLanguage.builder.ModelStatementProcessor;
 import org.beast2.modelLanguage.model.*;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
-import java.util.HashMap;
 import java.util.logging.Logger;
 
 /**
  * Main entry point for Beast2Lang model building operations.
  * Refactored to use BeastObjectRegistry to eliminate circular dependencies.
  */
-public class Beast2ModelBuilderReflection {
+public class Beast2ModelBuilder {
 
-    private static final Logger logger = Logger.getLogger(Beast2ModelBuilderReflection.class.getName());
+    private static final Logger logger = Logger.getLogger(Beast2ModelBuilder.class.getName());
 
     private final Beast2LangParser parser;
     private final BeastObjectRegistry registry;
-    private final ReflectionBeast2ObjectFactory objectFactory;
+    private final ModelStatementProcessor objectFactory;
 
     /**
      * Constructor that initializes the parser, registry, and object factory.
      */
-    public Beast2ModelBuilderReflection() {
+    public Beast2ModelBuilder() {
         this.parser = new Beast2LangParserImpl();
         this.registry = new BeastObjectRegistry();
-        this.objectFactory = new ReflectionBeast2ObjectFactory(registry);
+        this.objectFactory = new ModelStatementProcessor(registry);
     }
 
     /**
@@ -89,7 +89,7 @@ public class Beast2ModelBuilderReflection {
      * @return the root BEAST2 object (typically the MCMC object)
      * @throws Exception if construction fails
      */
-    public Object buildModel(Beast2Model model) throws Exception {
+    public void buildModel(Beast2Model model) throws Exception {
         logger.info("Building Beast2 model with annotation support...");
 
         // Clear registry for a fresh start
@@ -99,12 +99,10 @@ public class Beast2ModelBuilderReflection {
         processAnnotations(model);
 
         // Second pass: build the actual Beast2 objects
-        Object rootObject = objectFactory.buildFromModel(model);
+        objectFactory.buildFromModel(model);
 
         // Log registry statistics
         logger.info(registry.getStatistics());
-
-        return rootObject;
     }
 
     /**

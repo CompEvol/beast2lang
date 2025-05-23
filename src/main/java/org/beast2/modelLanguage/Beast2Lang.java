@@ -5,7 +5,7 @@ import beast.base.parser.XMLProducer;
 import beast.base.parser.XMLParser;
 import beast.base.inference.CompoundDistribution;
 import beast.base.inference.State;
-import org.beast2.modelLanguage.beast.Beast2ModelBuilderReflection;
+import org.beast2.modelLanguage.beast.Beast2ModelBuilder;
 import org.beast2.modelLanguage.phylospec.Beast2LangParserWithPhyloSpec;
 import org.beast2.modelLanguage.builder.Beast2LangParser;
 import org.beast2.modelLanguage.builder.Beast2LangParserImpl;
@@ -72,7 +72,7 @@ public class Beast2Lang implements Callable<Integer> {
             System.out.println("Running Beast2 model from file: " + inputFile.getPath());
 
             // First convert the model to BEAST2 objects
-            Beast2ModelBuilderReflection reflectionBuilder = new Beast2ModelBuilderReflection();
+            Beast2ModelBuilder reflectionBuilder = new Beast2ModelBuilder();
 
             // Use appropriate parser based on PhyloSpec flag
             Beast2LangParser parser = usePhyloSpec
@@ -268,7 +268,7 @@ public class Beast2Lang implements Callable<Integer> {
             // Initialize converters
             Beast2ToPhyloSpecConverter toPhyloSpecConverter = new Beast2ToPhyloSpecConverter();
             PhyloSpecToBeast2Converter toBeast2Converter = new PhyloSpecToBeast2Converter();
-            Beast2ModelBuilderReflection reflectionBuilder = new Beast2ModelBuilderReflection();
+            Beast2ModelBuilder reflectionBuilder = new Beast2ModelBuilder();
             Beast2ToLPHYConverter toLPHYConverter = new Beast2ToLPHYConverter();
 
             // Perform conversion

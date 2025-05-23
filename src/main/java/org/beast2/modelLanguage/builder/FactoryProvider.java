@@ -20,7 +20,7 @@ public class FactoryProvider {
                 // This makes migration easier
                 try {
                     Class<?> implClass = Class.forName(
-                            "org.beast2.modelLanguage.beast.BeastObjectFactoryImpl"
+                            "org.beast2.modelLanguage.beast.BeastObjectFactory"
                     );
                     instance = (ModelObjectFactory) implClass.getDeclaredConstructor().newInstance();
                 } catch (Exception e) {
