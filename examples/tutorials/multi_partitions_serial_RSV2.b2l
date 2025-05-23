@@ -11,14 +11,13 @@ Alignment codon1 = FilteredAlignment(data=alignment_data, filter="3-629\3");
 Alignment codon2 = FilteredAlignment(data=alignment_data, filter="1-629\3");
 @data
 Alignment codon3 = FilteredAlignment(data=alignment_data, filter="2-629\3");
+
 @data
 TaxonSet taxa = TaxonSet(alignment=alignment_data);
 
 // the earliest AUSA2s61=41.0
-TraitSet traitSet = TraitSetFromTaxonSet(delimiter="s", everythingAfterLast="true", traitname="date", dateFormat="yy", taxa=taxa);
-
-//TODO another issue
-Tree tree = Tree(trait=traitSet, taxonset=taxa);
+TraitSet traitSet = TraitSetFromTaxonSet(delimiter="s", everythingAfterLast="true",
+                            traitname="date", dateFormat="yy", taxa=taxa);
 
 // unlink subst models
 RealParameter kappa1 ~ LogNormalDistributionModel(M=1, S=0.5);
@@ -38,7 +37,7 @@ RealParameter r_1 = RealParameter(value=1.0);
 RealParameter r_2 = RealParameter(value=1.0);
 RealParameter r_3 = RealParameter(value=1.0);
 Function r = Concatenate(arg=[r_1, r_2, r_3]);
-// RealParameter r ~ WeightedDirichlet(alpha=[1.0, 1.0, 1.0], weights=[209, 210, 210]);
+//RealParameter r ~ WeightedDirichlet(alpha=[1.0, 1.0, 1.0], weights=[209, 210, 210]);
 Function r ~ WeightedDirichlet(alpha=[1.0, 1.0, 1.0], weights=[209, 210, 210]);
 
 SiteModel siteModel1 = SiteModel(substModel=hky1, mutationRate=r_1);
@@ -48,7 +47,8 @@ SiteModel siteModel3 = SiteModel(substModel=hky3, mutationRate=r_3);
 // link tree
 RealParameter theta ~ LogNormalDistributionModel(M=3, S=2);
 PopulationFunction popFunc = ConstantPopulation(popSize=theta);
-Tree tree ~ Coalescent(populationModel=popFunc, taxonset=taxa);
+// trait= takes 2nd order inputs
+Tree tree ~ Coalescent(populationModel=popFunc, taxonset=alignment_data, trait=traitSet);
 
 RealParameter clockRate ~ LogNormalDistributionModel(M=-5, S=1.25);
 StrictClockModel clockModel = StrictClockModel(clock.rate=clockRate);
