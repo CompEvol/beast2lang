@@ -32,12 +32,13 @@ RealParameter kappa3 ~ LogNormalDistributionModel(M=1, S=0.5);
 RealParameter freqs3 ~ Dirichlet(alpha=[2.0, 2.0, 2.0, 2.0]);
 HKY hky3 = HKY(kappa=kappa3, frequencies=freqs3);
 
+// TODO the value will be replaced to 0.5, but it needs some values here
 // 3 relative rates
-RealParameter r_1 = RealParameter(value=1.0);
-RealParameter r_2 = RealParameter(value=1.0);
-RealParameter r_3 = RealParameter(value=1.0);
+RealParameter r_1 ~ RealParameter(value=1.0);
+RealParameter r_2 ~ RealParameter(value=1.0);
+RealParameter r_3 ~ RealParameter(value=1.0);
 Function r = Concatenate(arg=[r_1, r_2, r_3]);
-//RealParameter r ~ WeightedDirichlet(alpha=[1.0, 1.0, 1.0], weights=[209, 210, 210]);
+//TODO if r exists, then the type may not be required here
 Function r ~ WeightedDirichlet(alpha=[1.0, 1.0, 1.0], weights=[209, 210, 210]);
 
 SiteModel siteModel1 = SiteModel(substModel=hky1, mutationRate=r_1);
