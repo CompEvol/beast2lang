@@ -8,6 +8,8 @@ import beast.base.evolution.alignment.TaxonSet;
 import beast.base.evolution.branchratemodel.BranchRateModel;
 import beast.base.evolution.likelihood.GenericTreeLikelihood;
 import beast.base.evolution.likelihood.TreeLikelihood;
+import beast.base.evolution.sitemodel.SiteModel;
+import beast.base.evolution.sitemodel.SiteModelInterface;
 import beast.base.evolution.tree.MRCAPrior;
 import beast.base.evolution.tree.Tree;
 import beast.base.evolution.tree.TreeInterface;
@@ -497,6 +499,7 @@ public class Beast2AnalysisBuilder {
                 .map(o -> (GenericTreeLikelihood)o)
                 .toList();
 
+        List<StateNode> mutationRates = new ArrayList<>();
         // TODO only working for strict clock
         for (GenericTreeLikelihood treeLikelihood : treeLikelihoods) {
             // add UpDownOperator for each pair of clock rate and tree in a same treeLikelihood
@@ -511,8 +514,22 @@ public class Beast2AnalysisBuilder {
                     // add UpDown operator
                     extraOpFactory.addOperators(List.of(clockRate, tree));
                 }
-            }
 
+                // in addition, collect all relative rates if they are estimated in multi-partition
+                SiteModelInterface siteModelInterface = treeLikelihood.siteModelInput.get();
+                if (siteModelInterface instanceof SiteModel siteModel) {
+                    Function mutationRate = siteModel.muParameterInput.get();
+                    // need to be StateNode
+                    if (mutationRate instanceof StateNode mutationRateParam) {
+                        mutationRates.add(mutationRateParam);
+                    }
+                }
+            }
+        }
+
+        // add deltaExchange operator to all relative rates
+        if (mutationRates.size() > 1) {
+            extraOpFactory.addOperators(mutationRates);
         }
 
         return operatorCache.values().stream().toList();
