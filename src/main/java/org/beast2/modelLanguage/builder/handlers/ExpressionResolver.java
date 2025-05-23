@@ -7,6 +7,7 @@ import java.util.logging.Logger;
 import org.beast2.modelLanguage.builder.FactoryProvider;
 import org.beast2.modelLanguage.builder.ModelObjectFactory;
 import org.beast2.modelLanguage.beast.AutoboxingRegistry;
+import org.beast2.modelLanguage.builder.ObjectRegistry;
 import org.beast2.modelLanguage.model.*;
 
 /**
@@ -20,7 +21,7 @@ public class ExpressionResolver {
     /**
      * Resolve an Expression to its corresponding value
      */
-    public static Object resolveValue(Expression expr, Map<String, Object> objectRegistry) {
+    public static Object resolveValue(Expression expr, ObjectRegistry objectRegistry) {
         if (expr == null) {
             return null;
         }
@@ -49,7 +50,7 @@ public class ExpressionResolver {
     /**
      * Resolve an array literal to an array of objects
      */
-    public static Object resolveArrayLiteral(ArrayLiteral arrayLiteral, Map<String, Object> objectRegistry) {
+    public static Object resolveArrayLiteral(ArrayLiteral arrayLiteral, ObjectRegistry objectRegistry) {
         logger.info("Resolving array literal with " + arrayLiteral.getElements().size() + " elements");
 
         // Get all elements
@@ -148,7 +149,7 @@ public class ExpressionResolver {
         return commonType;
     }
 
-    public static Object resolveValueWithAutoboxing(Expression expr, Map<String, Object> objectRegistry, Type targetType) {
+    public static Object resolveValueWithAutoboxing(Expression expr, ObjectRegistry objectRegistry, Type targetType) {
         // Just delegate to AutoboxingRegistry
         Object value = resolveValue(expr, objectRegistry);
 
@@ -162,7 +163,7 @@ public class ExpressionResolver {
     /**
      * Create a nested object from a FunctionCall expression
      */
-    private static Object createNestedObject(FunctionCall funcCall, Map<String, Object> objectRegistry) {
+    private static Object createNestedObject(FunctionCall funcCall, ObjectRegistry objectRegistry) {
         if (funcCall == null) {
             return null;
         }
@@ -193,7 +194,7 @@ public class ExpressionResolver {
     /**
      * Handle a nexus function call
      */
-    private static Object handleNexusFunction(NexusFunction nexusFunction, Map<String, Object> objectRegistry) {
+    private static Object handleNexusFunction(NexusFunction nexusFunction, ObjectRegistry objectRegistry) {
         try {
             NexusFunctionHandler handler = new NexusFunctionHandler();
             return handler.processFunction(nexusFunction, objectRegistry);

@@ -1,13 +1,14 @@
 package org.beast2.modelLanguage.builder.handlers;
 
+import org.beast2.modelLanguage.builder.ObjectRegistry;
 import org.beast2.modelLanguage.model.Argument;
 import org.beast2.modelLanguage.model.NexusFunction;
 
-import java.util.Map;
 import java.util.logging.Logger;
 
 /**
  * Handler for the built-in nexus() function that reads alignments from Nexus files.
+ * Updated to use ObjectRegistry interface instead of Map<String, Object>.
  */
 public class NexusFunctionHandler extends BaseHandler {
 
@@ -24,11 +25,11 @@ public class NexusFunctionHandler extends BaseHandler {
      * Process a NexusFunction and return an Alignment object.
      *
      * @param nexusFunction The NexusFunction to process
-     * @param objectRegistry The registry of existing objects
+     * @param registry The registry of existing objects
      * @return An Alignment object loaded from the Nexus file
      * @throws Exception If there is an error processing the function
      */
-    public Object processFunction(NexusFunction nexusFunction, Map<String, Object> objectRegistry) {
+    public Object processFunction(NexusFunction nexusFunction, ObjectRegistry registry) {
         logger.info("Processing nexus() function");
 
         // Extract parameters
@@ -37,12 +38,13 @@ public class NexusFunctionHandler extends BaseHandler {
 
         for (Argument arg : nexusFunction.getArguments()) {
             if ("file".equals(arg.getName())) {
-                Object resolvedValue = ExpressionResolver.resolveValue(arg.getValue(), objectRegistry);
+                // Use getAllObjects() for resolving references
+                Object resolvedValue = ExpressionResolver.resolveValue(arg.getValue(), registry);
                 if (resolvedValue != null) {
                     filePath = resolvedValue.toString();
                 }
             } else if ("id".equals(arg.getName())) {
-                Object resolvedValue = ExpressionResolver.resolveValue(arg.getValue(), objectRegistry);
+                Object resolvedValue = ExpressionResolver.resolveValue(arg.getValue(), registry);
                 if (resolvedValue != null) {
                     alignmentId = resolvedValue.toString();
                 }
@@ -60,8 +62,8 @@ public class NexusFunctionHandler extends BaseHandler {
             // Use factory to create alignment
             Object alignment = factory.createAlignment(filePath, alignmentId);
 
-            // Add the alignment to the object registry
-            objectRegistry.put(alignmentId, alignment);
+            // Add the alignment to the registry
+            registry.register(alignmentId, alignment);
 
             logger.info("Successfully loaded alignment from Nexus file: " + filePath + " with ID: " + alignmentId);
             return alignment;

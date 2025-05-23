@@ -2,6 +2,7 @@ package org.beast2.modelLanguage.builder.handlers;
 
 import org.beast2.modelLanguage.builder.FactoryProvider;
 import org.beast2.modelLanguage.builder.ModelObjectFactory;
+import org.beast2.modelLanguage.builder.ObjectRegistry;
 import org.beast2.modelLanguage.model.Argument;
 import org.beast2.modelLanguage.model.Expression;
 
@@ -11,7 +12,7 @@ import java.util.logging.Logger;
 
 /**
  * Base handler class providing common functionality for all model object handlers.
- * Uses ObjectFactory interface to remain independent of BEAST2 framework details.
+ * Updated to use ObjectRegistry interface instead of Map<String, Object>.
  *
  * @author Alexei Drummond
  */
@@ -78,17 +79,17 @@ public abstract class BaseHandler {
      * Resolve an expression and apply autoboxing if needed.
      *
      * @param expr Expression to resolve
-     * @param objectRegistry Registry of existing objects
+     * @param registry Registry containing existing objects
      * @param targetType Expected type for autoboxing
      * @return Resolved and potentially autoboxed value
      */
-    protected Object resolveAndAutobox(Expression expr, Map<String, Object> objectRegistry, Type targetType) {
-        // First resolve the value
-        Object value = ExpressionResolver.resolveValue(expr, objectRegistry);
+    protected Object resolveAndAutobox(Expression expr, ObjectRegistry registry, Type targetType) {
+        // First resolve the value - use getAllObjects() for read access
+        Object value = ExpressionResolver.resolveValue(expr, registry);
 
         // Then apply autoboxing through factory
         if (targetType != null && factory.canAutobox(value, targetType)) {
-            return factory.autobox(value, targetType, objectRegistry);
+            return factory.autobox(value, targetType, registry);
         }
 
         return value;
@@ -96,16 +97,17 @@ public abstract class BaseHandler {
 
     /**
      * Configure an input on a model object.
+     * Updated to accept ObjectRegistry instead of Map<String, Object>.
      *
      * @param name Input name
      * @param valueExpr Expression providing the value
      * @param target Target object
      * @param inputMap Map of available inputs (for compatibility)
-     * @param objectRegistry Registry of existing objects
+     * @param registry Registry of existing objects
      */
     protected void configureInput(String name, Expression valueExpr,
                                   Object target, Map<String, Object> inputMap,
-                                  Map<String, Object> objectRegistry) {
+                                  ObjectRegistry registry) {
         if (!factory.isModelObject(target)) {
             logger.warning("Target is not a model object");
             return;
@@ -116,7 +118,7 @@ public abstract class BaseHandler {
             Type expectedType = factory.getInputType(target, name);
 
             // Resolve and autobox in one step
-            Object value = resolveAndAutobox(valueExpr, objectRegistry, expectedType);
+            Object value = resolveAndAutobox(valueExpr, registry, expectedType);
 
             // Set the input
             factory.setInputValue(target, name, value);
@@ -128,22 +130,23 @@ public abstract class BaseHandler {
     /**
      * Configure input for multiple objects (primary and secondary).
      * Tries primary first, then falls back to secondary if needed.
+     * Updated to accept ObjectRegistry instead of Map<String, Object>.
      *
      * @param name Input name
      * @param arg Argument containing the value
      * @param primaryObject Primary target object
      * @param secondaryObject Secondary target object (fallback)
-     * @param objectRegistry Registry of existing objects
+     * @param registry Registry of existing objects
      */
     protected void configureInputForObjects(String name, Argument arg,
                                             Object primaryObject, Object secondaryObject,
-                                            Map<String, Object> objectRegistry) {
+                                            ObjectRegistry registry) {
         if (!factory.isModelObject(primaryObject)) {
             return;
         }
 
-        // Get the value from the expression
-        Object argValue = ExpressionResolver.resolveValue(arg.getValue(), objectRegistry);
+        // Get the value from the expression - use getAllObjects() for read access
+        Object argValue = ExpressionResolver.resolveValue(arg.getValue(), registry);
 
         // Get expected types
         Type primaryExpectedType = factory.getInputType(primaryObject, name);
@@ -156,7 +159,7 @@ public abstract class BaseHandler {
         if (primaryExpectedType != null) {
             try {
                 Object primaryValue = factory.canAutobox(argValue, primaryExpectedType) ?
-                        factory.autobox(argValue, primaryExpectedType, objectRegistry) : argValue;
+                        factory.autobox(argValue, primaryExpectedType, registry) : argValue;
 
                 logger.info("Attempting to set input '" + name + "' on primary object");
                 factory.setInputValue(primaryObject, name, primaryValue);
@@ -170,7 +173,7 @@ public abstract class BaseHandler {
         if (!inputSet && secondaryExpectedType != null && factory.isModelObject(secondaryObject)) {
             try {
                 Object secondaryValue = factory.canAutobox(argValue, secondaryExpectedType) ?
-                        factory.autobox(argValue, secondaryExpectedType, objectRegistry) : argValue;
+                        factory.autobox(argValue, secondaryExpectedType, registry) : argValue;
 
                 logger.info("Falling back to secondary object for input: " + name);
                 factory.setInputValue(secondaryObject, name, secondaryValue);

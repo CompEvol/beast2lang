@@ -6,6 +6,7 @@ import beast.base.inference.parameter.BooleanParameter;
 import beast.base.inference.parameter.IntegerParameter;
 import beast.base.inference.parameter.RealParameter;
 import beast.base.inference.parameter.Parameter;
+import org.beast2.modelLanguage.builder.ObjectRegistry;
 import org.beast2.modelLanguage.builder.handlers.ExpressionResolver;
 import org.beast2.modelLanguage.model.Argument;
 import org.beast2.modelLanguage.model.Expression;
@@ -255,7 +256,7 @@ public class BEASTUtils {
      */
     public static void configureFromFunctionCall(Object object, FunctionCall funcCall,
                                                  Map<String, Input<?>> inputMap,
-                                                 Map<String, Object> objectRegistry) {
+                                                 ObjectRegistry objectRegistry) {
         if (!(object instanceof BEASTInterface)) {
             return;
         }
@@ -335,11 +336,11 @@ public class BEASTUtils {
     /**
      * Placeholder methods that will need implementations from ExpressionResolver
      */
-    public static Object resolveValueWithAutoboxing(Expression expr, Map<String, Object> objectRegistry, Type targetType) {
+    public static Object resolveValueWithAutoboxing(Expression expr, ObjectRegistry objectRegistry, Type targetType) {
         return ExpressionResolver.resolveValueWithAutoboxing(expr, objectRegistry, targetType);
     }
 
-    public static Object resolveValue(Expression expr, Map<String, Object> objectRegistry) {
+    public static Object resolveValue(Expression expr, ObjectRegistry objectRegistry) {
         return ExpressionResolver.resolveValue(expr, objectRegistry);
     }
 

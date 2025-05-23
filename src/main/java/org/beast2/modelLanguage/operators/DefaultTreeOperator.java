@@ -11,7 +11,7 @@ import beast.base.evolution.tree.Tree;
 import beast.base.inference.Operator;
 import org.beast2.modelLanguage.beast.Beast2AnalysisBuilder;
 
-import static org.beast2.modelLanguage.BEASTObjectID.*;
+import static org.beast2.modelLanguage.beast.BEASTObjectID.*;
 import static org.beast2.modelLanguage.operators.MCMCOperator.getOperatorWeight;
 
 

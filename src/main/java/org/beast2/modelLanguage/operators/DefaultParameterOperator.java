@@ -12,7 +12,7 @@ import beast.base.inference.parameter.Parameter;
 import beast.base.inference.parameter.RealParameter;
 import org.beast2.modelLanguage.beast.Beast2AnalysisBuilder;
 
-import static org.beast2.modelLanguage.BEASTObjectID.*;
+import static org.beast2.modelLanguage.beast.BEASTObjectID.*;
 import static org.beast2.modelLanguage.operators.MCMCOperator.getOperatorWeight;
 
 

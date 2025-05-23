@@ -1,4 +1,4 @@
-package org.beast2.modelLanguage;
+package org.beast2.modelLanguage.beast;
 
 public final class BEASTObjectID {
 

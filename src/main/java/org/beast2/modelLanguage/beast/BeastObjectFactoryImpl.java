@@ -21,6 +21,7 @@ import beast.pkgmgmt.Package;
 import beast.pkgmgmt.PackageManager;
 
 import org.beast2.modelLanguage.builder.ModelObjectFactory;
+import org.beast2.modelLanguage.builder.ObjectRegistry;
 import org.beast2.modelLanguage.builder.handlers.ExpressionResolver;
 import org.beast2.modelLanguage.model.Argument;
 import org.beast2.modelLanguage.model.FunctionCall;
@@ -284,7 +285,7 @@ public class BeastObjectFactoryImpl implements ModelObjectFactory {
      * Delegate autoboxing to the AutoboxingRegistry.
      */
     @Override
-    public Object autobox(Object value, Type targetType, Map<String, Object> objectRegistry) {
+    public Object autobox(Object value, Type targetType, ObjectRegistry objectRegistry) {
         return AutoboxingRegistry.getInstance().autobox(value, targetType, objectRegistry);
     }
 
@@ -464,7 +465,7 @@ public class BeastObjectFactoryImpl implements ModelObjectFactory {
 
     @Override
     public void configureFromFunctionCall(Object obj, FunctionCall funcCall,
-                                          Map<String, Object> objectRegistry) throws Exception {
+                                          ObjectRegistry objectRegistry) throws Exception {
         if (!isModelObject(obj)) {
             return;
         }

@@ -5,6 +5,7 @@ import beast.base.core.Input;
 import beast.base.evolution.alignment.Taxon;
 import beast.base.inference.parameter.IntegerParameter;
 import beast.base.inference.parameter.RealParameter;
+import org.beast2.modelLanguage.builder.ObjectRegistry;
 
 import java.lang.reflect.*;
 import java.util.*;
@@ -87,7 +88,7 @@ public class AutoboxingRegistry {
     /**
      * Attempt to autobox a value based on the target Type
      */
-    public Object autobox(Object value, Type targetType, Map<String, Object> objectRegistry) {
+    public Object autobox(Object value, Type targetType, ObjectRegistry objectRegistry) {
         if (value == null || targetType == null) {
             return value;
         }
@@ -131,7 +132,7 @@ public class AutoboxingRegistry {
         /**
          * Perform the autoboxing
          */
-        Object autobox(Object value, Type targetType, Map<String, Object> objectRegistry) throws Exception;
+        Object autobox(Object value, Type targetType, ObjectRegistry objectRegistry) throws Exception;
     }
 
     /**
@@ -329,7 +330,7 @@ public class AutoboxingRegistry {
         }
 
         @Override
-        public Object autobox(Object value, Type targetType, Map<String, Object> objectRegistry) throws Exception {
+        public Object autobox(Object value, Type targetType, ObjectRegistry objectRegistry) throws Exception {
             if (!value.getClass().isArray()) {
                 throw new IllegalArgumentException("Expected an array but got " + value.getClass().getName());
             }
@@ -392,7 +393,7 @@ public class AutoboxingRegistry {
         }
 
         @Override
-        public Object autobox(Object value, Type targetType, Map<String, Object> objectRegistry) throws Exception {
+        public Object autobox(Object value, Type targetType, ObjectRegistry objectRegistry) throws Exception {
             String[] taxonNames = (String[]) value;
             List<Taxon> taxonList = new ArrayList<>();
 
@@ -432,7 +433,7 @@ public class AutoboxingRegistry {
         }
 
         @Override
-        public Object autobox(Object value, Type targetType, Map<String, Object> objectRegistry) {
+        public Object autobox(Object value, Type targetType, ObjectRegistry objectRegistry) {
             Class<?> targetClass = TypeUtils.getRawType(targetType);
             return BEASTUtils.createParameterForType(value, targetClass);
         }
@@ -465,7 +466,7 @@ public class AutoboxingRegistry {
         }
 
         @Override
-        public Object autobox(Object value, Type targetType, Map<String, Object> objectRegistry) throws Exception {
+        public Object autobox(Object value, Type targetType, ObjectRegistry objectRegistry) throws Exception {
             // Create Prior
             Class<?> priorClass = Class.forName("beast.base.inference.distribution.Prior");
             Object prior = priorClass.getDeclaredConstructor().newInstance();
@@ -507,7 +508,7 @@ public class AutoboxingRegistry {
         }
 
         @Override
-        public Object autobox(Object value, Type targetType, Map<String, Object> objectRegistry) throws Exception {
+        public Object autobox(Object value, Type targetType, ObjectRegistry objectRegistry) throws Exception {
             // Create SiteModel
             Class<?> siteModelClass = Class.forName("beast.base.evolution.sitemodel.SiteModel");
             Object siteModel = siteModelClass.getDeclaredConstructor().newInstance();
@@ -549,7 +550,7 @@ public class AutoboxingRegistry {
         }
 
         @Override
-        public Object autobox(Object value, Type targetType, Map<String, Object> objectRegistry) throws Exception {
+        public Object autobox(Object value, Type targetType, ObjectRegistry objectRegistry) throws Exception {
             // Create TaxonSet
             Class<?> taxonSetClass = Class.forName("beast.base.evolution.alignment.TaxonSet");
             Object taxonSet = taxonSetClass.getDeclaredConstructor().newInstance();
@@ -598,7 +599,7 @@ public class AutoboxingRegistry {
         }
 
         @Override
-        public Object autobox(Object value, Type targetType, Map<String, Object> objectRegistry) throws Exception {
+        public Object autobox(Object value, Type targetType, ObjectRegistry objectRegistry) throws Exception {
             Double[] doubleArray = (Double[]) value;
 
             logger.info("Constructed real parameter from double array: " + Arrays.toString(doubleArray));
@@ -637,7 +638,7 @@ public class AutoboxingRegistry {
         }
 
         @Override
-        public Object autobox(Object value, Type targetType, Map<String, Object> objectRegistry) throws Exception {
+        public Object autobox(Object value, Type targetType, ObjectRegistry objectRegistry) throws Exception {
             Integer[] integerArray = (Integer[]) value;
 
             logger.info("Constructed integer parameter from integer array: " + Arrays.toString(integerArray));
@@ -675,7 +676,7 @@ public class AutoboxingRegistry {
         }
 
         @Override
-        public Object autobox(Object value, Type targetType, Map<String, Object> objectRegistry) throws Exception {
+        public Object autobox(Object value, Type targetType, ObjectRegistry objectRegistry) throws Exception {
             // Create Frequencies object
             Class<?> freqsClass = Class.forName("beast.base.evolution.substitutionmodel.Frequencies");
             Object freqs = freqsClass.getDeclaredConstructor().newInstance();
@@ -717,7 +718,7 @@ public class AutoboxingRegistry {
         }
 
         @Override
-        public Object autobox(Object value, Type targetType, Map<String, Object> objectRegistry) throws Exception {
+        public Object autobox(Object value, Type targetType, ObjectRegistry objectRegistry) throws Exception {
             // First convert Double[] to RealParameter
             DoubleArrayToRealParameterRule paramRule = new DoubleArrayToRealParameterRule();
             Object realParam = paramRule.autobox(value,
@@ -755,7 +756,7 @@ public class AutoboxingRegistry {
         }
 
         @Override
-        public Object autobox(Object value, Type targetType, Map<String, Object> objectRegistry) throws Exception {
+        public Object autobox(Object value, Type targetType, ObjectRegistry objectRegistry) throws Exception {
             try {
                 // Create TreeIntervals object
                 Class<?> treeIntervalsClass = Class.forName("beast.base.evolution.tree.TreeIntervals");

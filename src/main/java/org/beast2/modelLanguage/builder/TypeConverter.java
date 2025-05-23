@@ -8,7 +8,7 @@ import java.util.Map;
  */
 public interface TypeConverter {
     // Autoboxing
-    Object autobox(Object value, Type targetType, Map<String, Object> objectRegistry);
+    Object autobox(Object value, Type targetType, ObjectRegistry objectRegistry);
     boolean canAutobox(Object value, Type targetType);
 
     // Basic type conversions

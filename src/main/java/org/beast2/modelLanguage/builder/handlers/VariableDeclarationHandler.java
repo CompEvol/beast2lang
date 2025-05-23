@@ -1,14 +1,15 @@
 package org.beast2.modelLanguage.builder.handlers;
 
 import org.beast2.modelLanguage.builder.NameResolver;
+import org.beast2.modelLanguage.builder.ObjectRegistry;
 import org.beast2.modelLanguage.beast.AutoboxingRegistry;
 import org.beast2.modelLanguage.model.*;
 
 import java.lang.reflect.Array;
-import java.util.Map;
 
 /**
  * Handler for VariableDeclaration statements, responsible for creating model objects.
+ * Updated to use ObjectRegistry interface instead of Map<String, Object>.
  */
 public class VariableDeclarationHandler extends BaseHandler {
 
@@ -19,14 +20,14 @@ public class VariableDeclarationHandler extends BaseHandler {
         super(VariableDeclarationHandler.class.getName());
     }
 
-    public Object createObject(VariableDeclaration varDecl, Map<String, Object> objectRegistry) throws Exception {
+    public Object createObject(VariableDeclaration varDecl, ObjectRegistry registry) throws Exception {
         String declaredTypeName = varDecl.getClassName();
         String variableName = varDecl.getVariableName();
         Expression value = varDecl.getValue();
 
         // Handle array literals
         if (value instanceof ArrayLiteral) {
-            return handleArrayLiteral(declaredTypeName, variableName, (ArrayLiteral) value, objectRegistry);
+            return handleArrayLiteral(declaredTypeName, variableName, (ArrayLiteral) value, registry);
         }
 
         // Handle literal values directly
@@ -34,8 +35,8 @@ public class VariableDeclarationHandler extends BaseHandler {
             Object literalValue = ((Literal) value).getValue();
             try {
                 Class<?> declaredType = loadClass(declaredTypeName);
-                // Use AutoboxingRegistry instead of direct Parameter handling
-                return AutoboxingRegistry.getInstance().autobox(literalValue, declaredType, objectRegistry);
+                // Use AutoboxingRegistry with getAllObjects() for read-only access
+                return AutoboxingRegistry.getInstance().autobox(literalValue, declaredType, registry);
             } catch (ClassNotFoundException e) {
                 logger.warning("Class not found: " + declaredTypeName);
                 return ((Literal) value).getValue();
@@ -44,7 +45,7 @@ public class VariableDeclarationHandler extends BaseHandler {
 
         // Handle nexus function calls
         if (value instanceof NexusFunction) {
-            return handleNexusFunction(declaredTypeName, variableName, (NexusFunction) value, objectRegistry);
+            return handleNexusFunction(declaredTypeName, variableName, (NexusFunction) value, registry);
         }
 
         // Handle function calls
@@ -67,8 +68,8 @@ public class VariableDeclarationHandler extends BaseHandler {
         // Create and configure the object using factory
         Object modelObject = factory.createObject(implementationClassName, variableName);
 
-        // Configure using factory method
-        factory.configureFromFunctionCall(modelObject, funcCall, objectRegistry);
+        // Configure using factory method - pass getAllObjects() for backward compatibility
+        factory.configureFromFunctionCall(modelObject, funcCall, registry);
         factory.initAndValidate(modelObject);
 
         return modelObject;
@@ -78,13 +79,11 @@ public class VariableDeclarationHandler extends BaseHandler {
      * Handle nexus function calls to load alignments from Nexus files
      */
     private Object handleNexusFunction(String declaredTypeName, String variableName,
-                                       NexusFunction nexusFunction, Map<String, Object> objectRegistry) throws Exception {
+                                       NexusFunction nexusFunction, ObjectRegistry registry) throws Exception {
         // Check if the declared type is compatible with Alignment
         Class<?> declaredType;
         try {
             declaredType = loadClass(declaredTypeName);
-            // Check if it's an alignment type - we'll need to add a method to factory for this
-            // For now, we'll just proceed
         } catch (ClassNotFoundException e) {
             logger.warning("Class not found: " + declaredTypeName);
             throw new ClassNotFoundException("Declared type not found: " + declaredTypeName);
@@ -92,7 +91,7 @@ public class VariableDeclarationHandler extends BaseHandler {
 
         // Use the NexusFunctionHandler to process the nexus function
         NexusFunctionHandler handler = new NexusFunctionHandler();
-        Object alignment = handler.processFunction(nexusFunction, objectRegistry);
+        Object alignment = handler.processFunction(nexusFunction, registry);
 
         // Set the ID if it wasn't set by the handler
         try {
@@ -104,8 +103,8 @@ public class VariableDeclarationHandler extends BaseHandler {
             logger.warning("Could not set ID on alignment: " + e.getMessage());
         }
 
-        // Store the object in the registry with the variable name
-        objectRegistry.put(variableName, alignment);
+        // Store the object in the registry
+        registry.register(variableName, alignment);
 
         logger.info("Created alignment from Nexus file: " + variableName);
         return alignment;
@@ -115,7 +114,7 @@ public class VariableDeclarationHandler extends BaseHandler {
      * Handle array literal expressions and create appropriate arrays
      */
     private Object handleArrayLiteral(String declaredTypeName, String variableName,
-                                      ArrayLiteral arrayLiteral, Map<String, Object> objectRegistry) throws Exception {
+                                      ArrayLiteral arrayLiteral, ObjectRegistry registry) throws Exception {
         // Check if this is an array type
         if (!declaredTypeName.endsWith("[]")) {
             throw new IllegalArgumentException("Expected array type for array literal, got: " + declaredTypeName);
@@ -139,7 +138,8 @@ public class VariableDeclarationHandler extends BaseHandler {
             // Fill the array with resolved values
             for (int i = 0; i < length; i++) {
                 Expression elem = arrayLiteral.getElements().get(i);
-                Object resolvedValue = ExpressionResolver.resolveValue(elem, objectRegistry);
+                // Use getAllObjects() for resolving references
+                Object resolvedValue = ExpressionResolver.resolveValue(elem, registry);
 
                 // For primitive component types, we need additional conversion
                 if (componentClass.isPrimitive()) {
@@ -165,7 +165,8 @@ public class VariableDeclarationHandler extends BaseHandler {
                     // For object types, check if the value is assignable to the component type
                     if (resolvedValue != null && !componentClass.isAssignableFrom(resolvedValue.getClass())) {
                         // Try autoboxing
-                        resolvedValue = AutoboxingRegistry.getInstance().autobox(resolvedValue, componentClass, objectRegistry);
+                        resolvedValue = AutoboxingRegistry.getInstance().autobox(
+                                resolvedValue, componentClass, registry);
                     }
 
                     // Set the array element
@@ -173,8 +174,8 @@ public class VariableDeclarationHandler extends BaseHandler {
                 }
             }
 
-            // Store the array in the object registry and return it
-            objectRegistry.put(variableName, array);
+            // Store the array in the registry and return it
+            registry.register(variableName, array);
             return array;
         } catch (ClassNotFoundException e) {
             throw new ClassNotFoundException("Could not find component class: " + componentTypeName +

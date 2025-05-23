@@ -18,7 +18,7 @@ public interface InputManager {
 
     // Complex input operations
     void configureFromFunctionCall(Object obj, FunctionCall funcCall,
-                                   Map<String, Object> objectRegistry) throws Exception;
+                                   ObjectRegistry objectRegistry) throws Exception;
     boolean connectToFirstMatchingInput(Object source, Object target,
                                         String[] inputNames) throws Exception;
 }

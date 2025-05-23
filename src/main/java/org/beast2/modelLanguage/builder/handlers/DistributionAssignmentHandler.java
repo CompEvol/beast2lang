@@ -1,5 +1,6 @@
 package org.beast2.modelLanguage.builder.handlers;
 
+import org.beast2.modelLanguage.builder.ObjectRegistry;
 import org.beast2.modelLanguage.beast.AutoboxingRegistry;
 import org.beast2.modelLanguage.model.Argument;
 import org.beast2.modelLanguage.model.DistributionAssignment;
@@ -12,7 +13,7 @@ import java.util.*;
 /**
  * Handler for DistributionAssignment statements, responsible for creating model objects
  * with associated distributions.
- * Refactored to use ObjectFactory instead of direct BEAST dependencies.
+ * Updated to use ObjectRegistry interface instead of Map<String, Object>.
  */
 public class DistributionAssignmentHandler extends BaseHandler {
 
@@ -44,7 +45,7 @@ public class DistributionAssignmentHandler extends BaseHandler {
      * Connects a primary parameter to a distribution or likelihood object with proper autoboxing.
      */
     private boolean connectPrimaryParameter(Object primaryObject, Object targetObject,
-                                            Map<String, Object> objectRegistry) {
+                                            ObjectRegistry registry) {
         if (!factory.isModelObject(targetObject)) {
             logger.warning("Target object is not a model object");
             return false;
@@ -68,8 +69,8 @@ public class DistributionAssignmentHandler extends BaseHandler {
             // Check if autoboxing is needed
             Object valueToSet = primaryObject;
             if (!AutoboxingRegistry.isDirectlyAssignable(primaryObject, expectedType)) {
-                // Apply autoboxing if needed
-                valueToSet = factory.autobox(primaryObject, expectedType, objectRegistry);
+                // Apply autoboxing if needed - use getAllObjects() for read access
+                valueToSet = factory.autobox(primaryObject, expectedType, registry);
                 logger.info("Autoboxed parameter from " + primaryObject.getClass().getSimpleName() +
                         " to " + (valueToSet != null ? valueToSet.getClass().getSimpleName() : "null"));
             }
@@ -86,7 +87,7 @@ public class DistributionAssignmentHandler extends BaseHandler {
     /**
      * Create objects from a distribution assignment
      */
-    public void createObjects(DistributionAssignment distAssign, Map<String, Object> objectRegistry) throws Exception {
+    public void createObjects(DistributionAssignment distAssign, ObjectRegistry registry) throws Exception {
         String className = distAssign.getClassName();
         String varName = distAssign.getVariableName();
         Expression distribution = distAssign.getDistribution();
@@ -97,7 +98,6 @@ public class DistributionAssignmentHandler extends BaseHandler {
 
             try {
                 // Try to load the distribution class
-                //Class<?> distClass = loadClass(distClassName);
                 Object testDist = factory.createObject(distClassName, null);
 
                 // Check if it's a ParametricDistribution
@@ -109,17 +109,17 @@ public class DistributionAssignmentHandler extends BaseHandler {
                     Object distObject = createBEASTObject(distClassName, distVarName);
 
                     // 2. Configure the distribution with its arguments
-                    configureObject(distObject, distFunc, objectRegistry);
+                    configureObject(distObject, distFunc, registry);
 
                     // Initialize the distribution
                     factory.initAndValidate(distObject);
 
                     // Store it in the registry
-                    objectRegistry.put(distVarName, distObject);
+                    registry.register(distVarName, distObject);
 
                     // 3. Create or get the parameter object
                     Object paramObject;
-                    Object existingParam = objectRegistry.get(varName);
+                    Object existingParam = registry.get(varName);
                     if (existingParam != null && factory.isFunction(existingParam)) {
                         // Reuse existing parameter
                         logger.info("Using existing parameter object: " + varName);
@@ -131,11 +131,11 @@ public class DistributionAssignmentHandler extends BaseHandler {
                         initializeParameterFromParametricDistribution(paramObject, distObject);
 
                         // Store the parameter in registry
-                        objectRegistry.put(varName, paramObject);
+                        registry.register(varName, paramObject);
                     }
 
                     // 4. Now create a Prior that wraps this distribution
-                    String priorName = getUniquePriorName(varName, objectRegistry);
+                    String priorName = getUniquePriorName(varName, registry);
                     Object priorObject = factory.createPriorForParametricDistribution(paramObject, distObject, priorName);
 
                     // 5. Wire the distribution and parameter to the prior
@@ -146,8 +146,8 @@ public class DistributionAssignmentHandler extends BaseHandler {
                     factory.initAndValidate(priorObject);
 
                     // Store the prior
-                    objectRegistry.put(priorName, priorObject);
-                    addDistributionForObject(varName, priorName, objectRegistry);
+                    registry.register(priorName, priorObject);
+                    addDistributionForObject(varName, priorName, registry);
 
                     return;
                 }
@@ -159,7 +159,7 @@ public class DistributionAssignmentHandler extends BaseHandler {
 
         // Normal processing if we didn't handle the special case
         Object beastObject;
-        Object existingObject = objectRegistry.get(varName);
+        Object existingObject = registry.get(varName);
         Class<?> objectClass = loadClass(className);
 
         if (objectClass.isInstance(existingObject)) {
@@ -175,7 +175,7 @@ public class DistributionAssignmentHandler extends BaseHandler {
             }
 
             // Store the object
-            objectRegistry.put(varName, beastObject);
+            registry.register(varName, beastObject);
         }
 
         // If no distribution is specified, we're done
@@ -185,35 +185,23 @@ public class DistributionAssignmentHandler extends BaseHandler {
 
         // Create the distribution object with a unique name
         String distClassName = funcCall.getClassName();
-        String priorName = getUniquePriorName(varName, objectRegistry);
+        String priorName = getUniquePriorName(varName, registry);
         Object distObject = createBEASTObject(distClassName, priorName);
 
         // Configure the distribution
-        configureDistribution(distObject, beastObject, funcCall, objectRegistry);
+        configureDistribution(distObject, beastObject, funcCall, registry);
 
         // Store the distribution object
-        objectRegistry.put(priorName, distObject);
+        registry.register(priorName, distObject);
 
         // Track this distribution for the object
-        addDistributionForObject(varName, priorName, objectRegistry);
-    }
-
-    /**
-     * Check if a class name represents a parameter type
-     */
-    private boolean isFunctionType(String className) {
-        try {
-            Object testObj = factory.createObject(className, null);
-            return factory.isFunction(testObj);
-        } catch (Exception e) {
-            return false;
-        }
+        addDistributionForObject(varName, priorName, registry);
     }
 
     /**
      * Configure an object from a function call
      */
-    private void configureObject(Object object, FunctionCall funcCall, Map<String, Object> objectRegistry) throws Exception {
+    private void configureObject(Object object, FunctionCall funcCall, ObjectRegistry registry) throws Exception {
         if (!factory.isModelObject(object)) {
             return;
         }
@@ -223,7 +211,7 @@ public class DistributionAssignmentHandler extends BaseHandler {
             Type expectedType = factory.getInputType(object, argName);
 
             Object argValue = ExpressionResolver.resolveValueWithAutoboxing(
-                    arg.getValue(), objectRegistry, expectedType);
+                    arg.getValue(), registry, expectedType);
 
             try {
                 factory.setInputValue(object, argName, argValue);
@@ -276,11 +264,11 @@ public class DistributionAssignmentHandler extends BaseHandler {
     /**
      * Get a unique name for a prior
      */
-    private String getUniquePriorName(String varName, Map<String, Object> objectRegistry) {
+    private String getUniquePriorName(String varName, ObjectRegistry registry) {
         String basePriorName = varName + "Prior";
 
         // If base name is available, use it
-        if (!objectRegistry.containsKey(basePriorName)) {
+        if (!registry.contains(basePriorName)) {
             return basePriorName;
         }
 
@@ -290,7 +278,7 @@ public class DistributionAssignmentHandler extends BaseHandler {
         do {
             priorName = basePriorName + counter;
             counter++;
-        } while (objectRegistry.containsKey(priorName));
+        } while (registry.contains(priorName));
 
         return priorName;
     }
@@ -298,17 +286,17 @@ public class DistributionAssignmentHandler extends BaseHandler {
     /**
      * Add a distribution to the list of distributions for an object
      */
-    private void addDistributionForObject(String objectName, String priorName, Map<String, Object> objectRegistry) {
+    private void addDistributionForObject(String objectName, String priorName, ObjectRegistry registry) {
         // Key for storing the list of distributions for this object
         String distributionsKey = objectName + "Distributions";
 
         // Get existing list or create a new one
         @SuppressWarnings("unchecked")
-        List<String> distributionList = (List<String>) objectRegistry.get(distributionsKey);
+        List<String> distributionList = (List<String>) registry.get(distributionsKey);
 
         if (distributionList == null) {
             distributionList = new ArrayList<>();
-            objectRegistry.put(distributionsKey, distributionList);
+            registry.register(distributionsKey, distributionList);
         }
 
         // Add this distribution to the list
@@ -320,13 +308,13 @@ public class DistributionAssignmentHandler extends BaseHandler {
     /**
      * Create objects from a distribution assignment with observed data reference
      */
-    public void createObservedObjects(DistributionAssignment distAssign, Map<String, Object> objectRegistry, String dataRef) throws Exception {
+    public void createObservedObjects(DistributionAssignment distAssign, ObjectRegistry registry, String dataRef) throws Exception {
         String className = distAssign.getClassName();
         String varName = distAssign.getVariableName();
         Expression distribution = distAssign.getDistribution();
 
         // Get the referenced data object
-        Object dataObject = objectRegistry.get(dataRef);
+        Object dataObject = registry.get(dataRef);
         if (dataObject == null) {
             throw new IllegalArgumentException("Data reference not found: " + dataRef);
         }
@@ -338,7 +326,7 @@ public class DistributionAssignmentHandler extends BaseHandler {
         }
 
         // Use the same data object for the observed variable
-        objectRegistry.put(varName, dataObject);
+        registry.register(varName, dataObject);
 
         // If no distribution is specified, we're done
         if (!(distribution instanceof FunctionCall funcCall)) {
@@ -347,19 +335,19 @@ public class DistributionAssignmentHandler extends BaseHandler {
 
         // Create and configure the likelihood object
         String likelihoodClassName = funcCall.getClassName();
-        createLikelihood(likelihoodClassName, varName, funcCall, dataObject, objectRegistry);
+        createLikelihood(likelihoodClassName, varName, funcCall, dataObject, registry);
     }
 
     /**
      * Create a likelihood object and configure it
      */
     private void createLikelihood(String className, String varName, FunctionCall funcCall,
-                                  Object dataObject, Map<String, Object> objectRegistry) throws Exception {
+                                  Object dataObject, ObjectRegistry registry) throws Exception {
         // Create the likelihood object
         Object likelihoodObject = createBEASTObject(className, varName + "Likelihood");
 
         // Connect data to likelihood
-        boolean dataConnected = connectPrimaryParameter(dataObject, likelihoodObject, objectRegistry);
+        boolean dataConnected = connectPrimaryParameter(dataObject, likelihoodObject, registry);
         if (!dataConnected) {
             logger.warning("Could not connect data to likelihood");
         }
@@ -375,7 +363,7 @@ public class DistributionAssignmentHandler extends BaseHandler {
             }
 
             configureInput(arg.getName(), arg.getValue(),
-                    likelihoodObject, Collections.emptyMap(), objectRegistry);
+                    likelihoodObject, Collections.emptyMap(), registry);
         }
 
         // Initialize objects
@@ -385,17 +373,17 @@ public class DistributionAssignmentHandler extends BaseHandler {
         }
 
         // Store the likelihood object
-        objectRegistry.put(varName + "Likelihood", likelihoodObject);
+        registry.register(varName + "Likelihood", likelihoodObject);
     }
 
     private void configureDistribution(Object distObject, Object paramObject, FunctionCall funcCall,
-                                       Map<String, Object> objectRegistry) throws Exception {
+                                       ObjectRegistry registry) throws Exception {
         logger.info("Configuring distribution: " + distObject.getClass().getName() +
                 " with parameter: " + paramObject.getClass().getName());
 
         // Process function call arguments FIRST
         for (Argument arg : funcCall.getArguments()) {
-            configureInputForObjects(arg.getName(), arg, distObject, paramObject, objectRegistry);
+            configureInputForObjects(arg.getName(), arg, distObject, paramObject, registry);
         }
 
         // NOW try to initialize the parameter object if needed
@@ -409,7 +397,7 @@ public class DistributionAssignmentHandler extends BaseHandler {
         }
 
         // THEN connect parameter to distribution
-        boolean parameterConnected = connectPrimaryParameter(paramObject, distObject, objectRegistry);
+        boolean parameterConnected = connectPrimaryParameter(paramObject, distObject, registry);
         if (!parameterConnected) {
             logger.warning("Could not connect parameter to distribution");
         }

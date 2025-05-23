@@ -22,7 +22,7 @@ import java.util.*;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
-import static org.beast2.modelLanguage.BEASTObjectID.*;
+import static org.beast2.modelLanguage.beast.BEASTObjectID.*;
 
 /**
  * Builds the BEAST2 MCMC run from a Beast2Analysis (model + defaults).
