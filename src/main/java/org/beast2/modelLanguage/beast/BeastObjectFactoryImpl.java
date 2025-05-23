@@ -154,6 +154,10 @@ public class BeastObjectFactoryImpl implements ModelObjectFactory {
         return obj instanceof Function;
     }
 
+    public boolean isFunctionClass(Class c) {
+        return Function.class.isAssignableFrom(c);
+    }
+
     @Override
     public boolean isDistribution(Object obj) {
         return obj instanceof Distribution;

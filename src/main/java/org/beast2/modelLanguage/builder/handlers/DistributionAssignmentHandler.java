@@ -92,7 +92,7 @@ public class DistributionAssignmentHandler extends BaseHandler {
         Expression distribution = distAssign.getDistribution();
 
         // Check if this is potentially a ParametricDistribution assignment
-        if (distribution instanceof FunctionCall distFunc && isParameterType(className)) {
+        if (distribution instanceof FunctionCall distFunc && factory.isFunctionClass(factory.loadClass(className))) {
             String distClassName = distFunc.getClassName();
 
             try {
@@ -201,11 +201,10 @@ public class DistributionAssignmentHandler extends BaseHandler {
     /**
      * Check if a class name represents a parameter type
      */
-    private boolean isParameterType(String className) {
+    private boolean isFunctionType(String className) {
         try {
-            //Class<?> clazz = loadClass(className);
             Object testObj = factory.createObject(className, null);
-            return factory.isParameter(testObj);
+            return factory.isFunction(testObj);
         } catch (Exception e) {
             return false;
         }

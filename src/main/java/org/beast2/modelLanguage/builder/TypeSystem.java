@@ -13,6 +13,8 @@ public interface TypeSystem {
 
     boolean isFunction(Object obj);
 
+    boolean isFunctionClass(Class c);
+
     boolean isDistribution(Object obj);
     boolean isParametricDistribution(Object obj);
     boolean isRealParameter(Object obj);
