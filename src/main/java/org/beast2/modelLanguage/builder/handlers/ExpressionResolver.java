@@ -4,8 +4,8 @@ import java.lang.reflect.Type;
 import java.util.Map;
 import java.util.logging.Logger;
 
+import org.beast2.modelLanguage.builder.FactoryProvider;
 import org.beast2.modelLanguage.builder.ModelObjectFactory;
-import org.beast2.modelLanguage.beast.BeastObjectFactoryImpl;
 import org.beast2.modelLanguage.beast.AutoboxingRegistry;
 import org.beast2.modelLanguage.model.*;
 
@@ -15,7 +15,7 @@ import org.beast2.modelLanguage.model.*;
 public class ExpressionResolver {
 
     private static final Logger logger = Logger.getLogger(ExpressionResolver.class.getName());
-    private static final ModelObjectFactory factory = new BeastObjectFactoryImpl();
+    private static final ModelObjectFactory factory = FactoryProvider.getFactory();
 
     /**
      * Resolve an Expression to its corresponding value

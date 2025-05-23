@@ -1,6 +1,6 @@
 package org.beast2.modelLanguage.builder.handlers;
 
-import org.beast2.modelLanguage.beast.BeastObjectFactoryImpl;
+import org.beast2.modelLanguage.builder.FactoryProvider;
 import org.beast2.modelLanguage.builder.ModelObjectFactory;
 
 import java.util.ArrayList;
@@ -16,7 +16,7 @@ import java.util.logging.Logger;
 public class ParameterInitializer {
 
     private static final Logger logger = Logger.getLogger(ParameterInitializer.class.getName());
-    private static final ModelObjectFactory factory = new BeastObjectFactoryImpl();
+    private static final ModelObjectFactory factory = FactoryProvider.getFactory();
 
     /**
      * Initializes a parameter based on a distribution

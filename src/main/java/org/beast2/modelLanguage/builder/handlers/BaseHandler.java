@@ -1,6 +1,6 @@
 package org.beast2.modelLanguage.builder.handlers;
 
-import org.beast2.modelLanguage.beast.BeastObjectFactoryImpl;
+import org.beast2.modelLanguage.builder.FactoryProvider;
 import org.beast2.modelLanguage.builder.ModelObjectFactory;
 import org.beast2.modelLanguage.model.Argument;
 import org.beast2.modelLanguage.model.Expression;
@@ -26,7 +26,7 @@ public abstract class BaseHandler {
      */
     protected BaseHandler(String loggerName) {
         this.logger = Logger.getLogger(loggerName);
-        this.factory = new BeastObjectFactoryImpl();
+        this.factory = FactoryProvider.getFactory();
     }
 
     /**

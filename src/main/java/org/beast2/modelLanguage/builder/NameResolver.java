@@ -1,9 +1,5 @@
 package org.beast2.modelLanguage.builder;
 
-import org.beast2.modelLanguage.beast.BeastObjectFactoryImpl;
-import org.beast2.modelLanguage.beast.PackageUtils;
-import org.beast2.modelLanguage.model.ImportStatement;
-
 import java.util.*;
 import java.util.logging.Logger;
 
@@ -15,8 +11,8 @@ public class NameResolver {
 
     private static final Logger logger = Logger.getLogger(NameResolver.class.getName());
 
-    private final TypeSystem typeSystem = new BeastObjectFactoryImpl();
-    private final DependencyManager dependencyManager  = new BeastObjectFactoryImpl();
+    private final TypeSystem typeSystem = FactoryProvider.getFactory();
+    private final DependencyManager dependencyManager = FactoryProvider.getFactory();
 
     private final Map<String, String> explicitImports;
     private final List<String> wildcardImports;
@@ -31,27 +27,6 @@ public class NameResolver {
         this.wildcardImports = new ArrayList<>();
         this.resolvedCache = new HashMap<>();
         this.processedPackages = new HashSet<>();
-    }
-
-    /**
-     * Constructor that initializes with a list of import statements
-     *
-     * @param imports the list of import statements
-     */
-    public NameResolver(List<ImportStatement> imports) {
-        this();
-
-        if (imports != null) {
-            for (ImportStatement importStmt : imports) {
-                if (importStmt.isWildcard()) {
-                    wildcardImports.add(importStmt.getPackageName());
-                } else {
-                    String packageName = importStmt.getPackageName();
-                    String simpleName = getSimpleName(packageName);
-                    explicitImports.put(simpleName, packageName);
-                }
-            }
-        }
     }
 
     /**
@@ -90,8 +65,6 @@ public class NameResolver {
 
         processedPackages.add(pluginName);
         logger.info("Processing required BEAST plugin: " + pluginName);
-
-        PackageUtils.printBEASTInterfacesByPackage();
 
         // Search for BEASTInterface classes directly in the plugin -- don't forget plugin name must be lowercase for this method!
         List<String> beastClasses = dependencyManager.findModelObjectClasses(pluginName);
@@ -161,14 +134,19 @@ public class NameResolver {
         }
 
         // Special cases for common built-in Java types
-        if ("String".equals(className)) {
-            return "java.lang.String";
-        } else if ("Integer".equals(className)) {
-            return "java.lang.Integer";
-        } else if ("Double".equals(className)) {
-            return "java.lang.Double";
-        } else if ("Boolean".equals(className)) {
-            return "java.lang.Boolean";
+        switch (className) {
+            case "String" -> {
+                return "java.lang.String";
+            }
+            case "Integer" -> {
+                return "java.lang.Integer";
+            }
+            case "Double" -> {
+                return "java.lang.Double";
+            }
+            case "Boolean" -> {
+                return "java.lang.Boolean";
+            }
         }
 
         // Check explicit imports first
