@@ -13,6 +13,7 @@ import beast.base.evolution.sitemodel.SiteModelInterface;
 import beast.base.evolution.tree.MRCAPrior;
 import beast.base.evolution.tree.Tree;
 import beast.base.evolution.tree.TreeInterface;
+import beast.base.evolution.tree.TreeStatLogger;
 import beast.base.evolution.tree.coalescent.ConstantPopulation;
 import beast.base.evolution.tree.coalescent.RandomTree;
 import beast.base.inference.*;
@@ -377,6 +378,7 @@ public class Beast2AnalysisBuilder {
         // Add items to log for console
         List<BEASTInterface> consoleLogItems = new ArrayList<>();
         consoleLogItems.add(posterior); // Always log the posterior
+        // TODO what about prior and likelihood ?
         consoleLogger.initByName(INPUT_LOG_EVERY, logInterval, INPUT_LOG, consoleLogItems);
         loggers.add(consoleLogger);
 
@@ -384,15 +386,24 @@ public class Beast2AnalysisBuilder {
         beast.base.inference.Logger fileLogger = new beast.base.inference.Logger();
         fileLogger.setID(ID_FILE_LOGGER);
         // Add items to log for file
-        List<BEASTInterface> fileLogItems = new ArrayList<>();
+        List<Function> fileLogItems = new ArrayList<>();
         fileLogItems.add(posterior); // Always log the posterior
 
-        // Add all parameters to log
-        for (Object obj : modelBuilder.getAllObjects().values()) {
-            if ((obj instanceof Parameter) && !(obj instanceof Tree)) {
-                fileLogItems.add((BEASTInterface) obj);
+        // this is a bug: it should only add state node
+//        for (Object obj : modelBuilder.getAllObjects().values()) {
+        List<StateNode> stateNodes = modelBuilder.getCreatedStateNodes();
+        for (StateNode stateNode : stateNodes) {
+            if ((stateNode instanceof Parameter parameter)) {
+                fileLogItems.add(parameter);
+            } else if (stateNode instanceof Tree tree) {
+                // log tree height and total branch length
+                TreeStatLogger treeStatLogger = new TreeStatLogger();
+                treeStatLogger.initByName(INPUT_TREE, tree);
+                fileLogItems.add(treeStatLogger);
             }
         }
+
+        //TODO how to order fileLogItems ? by alphabetic
 
         fileLogger.initByName(
                 INPUT_FILE_NAME, traceFileName,
@@ -408,9 +419,9 @@ public class Beast2AnalysisBuilder {
         List<BEASTInterface> treeLogItems = new ArrayList<>();
 
         // Find trees to log
-        for (Object obj : modelBuilder.getAllObjects().values()) {
-            if (obj instanceof Tree) {
-                treeLogItems.add((BEASTInterface) obj);
+        for (StateNode stateNode : stateNodes) { // I think this is wrong : modelBuilder.getAllObjects().values()) {
+            if (stateNode instanceof Tree tree) {
+                treeLogItems.add(tree);
             }
         }
 
