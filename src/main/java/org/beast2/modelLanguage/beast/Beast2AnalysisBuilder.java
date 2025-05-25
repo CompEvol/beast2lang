@@ -389,8 +389,7 @@ public class Beast2AnalysisBuilder {
         List<Function> fileLogItems = new ArrayList<>();
         fileLogItems.add(posterior); // Always log the posterior
 
-        // this is a bug: it should only add state node
-//        for (Object obj : modelBuilder.getAllObjects().values()) {
+        // add state node
         List<StateNode> stateNodes = modelBuilder.getCreatedStateNodes();
         for (StateNode stateNode : stateNodes) {
             if ((stateNode instanceof Parameter parameter)) {
@@ -419,7 +418,7 @@ public class Beast2AnalysisBuilder {
         List<BEASTInterface> treeLogItems = new ArrayList<>();
 
         // Find trees to log
-        for (StateNode stateNode : stateNodes) { // I think this is wrong : modelBuilder.getAllObjects().values()) {
+        for (StateNode stateNode : stateNodes) {
             if (stateNode instanceof Tree tree) {
                 treeLogItems.add(tree);
             }
