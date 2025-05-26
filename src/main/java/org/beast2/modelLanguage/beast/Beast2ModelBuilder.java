@@ -9,6 +9,7 @@ import org.beast2.modelLanguage.model.*;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
@@ -49,7 +50,10 @@ public class Beast2ModelBuilder {
      * These are the things that should be in the MCMC state.
      */
     public List<StateNode> getCreatedStateNodes() {
-        return registry.getRandomStateNodes();
+        List<StateNode> stateNodes = registry.getRandomStateNodes();
+        // sort by alphabetic
+        stateNodes.sort(Comparator.comparing(StateNode::getID));
+        return stateNodes;
     }
 
     /**

@@ -1,6 +1,7 @@
 package org.beast2.modelLanguage.beast;
 
 import beast.base.core.BEASTInterface;
+import beast.base.core.BEASTObject;
 import beast.base.core.Function;
 import beast.base.core.Input;
 import beast.base.evolution.alignment.Alignment;
@@ -267,6 +268,7 @@ public class Beast2AnalysisBuilder {
         return dists.stream()
                 .filter(d -> d instanceof TreeLikelihood)
                 .map(d -> (TreeLikelihood) d)
+                .sorted(Comparator.comparing(TreeLikelihood::getID))  // sort by getID
                 .collect(Collectors.toList());
     }
 
@@ -278,8 +280,8 @@ public class Beast2AnalysisBuilder {
         // Get state nodes from the model builder
         List<StateNode> stateNodes = modelBuilder.getCreatedStateNodes();
 
-        // Remove duplicates based on ID
-        Map<String, StateNode> uniqueNodes = new HashMap<>();
+        // Remove duplicates based on ID, and sort by key (ID)
+        Map<String, StateNode> uniqueNodes = new TreeMap<>();
         for (StateNode node : stateNodes) {
             // Only add each unique ID once
             if (node.getID() != null && !uniqueNodes.containsKey(node.getID())) {
@@ -378,7 +380,6 @@ public class Beast2AnalysisBuilder {
         // Add items to log for console
         List<BEASTInterface> consoleLogItems = new ArrayList<>();
         consoleLogItems.add(posterior); // Always log the posterior
-        // TODO what about prior and likelihood ?
         consoleLogger.initByName(INPUT_LOG_EVERY, logInterval, INPUT_LOG, consoleLogItems);
         loggers.add(consoleLogger);
 
@@ -386,14 +387,14 @@ public class Beast2AnalysisBuilder {
         beast.base.inference.Logger fileLogger = new beast.base.inference.Logger();
         fileLogger.setID(ID_FILE_LOGGER);
         // Add items to log for file
-        List<Function> fileLogItems = new ArrayList<>();
-        fileLogItems.add(posterior); // Always log the posterior
+        List<BEASTObject> fileLogItems = new ArrayList<>();
 
         // add state node
         List<StateNode> stateNodes = modelBuilder.getCreatedStateNodes();
+
         for (StateNode stateNode : stateNodes) {
-            if ((stateNode instanceof Parameter parameter)) {
-                fileLogItems.add(parameter);
+            if ((stateNode instanceof Parameter)) {
+                fileLogItems.add(stateNode);
             } else if (stateNode instanceof Tree tree) {
                 // log tree height and total branch length
                 TreeStatLogger treeStatLogger = new TreeStatLogger();
@@ -402,7 +403,8 @@ public class Beast2AnalysisBuilder {
             }
         }
 
-        //TODO how to order fileLogItems ? by alphabetic
+        // TODO what about prior and likelihood ? TreeLikelihoods ?
+        fileLogItems.add(0, posterior); // Always log the posterior
 
         fileLogger.initByName(
                 INPUT_FILE_NAME, traceFileName,
@@ -488,6 +490,7 @@ public class Beast2AnalysisBuilder {
         List<GenericTreeLikelihood> treeLikelihoods = modelBuilder.getAllObjects().values().stream()
                 .filter(o -> o instanceof GenericTreeLikelihood)
                 .map(o -> (GenericTreeLikelihood)o)
+                .sorted(Comparator.comparing(GenericTreeLikelihood::getID)) // sort by id
                 .toList();
 
         List<StateNode> mutationRates = new ArrayList<>();
