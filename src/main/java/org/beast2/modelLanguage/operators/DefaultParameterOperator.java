@@ -2,6 +2,7 @@ package org.beast2.modelLanguage.operators;
 
 import beast.base.evolution.operator.kernel.BactrianScaleOperator;
 import beast.base.inference.Operator;
+import beast.base.inference.StateNode;
 import beast.base.inference.operator.BitFlipOperator;
 import beast.base.inference.operator.IntRandomWalkOperator;
 import beast.base.inference.operator.kernel.BactrianDeltaExchangeOperator;
@@ -11,6 +12,8 @@ import beast.base.inference.parameter.IntegerParameter;
 import beast.base.inference.parameter.Parameter;
 import beast.base.inference.parameter.RealParameter;
 import org.beast2.modelLanguage.beast.Beast2AnalysisBuilder;
+
+import java.util.List;
 
 import static org.beast2.modelLanguage.beast.BEASTObjectID.*;
 import static org.beast2.modelLanguage.operators.MCMCOperator.getOperatorWeight;
@@ -25,11 +28,14 @@ public class DefaultParameterOperator implements MCMCOperator<Parameter> {
 
     private final Beast2AnalysisBuilder builder;
 
+    final List<StateNode> skipOperator;
+
     /**
      * @param builder               passing all configurations
      */
-    public DefaultParameterOperator(Beast2AnalysisBuilder builder) {
+    public DefaultParameterOperator(Beast2AnalysisBuilder builder, List<StateNode> skipOperator) {
         this.builder = builder;
+        this.skipOperator = skipOperator;
     }
 
     /**
@@ -37,6 +43,8 @@ public class DefaultParameterOperator implements MCMCOperator<Parameter> {
      */
     @Override
     public void addOperators(Parameter param) {
+        if (skipOperator.contains(param)) return;
+
         String paramID = param.getID();
         // Skip if we've already created operators for this parameter
         if (!builder.hasOperators(paramID + "Operator")) {

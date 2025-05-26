@@ -9,7 +9,10 @@ import beast.base.evolution.operator.kernel.BactrianScaleOperator;
 import beast.base.evolution.operator.kernel.BactrianSubtreeSlide;
 import beast.base.evolution.tree.Tree;
 import beast.base.inference.Operator;
+import beast.base.inference.StateNode;
 import org.beast2.modelLanguage.beast.Beast2AnalysisBuilder;
+
+import java.util.List;
 
 import static org.beast2.modelLanguage.beast.BEASTObjectID.*;
 import static org.beast2.modelLanguage.operators.MCMCOperator.getOperatorWeight;
@@ -24,11 +27,14 @@ public class DefaultTreeOperator implements MCMCOperator<Tree> {
 
     private final Beast2AnalysisBuilder builder;
 
+    final List<StateNode> skipOperator;
+
     /**
      * @param builder               passing all configurations
      */
-    public DefaultTreeOperator(Beast2AnalysisBuilder builder) {
+    public DefaultTreeOperator(Beast2AnalysisBuilder builder, List<StateNode> skipOperator) {
         this.builder = builder;
+        this.skipOperator = skipOperator;
     }
 
     /**
@@ -36,6 +42,8 @@ public class DefaultTreeOperator implements MCMCOperator<Tree> {
      */
     @Override
     public void addOperators(Tree tree) {
+        if (skipOperator.contains(tree)) return;
+
         String treeID = tree.getID();
 
         // Skip if we've already created operators for this tree

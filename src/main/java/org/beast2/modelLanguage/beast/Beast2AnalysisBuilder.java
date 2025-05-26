@@ -473,15 +473,60 @@ public class Beast2AnalysisBuilder {
      * Only creates operators for state nodes that are in the MCMC state.
      */
     private List<Operator> setupOperators() {
-        // TODO hard code
-        MCMCOperator paramOpFactory = new DefaultParameterOperator(this);
-        MCMCOperator treeOpFactory = new DefaultTreeOperator(this);
-        MCMCOperator extraOpFactory = new ExtraOperator(this);
 
         operatorCache.clear();
-
         // Get state nodes actually in the MCMC state
         List<StateNode> stateNodes = modelBuilder.getCreatedStateNodes();
+
+        // TODO hard code
+
+        // special case first, and produce a list of state nodes to skip the operators using the default logic below
+        ExtraOperator extraOpFactory = new ExtraOperator(this);
+
+        //*** special cases ***//
+
+        List<GenericTreeLikelihood> treeLikelihoods = modelBuilder.getAllObjects().values().stream()
+                .filter(o -> o instanceof GenericTreeLikelihood)
+                .map(o -> (GenericTreeLikelihood)o)
+                .toList();
+
+        List<StateNode> mutationRates = new ArrayList<>();
+        // TODO only working for strict clock
+        for (GenericTreeLikelihood treeLikelihood : treeLikelihoods) {
+            // add UpDownOperator for each pair of clock rate and tree in a same treeLikelihood
+            BranchRateModel.Base branchRateModel = treeLikelihood.branchRateModelInput.get();
+            Function meanRate = branchRateModel.meanRateInput.get();
+            TreeInterface treeInterface = treeLikelihood.treeInput.get();
+
+            // if both clockRate and tree are StateNode
+            if (stateNodes.contains(meanRate) && meanRate instanceof StateNode clockRate
+                    && treeInterface instanceof StateNode tree) {
+                // add UpDown operator
+                extraOpFactory.addOperators(List.of(clockRate, tree));
+
+                // in addition, collect all relative rates if they are estimated in multi-partition
+                SiteModelInterface siteModelInterface = treeLikelihood.siteModelInput.get();
+                if (siteModelInterface instanceof SiteModel siteModel) {
+                    Function mutationRate = siteModel.muParameterInput.get();
+                    // need to be StateNode
+                    if (mutationRate instanceof StateNode mutationRateParam) {
+                        mutationRates.add(mutationRateParam);
+                    }
+                }
+            }
+        }
+
+        // add deltaExchange operator to all relative rates
+        if (mutationRates.size() > 1) {
+            extraOpFactory.addOperators(mutationRates);
+        }
+
+        //*** default operators ***//
+
+        List<StateNode> skipOperator = extraOpFactory.getSkipOperator();
+        // the default logic to add operators
+        MCMCOperator paramOpFactory = new DefaultParameterOperator(this, skipOperator);
+        MCMCOperator treeOpFactory = new DefaultTreeOperator(this, skipOperator);
 
         // Create operators only for state nodes that are in the state
         for (StateNode stateNode : stateNodes) {
@@ -500,46 +545,6 @@ public class Beast2AnalysisBuilder {
             } catch (Exception e) {
                 logger.warning("Could not create operators for " + stateNode.getID() + ": " + e.getMessage());
             }
-        }
-
-        //*** special cases ***//
-
-        List<GenericTreeLikelihood> treeLikelihoods = modelBuilder.getAllObjects().values().stream()
-                .filter(o -> o instanceof GenericTreeLikelihood)
-                .map(o -> (GenericTreeLikelihood)o)
-                .toList();
-
-        List<StateNode> mutationRates = new ArrayList<>();
-        // TODO only working for strict clock
-        for (GenericTreeLikelihood treeLikelihood : treeLikelihoods) {
-            // add UpDownOperator for each pair of clock rate and tree in a same treeLikelihood
-            BranchRateModel.Base branchRateModel = treeLikelihood.branchRateModelInput.get();
-            Function meanRate = branchRateModel.meanRateInput.get();
-
-            // if clockRate is StateNode
-            if (stateNodes.contains(meanRate) && meanRate instanceof Parameter clockRate) {
-                TreeInterface treeInterface = treeLikelihood.treeInput.get();
-                // need tree to be StateNode
-                if (treeInterface instanceof StateNode tree) {
-                    // add UpDown operator
-                    extraOpFactory.addOperators(List.of(clockRate, tree));
-                }
-
-                // in addition, collect all relative rates if they are estimated in multi-partition
-                SiteModelInterface siteModelInterface = treeLikelihood.siteModelInput.get();
-                if (siteModelInterface instanceof SiteModel siteModel) {
-                    Function mutationRate = siteModel.muParameterInput.get();
-                    // need to be StateNode
-                    if (mutationRate instanceof StateNode mutationRateParam) {
-                        mutationRates.add(mutationRateParam);
-                    }
-                }
-            }
-        }
-
-        // add deltaExchange operator to all relative rates
-        if (mutationRates.size() > 1) {
-            extraOpFactory.addOperators(mutationRates);
         }
 
         return operatorCache.values().stream().toList();

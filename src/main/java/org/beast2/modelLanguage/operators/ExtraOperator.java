@@ -8,6 +8,7 @@ import beast.base.inference.operator.kernel.BactrianUpDownOperator;
 import beast.base.inference.parameter.Parameter;
 import org.beast2.modelLanguage.beast.Beast2AnalysisBuilder;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.beast2.modelLanguage.beast.BEASTObjectID.*;
@@ -23,11 +24,17 @@ public class ExtraOperator implements MCMCOperator<List<StateNode>> {
 
     private final Beast2AnalysisBuilder builder;
 
+    List<StateNode> skipOperator;
+
     /**
      * @param builder               passing all configurations
      */
     public ExtraOperator(Beast2AnalysisBuilder builder) {
         this.builder = builder;
+
+        // this is used to create special operators for any state nodes here,
+        // but which do not need the traditional operators in Default*Operator.
+        skipOperator = new ArrayList<>();
     }
 
     /**
@@ -48,6 +55,7 @@ public class ExtraOperator implements MCMCOperator<List<StateNode>> {
 
         // this is for relative rates
         if (!builder.hasOperators(paramID + ".DeltaExchange")) {
+            // TODO: this work for Concatenate case, but may not work for Slice
             List<Parameter> parameterList = stateNodes.stream()
                     .filter(p -> p instanceof Parameter)
                     .map(p -> (Parameter) p)
@@ -56,12 +64,19 @@ public class ExtraOperator implements MCMCOperator<List<StateNode>> {
                 Operator operator = getDeltaExchangeOperator(parameterList);
                 builder.addOperator(paramID + ".DeltaExchange", operator);
 
-                //TODO need to remove their ScaleOperator
+                for (Parameter parameter : parameterList) {
+                    // make sure the relative rates will not be added Scale Op later
+                    if (parameter instanceof StateNode stateNode)
+                        skipOperator.add(stateNode);
+                }
             }
         }
 
     }
 
+    public List<StateNode> getSkipOperator() {
+        return skipOperator;
+    }
 
     // when both clockRate and tree are random var
     protected Operator getUpDownOperator(Parameter clockRate, Tree tree) {
