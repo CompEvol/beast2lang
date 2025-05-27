@@ -246,45 +246,42 @@ public class LPHYGenerator {
 
         if (dist.getDistribution() instanceof FunctionCall) {
             FunctionCall func = (FunctionCall) dist.getDistribution();
-            if (func.getClassName().contains("TreeLikelihood")) {
-                // Map TreeLikelihood to PhyloCTMC
-                String mappedName = "phyloCTMC";
-                sb.append(mappedName).append("(");
 
-                // Process arguments with mapping
-                boolean first = true;
-                for (Argument arg : func.getArguments()) {
-                    if (!first) {
-                        sb.append(", ");
-                    }
+            // Map function name using the regular mapping system
+            String mappedFunctionName = mappingProvider.mapFunctionName(func.getClassName());
+            sb.append(mappedFunctionName).append("(");
 
-                    // Map parameter name
-                    String origParamName = arg.getName();
-                    String mappedParamName = mappingProvider.mapParameterName("PhyloCTMC", origParamName);
-                    sb.append(mappedParamName).append("=").append(generateExpression(arg.getValue()));
-
-                    first = false;
-                }
-
-                // Add L parameter for sequence length
+            // Process existing arguments with mapping
+            boolean first = true;
+            for (Argument arg : func.getArguments()) {
                 if (!first) {
                     sb.append(", ");
                 }
 
-                // Get data source from annotation for length
-                String dataSource = annotation.getParameterAsString("data");
-                if (dataSource != null) {
-                    // Use the renamed variable if it exists
-                    String nameToUse = dist.getVariableName(); // Default to the current distribution variable
-                    sb.append("L=").append(nameToUse).append(".nchar()");
-                } else {
-                    sb.append("L=data.nchar() /* data source not found */");
+                // Map parameter name
+                String origParamName = arg.getName();
+                String mappedParamName = mappingProvider.mapParameterName(mappedFunctionName, origParamName);
+
+                // Get the argument value and apply renaming if needed
+                String argValueStr = generateExpression(arg.getValue());
+
+                sb.append(mappedParamName).append("=").append(argValueStr);
+                first = false;
+            }
+
+            // Add L parameter for sequence length (this is the only special handling needed)
+            // Check for PhyloCTMC (uppercase as it's a distribution)
+            if (mappedFunctionName.equals("PhyloCTMC") ||
+                    func.getClassName().contains("TreeLikelihood")) {
+                if (!first) {
+                    sb.append(", ");
                 }
 
-                sb.append(")");
-            } else {
-                sb.append(generateExpression(dist.getDistribution()));
+                // Use the observed variable name for the length
+                sb.append("L=").append(dist.getVariableName()).append(".nchar()");
             }
+
+            sb.append(")");
         } else {
             sb.append(generateExpression(dist.getDistribution()));
         }
@@ -292,8 +289,6 @@ public class LPHYGenerator {
         sb.append(";");
         return sb.toString();
     }
-
-    // [Rest of the methods remain the same]
 
     /**
      * Generate LPHY code for a nexus function.
@@ -310,7 +305,10 @@ public class LPHYGenerator {
             if (!first) {
                 sb.append(", ");
             }
-            sb.append(arg.getName()).append("=").append(generateExpression(arg.getValue()));
+
+            // Map parameter names for readNexus
+            String paramName = mappingProvider.mapParameterName("readNexus", arg.getName());
+            sb.append(paramName).append("=").append(generateExpression(arg.getValue()));
             first = false;
         }
 
@@ -325,8 +323,22 @@ public class LPHYGenerator {
         if (expr instanceof FunctionCall) {
             return generateFunctionCall((FunctionCall) expr);
         } else if (expr instanceof Identifier) {
-            return ((Identifier) expr).getName();
+            String name = ((Identifier) expr).getName();
+            // Check if this identifier should be renamed
+            if (dataToObservedMap.containsKey(name)) {
+                return dataToObservedMap.get(name);
+            }
+            return name;
         } else if (expr instanceof Literal) {
+            // Handle string literals by ensuring they have quotes
+            Literal lit = (Literal) expr;
+            if (lit.getType() == Literal.LiteralType.STRING) {
+                String value = lit.getId();
+                // If it doesn't already have quotes, add them
+                if (!value.startsWith("\"") && !value.endsWith("\"")) {
+                    return "\"" + value + "\"";
+                }
+            }
             return expr.getId();
         } else if (expr instanceof ArrayLiteral) {
             return generateArrayLiteral((ArrayLiteral) expr);
@@ -357,7 +369,11 @@ public class LPHYGenerator {
 
             // Map parameter name
             String mappedParamName = mappingProvider.mapParameterName(mappedFunctionName, arg.getName());
-            sb.append(mappedParamName).append("=").append(generateExpression(arg.getValue()));
+
+            // Generate the argument value with proper renaming
+            String argValueStr = generateExpression(arg.getValue());
+
+            sb.append(mappedParamName).append("=").append(argValueStr);
 
             first = false;
         }

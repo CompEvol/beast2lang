@@ -36,6 +36,8 @@ public class LPHYMappingProvider {
         addFunctionMapping("GTR", "gtr");
         addFunctionMapping("TreeLikelihood", "PhyloCTMC");
         addFunctionMapping("nexus", "readNexus");
+        addFunctionMapping("AlignmentFromNexus", "readNexus");  // Add this mapping
+        addFunctionMapping("Dirichlet", "Dirichlet");  // Explicit mapping to keep case
 
         // Parameter name mappings for distributions
         addParameterMapping("LogNormal", "M", "meanlog");
@@ -55,6 +57,9 @@ public class LPHYMappingProvider {
         addParameterMapping("PhyloCTMC", "siteModel", "Q");
         addParameterMapping("PhyloCTMC", "tree", "tree");
         addParameterMapping("PhyloCTMC", "branchRateModel", "branchRates");
+
+        // Parameter mappings for readNexus
+        addParameterMapping("readNexus", "fileName", "file");
     }
 
     /**
