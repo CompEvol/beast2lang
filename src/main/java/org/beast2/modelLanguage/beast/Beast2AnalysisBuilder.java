@@ -498,22 +498,25 @@ public class Beast2AnalysisBuilder {
         for (GenericTreeLikelihood treeLikelihood : treeLikelihoods) {
             // add UpDownOperator for each pair of clock rate and tree in a same treeLikelihood
             BranchRateModel.Base branchRateModel = treeLikelihood.branchRateModelInput.get();
-            Function meanRate = branchRateModel.meanRateInput.get();
             TreeInterface treeInterface = treeLikelihood.treeInput.get();
 
-            // if both clockRate and tree are StateNode
-            if (stateNodes.contains(meanRate) && meanRate instanceof StateNode clockRate
-                    && treeInterface instanceof StateNode tree) {
-                // add UpDown operator
-                extraOpFactory.addOperators(List.of(clockRate, tree));
+            // these inputs could be null
+            if (branchRateModel != null && treeInterface != null) {
+                Function meanRate = branchRateModel.meanRateInput.get();
+                // if both clockRate and tree are StateNode
+                if (meanRate != null && stateNodes.contains(meanRate) && meanRate instanceof StateNode clockRate
+                        && treeInterface instanceof StateNode tree) {
+                    // add UpDown operator
+                    extraOpFactory.addOperators(List.of(clockRate, tree));
 
-                // in addition, collect all relative rates if they are estimated in multi-partition
-                SiteModelInterface siteModelInterface = treeLikelihood.siteModelInput.get();
-                if (siteModelInterface instanceof SiteModel siteModel) {
-                    Function mutationRate = siteModel.muParameterInput.get();
-                    // need to be StateNode
-                    if (mutationRate instanceof StateNode mutationRateParam) {
-                        mutationRates.add(mutationRateParam);
+                    // in addition, collect all relative rates if they are estimated in multi-partition
+                    SiteModelInterface siteModelInterface = treeLikelihood.siteModelInput.get();
+                    if (siteModelInterface instanceof SiteModel siteModel) {
+                        Function mutationRate = siteModel.muParameterInput.get();
+                        // need to be StateNode
+                        if (mutationRate instanceof StateNode mutationRateParam) {
+                            mutationRates.add(mutationRateParam);
+                        }
                     }
                 }
             }
