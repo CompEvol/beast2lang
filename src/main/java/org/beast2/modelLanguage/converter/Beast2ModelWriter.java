@@ -21,25 +21,25 @@ public class Beast2ModelWriter {
      * @return A string containing the Beast2Lang script
      */
     public String writeModel(Beast2Model model) {
-        sb.setLength(0);
 
-        // Write imports (sorted alphabetically)
-        Set<ImportStatement> sortedImports = new TreeSet<>((i1, i2) -> {
-            return i1.getPackageName().compareTo(i2.getPackageName());
-        });
-        sortedImports.addAll(model.getImports());
+        // Add requires statements first
+        for (RequiresStatement req : model.getRequires()) {
+            sb.append(req.toString()).append("\n");
+        }
 
-        for (ImportStatement importStmt : sortedImports) {
-            writeImport(importStmt);
+        // Only add imports if no requires statements
+        if (model.getRequires().isEmpty()) {
+            for (ImportStatement imp : model.getImports()) {
+                writeImport(imp);
+            }
+        }
+
+        // Add blank line if we have requires or imports
+        if (!model.getRequires().isEmpty() || !model.getImports().isEmpty()) {
             sb.append("\n");
         }
 
-        // Add a blank line between imports and statements
-        if (!sortedImports.isEmpty()) {
-            sb.append("\n");
-        }
-
-        // Write statements
+        // Add statements
         for (Statement stmt : model.getStatements()) {
             writeStatement(stmt);
             sb.append("\n");
@@ -47,7 +47,7 @@ public class Beast2ModelWriter {
 
         return sb.toString();
     }
-
+    
     /**
      * Write an import statement
      */

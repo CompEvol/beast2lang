@@ -5,7 +5,9 @@ import beast.base.parser.XMLProducer;
 import beast.base.parser.XMLParser;
 import beast.base.inference.CompoundDistribution;
 import beast.base.inference.State;
+import beast.pkgmgmt.PackageManager;
 import org.beast2.modelLanguage.beast.Beast2ModelBuilder;
+import org.beast2.modelLanguage.model.RequiresStatement;
 import org.beast2.modelLanguage.phylospec.Beast2LangParserWithPhyloSpec;
 import org.beast2.modelLanguage.builder.Beast2LangParser;
 import org.beast2.modelLanguage.builder.Beast2LangParserImpl;
@@ -33,6 +35,8 @@ import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Main application class for Beast2Lang
@@ -72,7 +76,7 @@ public class Beast2Lang implements Callable<Integer> {
             System.out.println("Running Beast2 model from file: " + inputFile.getPath());
 
             // First convert the model to BEAST2 objects
-            Beast2ModelBuilder reflectionBuilder = new Beast2ModelBuilder();
+            Beast2ModelBuilder modelBuilder = new Beast2ModelBuilder();
 
             // Use appropriate parser based on PhyloSpec flag
             Beast2LangParser parser = usePhyloSpec
@@ -83,7 +87,7 @@ public class Beast2Lang implements Callable<Integer> {
                 // Parse the model with the selected parser
                 Beast2Model model = usePhyloSpec
                         ? parser.parseFromStream(fis)
-                        : reflectionBuilder.buildFromStream(fis);
+                        : modelBuilder.buildFromStream(fis);
 
                 // Create analysis parameters
                 Beast2Analysis analysis = new Beast2Analysis(
@@ -101,13 +105,13 @@ public class Beast2Lang implements Callable<Integer> {
                 analysis.setThreadCount(threads);
 
                 // Build the MCMC run object
-                Beast2AnalysisBuilder analysisBuilder = new Beast2AnalysisBuilder(reflectionBuilder);
+                Beast2AnalysisBuilder analysisBuilder = new Beast2AnalysisBuilder(modelBuilder);
                 MCMC mcmc = analysisBuilder.buildRun(analysis);
 
                 // Before running, dump the model structure for debugging
                 if (debug) {
                     System.out.println("\nDumping model structure before running...");
-                    dumpModelStructure(reflectionBuilder.getAllObjects());
+                    dumpModelStructure(modelBuilder.getAllObjects());
                 }
 
                 System.out.println("Writing XML...");
@@ -432,6 +436,8 @@ public class Beast2Lang implements Callable<Integer> {
                 outputFile = new File(baseName + ".b2l");
             }
 
+            PackageManager.loadExternalJars();
+
             // Parse the XML file
             XMLParser parser = new XMLParser();
             BEASTInterface beast = parser.parseFile(inputFile);
@@ -449,6 +455,12 @@ public class Beast2Lang implements Callable<Integer> {
             // Convert to Beast2Lang model
             Beast2ToBeast2LangConverter converter = new Beast2ToBeast2LangConverter();
             Beast2Model model = converter.convertToBeast2Model(posterior, state);
+
+            String required = extractRequiredPackages(inputFile);
+            if (required != null) {
+                addRequiresFromString(model, required);
+            }
+
 
             // Write the model to a file
             Beast2ModelWriter writer = new Beast2ModelWriter();
@@ -474,6 +486,29 @@ public class Beast2Lang implements Callable<Integer> {
             }
 
             return 1;
+        }
+    }
+
+    // Helper method to extract required attribute from XML
+    private String extractRequiredPackages(File xmlFile) throws IOException {
+        // Simple regex or XML parsing to extract the required attribute
+        String content = Files.readString(xmlFile.toPath());
+        Pattern pattern = Pattern.compile("required=\"([^\"]+)\"");
+        Matcher matcher = pattern.matcher(content);
+        if (matcher.find()) {
+            return matcher.group(1);
+        }
+        return null;
+    }
+
+    // Helper method to parse required string and add to model
+    private void addRequiresFromString(Beast2Model model, String required) {
+        // Parse "BEAST.base v2.7.7:feast v10.4.0"
+        String[] packages = required.split(":");
+        for (String pkg : packages) {
+            // Remove version info
+            String packageName = pkg.trim().split("\\s+")[0];
+            model.addRequires(new RequiresStatement(packageName));
         }
     }
     
