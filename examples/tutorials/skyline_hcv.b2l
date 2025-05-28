@@ -1,0 +1,31 @@
+requires BEAST.base;
+requires feast;
+requires BEASTLabs;
+
+
+@data
+Alignment alignment_data = AlignmentFromNexus(fileName="hcv.nexus");
+
+// subst models
+RealParameter rates ~ Dirichlet(conc=[1.0, 2.0, 1.0, 1.0, 2.0, 1.0]);
+RealParameter freqs ~ Dirichlet(alpha=[2.0, 2.0, 2.0, 2.0]);
+GTR gtr = GTR(rates=rates, frequencies=freqs);
+
+// TODO: can I do this? 2nd layer of inputs from RealParameter
+RealParameter popSizes ~ MarkovChainDistribution(dimension=4, keys="1 2 3 4");
+// link tree
+Function theta1 = Slice(arg=popSizes, index=0);
+Function theta1 ~ LogNormalDistributionModel(M=9, S=2);
+
+// numGroups = 4; w = taxa.length()-1;
+//TODO no RandomComposition yet
+IntegerParameter groupSizes ~ RandomComposition(k=numGroups, n=w);
+
+Tree tree ~ BayesianSkyline(popSizes=popSizes, groupSizes=groupSizes);
+
+// fix to 0.00079 s/s/y
+StrictClockModel strictClock = StrictClockModel(clock.rate=7.9E-4);
+
+@observed(data=alignment)
+Alignment alignment ~ TreeLikelihood(siteModel=gtr, tree=tree, branchRateModel=strictClock);
+

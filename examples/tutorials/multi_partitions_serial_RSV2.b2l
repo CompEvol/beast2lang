@@ -29,8 +29,8 @@ RealParameter kappa3 ~ LogNormalDistributionModel(M=1, S=0.5);
 RealParameter freqs3 ~ Dirichlet(alpha=[2.0, 2.0, 2.0, 2.0]);
 HKY hky3 = HKY(kappa=kappa3, frequencies=freqs3);
 
-// TODO the value will be replaced to 0.5, but it needs some values here
-// 3 relative rates
+// TODO the average relative rates starting values must be 1.
+// Fix mean of 3 relative rates to 1
 RealParameter r_1 ~ RealParameter(value=1.0);
 RealParameter r_2 ~ RealParameter(value=1.0);
 RealParameter r_3 ~ RealParameter(value=1.0);
