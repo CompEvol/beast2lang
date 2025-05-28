@@ -1,5 +1,7 @@
 package org.beast2.modelLanguage.builder;
 
+import org.beast2.modelLanguage.model.Calibration;
+
 import java.util.Map;
 
 /**
@@ -43,4 +45,6 @@ public interface ObjectRegistry {
      * Mark a variable as data-annotated
      */
     void markAsDataAnnotated(String varName);
+
+    void addCalibration(String treeVar, Calibration calibration);
 }

@@ -4,23 +4,20 @@ import org.beast2.modelLanguage.model.*;
 import org.beast2.modelLanguage.parser.Beast2ModelLanguageBaseListener;
 import org.beast2.modelLanguage.parser.Beast2ModelLanguageParser;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.logging.Logger;
 
 /**
  * ANTLR listener for building a Beast2Model from a parse tree.
  * This implementation supports the @data and @observed annotations,
- * the built-in nexus() function, and the new requires statement.
+ * the built-in nexus() function, and the new "requires" statement.
  */
 public class ModelBuilderListener extends Beast2ModelLanguageBaseListener {
 
     private static final Logger logger = Logger.getLogger(ModelBuilderListener.class.getName());
 
     private final Beast2Model model = new Beast2Model();
-    private Annotation currentAnnotation = null;
+    private List<Annotation> currentAnnotations = new ArrayList<>();
 
     /**
      * Get the constructed model
@@ -61,66 +58,36 @@ public class ModelBuilderListener extends Beast2ModelLanguageBaseListener {
      */
     @Override
     public void enterAnnotation(Beast2ModelLanguageParser.AnnotationContext ctx) {
-        // Get annotation type from annotationName
         String type = ctx.annotationName().getText();
-
-        logger.info("Processing annotation: @" + type);
-
-        // Create a map for parameters
-        Map<String, Object> params = new HashMap<>();
-
-        // Process annotation parameters if present
+        Map<String, Expression> parameters = new LinkedHashMap<>();
         if (ctx.annotationBody() != null) {
-            for (Beast2ModelLanguageParser.AnnotationParameterContext paramCtx :
-                    ctx.annotationBody().annotationParameter()) {
-                String name = paramCtx.identifier(0).getText();
-                Object value;
-
-                // Parameter value can be either a literal or an identifier
-                if (paramCtx.literal() != null) {
-                    value = getLiteralValue(paramCtx.literal());
-                } else if (paramCtx.identifier(1) != null) {
-                    // For identifier, just use the identifier name as a string
-                    value = paramCtx.identifier(1).getText();
-                } else {
-                    throw new IllegalArgumentException("Invalid annotation parameter value");
-                }
-
-                params.put(name, value);
-                logger.info("Added parameter: " + name + " = " + value);
+            for (var p : ctx.annotationBody().annotationParameter()) {
+                String key = p.identifier().getText();
+                // p.expression is always present per grammar
+                Expression val = createExpression(p.expression());
+                parameters.put(key, val);
             }
         }
-
-        // Create the annotation
-        currentAnnotation = new Annotation(type, params);
-        logger.fine("Created annotation: " + currentAnnotation);
+        currentAnnotations.add(new Annotation(type, parameters));
     }
+
 
     /**
      * Handle statements with annotations
      */
     @Override
     public void exitStatement(Beast2ModelLanguageParser.StatementContext ctx) {
-        Statement statement;
+        Statement stmt = ctx.variableDeclaration()   != null
+                ? createVariableDeclaration(ctx.variableDeclaration())
+                : createDistributionAssignment(ctx.distributionAssignment());
 
-        // Create the appropriate statement type
-        if (ctx.variableDeclaration() != null) {
-            statement = createVariableDeclaration(ctx.variableDeclaration());
-        } else if (ctx.distributionAssignment() != null) {
-            statement = createDistributionAssignment(ctx.distributionAssignment());
-        } else {
-            throw new IllegalStateException("Unknown statement type");
+        // wrap with all annotations seen since last statement
+        if (!currentAnnotations.isEmpty()) {
+            stmt = new AnnotatedStatement(new ArrayList<>(currentAnnotations), stmt);
+            currentAnnotations.clear();
         }
 
-        // If we have an annotation, wrap the statement
-        if (currentAnnotation != null) {
-            statement = new AnnotatedStatement(currentAnnotation, statement);
-            logger.fine("Created annotated statement: " + statement);
-            currentAnnotation = null; // Reset for next statement
-        }
-
-        // Add the statement to the model
-        model.addStatement(statement);
+        model.addStatement(stmt);
     }
 
     /**

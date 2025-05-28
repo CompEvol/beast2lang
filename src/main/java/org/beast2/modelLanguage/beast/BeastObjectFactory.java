@@ -392,9 +392,10 @@ public class BeastObjectFactory implements ModelObjectFactory {
         }
 
         try {
-            return (Double[][]) distribution.getClass()
-                    .getMethod("sample", int.class)
-                    .invoke(distribution, sampleSize);
+
+            ParametricDistribution parametricDistribution = (ParametricDistribution)distribution;
+
+            return parametricDistribution.sample(1);
         } catch (Exception e) {
             logger.warning("Failed to sample from distribution: " + e.getMessage());
             return null;

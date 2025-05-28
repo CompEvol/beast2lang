@@ -11,6 +11,7 @@ public class Beast2Model {
     private final List<ImportStatement> imports;
     private final List<RequiresStatement> requires;
     private final List<Statement> statements;
+    private final List<Calibration> calibrations = new ArrayList<>();
 
     /**
      * Constructor for a Beast2 model

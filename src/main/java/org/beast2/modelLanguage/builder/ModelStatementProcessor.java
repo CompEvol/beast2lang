@@ -203,39 +203,54 @@ public class ModelStatementProcessor implements StatementVisitor {
      */
     @Override
     public void visit(AnnotatedStatement annotatedStmt) {
-        Annotation annotation = annotatedStmt.getAnnotation();
         Statement innerStmt = annotatedStmt.getStatement();
 
-        logger.info("Processing annotated statement with @" + annotation.getName() + " annotation");
+        // 1) If this is a Tree distribution, attach any @calibration annotations to it
+        if (innerStmt instanceof DistributionAssignment) {
+            DistributionAssignment da = (DistributionAssignment) innerStmt;
+            String treeVar = da.getVariableName();
 
-        // Process based on annotation type
-        if ("data".equals(annotation.getName())) {
-            // Handle @data annotation
-            if (innerStmt instanceof VariableDeclaration) {
-                String varName = ((VariableDeclaration) innerStmt).getVariableName();
-                registry.markAsDataAnnotated(varName);
-                logger.info("Registered variable with @data annotation: " + varName);
-            } else {
-                logger.warning("@data annotation can only be applied to variable declarations");
-            }
-        } else if ("observed".equals(annotation.getName())) {
-            // Handle @observed annotation
-            if (innerStmt instanceof DistributionAssignment) {
-                String varName = ((DistributionAssignment) innerStmt).getVariableName();
+                for (Annotation ann : annotatedStmt.getAnnotations()) {
+                    if ("calibration".equals(ann.getName())) {
+                        // taxonset → IdentifierExpr.getName()
+                        Identifier taxId = (Identifier)ann.getParameter("taxonset");
+                        String taxonset = taxId.getName();
+                        // distribution → FunctionCall AST
+                        FunctionCall dist = (FunctionCall)ann.getParameter("distribution");
+                        registry.addCalibration(treeVar, new Calibration(taxonset, dist));
+                    }
+                }
+        }
 
-                // Check for data parameter
-                if (annotation.hasParameter("data")) {
-                    String dataRef = annotation.getParameterAsString("data");
-                    registry.markAsObservedVariable(varName, dataRef);
+        // 2) Now handle @data and @observed (unchanged)
+        for (Annotation annotation : annotatedStmt.getAnnotations()) {
+            String name = annotation.getName();
+            if ("data".equals(name)) {
+                if (innerStmt instanceof VariableDeclaration) {
+                    String varName = ((VariableDeclaration) innerStmt).getVariableName();
+                    registry.markAsDataAnnotated(varName);
+                    logger.info("Registered variable with @data annotation: " + varName);
                 } else {
-                    logger.warning("@observed annotation requires a 'data' parameter");
+                    logger.warning("@data annotation can only be applied to variable declarations");
+                }
+
+            } else if ("observed".equals(name)) {
+                if (innerStmt instanceof DistributionAssignment) {
+                    String varName = ((DistributionAssignment) innerStmt).getVariableName();
+                    if (annotation.hasParameter("data")) {
+                        String dataRef = annotation.getParameterAsIdentifer("data");
+                        registry.markAsObservedVariable(varName, dataRef);
+                    } else {
+                        logger.warning("@observed annotation requires a 'data' parameter");
+                    }
                 }
             }
         }
 
-        // Process the inner statement
+        // 3) Finally, delegate the actual statement processing
         innerStmt.accept(this);
     }
+
 
     /**
      * Resolve class names in an expression using imports

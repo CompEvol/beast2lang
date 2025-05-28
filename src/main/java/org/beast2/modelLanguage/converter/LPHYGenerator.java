@@ -77,18 +77,19 @@ public class LPHYGenerator {
         for (Statement stmt : model.getStatements()) {
             if (stmt instanceof AnnotatedStatement) {
                 AnnotatedStatement annotatedStmt = (AnnotatedStatement) stmt;
-                Annotation annotation = annotatedStmt.getAnnotation();
+                for (Annotation annotation : annotatedStmt.getAnnotations()) {
 
-                if (annotation.isObservedAnnotation()) {
-                    // Get the data source from the annotation
-                    String dataSource = annotation.getParameterAsString("data");
+                    if (annotation.isObservedAnnotation()) {
+                        // Get the data source from the annotation
+                        String dataSource = annotation.getParameterAsIdentifer("data");
 
-                    if (dataSource != null && annotatedStmt.getStatement() instanceof DistributionAssignment) {
-                        DistributionAssignment dist = (DistributionAssignment) annotatedStmt.getStatement();
-                        String observedVar = dist.getVariableName();
+                        if (dataSource != null && annotatedStmt.getStatement() instanceof DistributionAssignment) {
+                            DistributionAssignment dist = (DistributionAssignment) annotatedStmt.getStatement();
+                            String observedVar = dist.getVariableName();
 
-                        // Map the data source to the observed variable
-                        dataToObservedMap.put(dataSource, observedVar);
+                            // Map the data source to the observed variable
+                            dataToObservedMap.put(dataSource, observedVar);
+                        }
                     }
                 }
             }
@@ -104,17 +105,18 @@ public class LPHYGenerator {
         // If it's an annotated statement
         if (stmt instanceof AnnotatedStatement) {
             AnnotatedStatement annotatedStmt = (AnnotatedStatement) stmt;
-            Annotation annotation = annotatedStmt.getAnnotation();
+            for (Annotation annotation : annotatedStmt.getAnnotations()) {
 
-            // Only explicit @data annotations go in the data block
-            if (annotation.isDataAnnotation()) {
-                // And only if they're variable declarations, not distributions
-                return annotatedStmt.getStatement() instanceof VariableDeclaration;
-            }
+                // Only explicit @data annotations go in the data block
+                if (annotation.isDataAnnotation()) {
+                    // And only if they're variable declarations, not distributions
+                    return annotatedStmt.getStatement() instanceof VariableDeclaration;
+                }
 
-            // All distributions (including @observed) go in the model block
-            if (annotatedStmt.getStatement() instanceof DistributionAssignment) {
-                return false;
+                // All distributions (including @observed) go in the model block
+                if (annotatedStmt.getStatement() instanceof DistributionAssignment) {
+                    return false;
+                }
             }
 
             // For other annotations, check the underlying statement
@@ -147,16 +149,17 @@ public class LPHYGenerator {
         } else if (stmt instanceof AnnotatedStatement) {
             AnnotatedStatement annotatedStmt = (AnnotatedStatement) stmt;
             Statement innerStmt = annotatedStmt.getStatement();
-            Annotation annotation = annotatedStmt.getAnnotation();
+            for (Annotation annotation : annotatedStmt.getAnnotations()) {
 
-            // Handle @observed annotation specially
-            if (annotation.isObservedAnnotation() && innerStmt instanceof DistributionAssignment) {
-                return generateObservedDistribution((DistributionAssignment) innerStmt, annotation);
-            }
+                // Handle @observed annotation specially
+                if (annotation.isObservedAnnotation() && innerStmt instanceof DistributionAssignment) {
+                    return generateObservedDistribution((DistributionAssignment) innerStmt, annotation);
+                }
 
-            // Handle @data annotation for variable declarations
-            if (annotation.isDataAnnotation() && innerStmt instanceof VariableDeclaration) {
-                return generateDataDeclaration((VariableDeclaration) innerStmt);
+                // Handle @data annotation for variable declarations
+                if (annotation.isDataAnnotation() && innerStmt instanceof VariableDeclaration) {
+                    return generateDataDeclaration((VariableDeclaration) innerStmt);
+                }
             }
 
             // For other annotations, just generate the inner statement

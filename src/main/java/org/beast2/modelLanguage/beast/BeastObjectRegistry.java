@@ -1,8 +1,11 @@
 package org.beast2.modelLanguage.beast;
 
+import beast.base.evolution.alignment.TaxonSet;
+import beast.base.evolution.tree.MRCAPrior;
 import beast.base.inference.Distribution;
 import beast.base.inference.StateNode;
 import org.beast2.modelLanguage.builder.ObjectRegistry;
+import org.beast2.modelLanguage.model.Calibration;
 
 import java.util.*;
 import java.util.logging.Logger;
@@ -126,6 +129,15 @@ public class BeastObjectRegistry implements ObjectRegistry {
     public void markAsDataAnnotated(String varName) {
         dataAnnotatedVariables.add(varName);
         logger.info("Marked as data-annotated: " + varName);
+    }
+
+    @Override
+    public void addCalibration(String treeVar, Calibration calibration) {
+
+        MRCAPrior mrcaPrior = new MRCAPrior();
+        TaxonSet taxonSet = (TaxonSet)objects.get(calibration.getTaxonset());
+
+        // TODO
     }
 
     /**

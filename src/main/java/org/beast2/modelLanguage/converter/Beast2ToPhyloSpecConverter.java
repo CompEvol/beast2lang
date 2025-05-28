@@ -67,29 +67,30 @@ public class Beast2ToPhyloSpecConverter implements StatementVisitor {
     @Override
     public void visit(AnnotatedStatement annotatedStmt) {
         // Process annotations
-        Annotation annotation = annotatedStmt.getAnnotation();
         Statement innerStmt = annotatedStmt.getStatement();
-        
-        // Special handling for @observed annotation
-        if ("observed".equals(annotation.getName()) && innerStmt instanceof DistributionAssignment) {
-            DistributionAssignment distAssign = (DistributionAssignment) innerStmt;
-            
-            // Visit the inner statement
-            visit(distAssign);
-            
-            // Mark the variable as observed in the last added distribution
-            if (distributions.length() > 0) {
-                JSONObject lastDist = distributions.getJSONObject(distributions.length() - 1);
-                lastDist.put("observed", true);
-                
-                // Add data file if available
-                if (annotation.hasParameter("data")) {
-                    lastDist.put("dataFile", annotation.getParameterAsString("data"));
+        for (Annotation annotation : annotatedStmt.getAnnotations()) {
+
+            // Special handling for @observed annotation
+            if ("observed".equals(annotation.getName()) && innerStmt instanceof DistributionAssignment) {
+                DistributionAssignment distAssign = (DistributionAssignment) innerStmt;
+
+                // Visit the inner statement
+                visit(distAssign);
+
+                // Mark the variable as observed in the last added distribution
+                if (distributions.length() > 0) {
+                    JSONObject lastDist = distributions.getJSONObject(distributions.length() - 1);
+                    lastDist.put("observed", true);
+
+                    // Add data file if available
+                    if (annotation.hasParameter("data")) {
+                        lastDist.put("dataFile", annotation.getParameterAsIdentifer("data"));
+                    }
                 }
+            } else {
+                // For other types of annotations, just process the inner statement
+                innerStmt.accept(this);
             }
-        } else {
-            // For other types of annotations, just process the inner statement
-            innerStmt.accept(this);
         }
     }
     

@@ -78,8 +78,10 @@ public class Beast2ModelWriter {
      * Write an annotated statement
      */
     private void writeAnnotatedStatement(AnnotatedStatement stmt) {
-        writeAnnotation(stmt.getAnnotation());
-        sb.append("\n");
+        for (Annotation annotation : stmt.getAnnotations()) {
+            writeAnnotation(annotation);
+            sb.append("\n");
+        }
         writeStatement(stmt.getStatement());
     }
 

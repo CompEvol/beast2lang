@@ -148,14 +148,16 @@ public class Beast2ModelBuilder {
         for (Statement stmt : model.getStatements()) {
             if (stmt instanceof AnnotatedStatement) {
                 AnnotatedStatement annotatedStmt = (AnnotatedStatement) stmt;
-                Annotation annotation = annotatedStmt.getAnnotation();
+                List<Annotation> annotations = annotatedStmt.getAnnotations();
                 Statement innerStmt = annotatedStmt.getStatement();
 
-                if ("data".equals(annotation.getName())) {
-                    if (innerStmt instanceof VariableDeclaration) {
-                        String varName = ((VariableDeclaration) innerStmt).getVariableName();
-                        registry.markAsDataAnnotated(varName);
-                        logger.info("Found @data annotation for variable: " + varName);
+                for (Annotation annotation : annotations) {
+                    if ("data".equals(annotation.getName())) {
+                        if (innerStmt instanceof VariableDeclaration) {
+                            String varName = ((VariableDeclaration) innerStmt).getVariableName();
+                            registry.markAsDataAnnotated(varName);
+                            logger.info("Found @data annotation for variable: " + varName);
+                        }
                     }
                 }
             }
@@ -165,40 +167,42 @@ public class Beast2ModelBuilder {
         for (Statement stmt : model.getStatements()) {
             if (stmt instanceof AnnotatedStatement) {
                 AnnotatedStatement annotatedStmt = (AnnotatedStatement) stmt;
-                Annotation annotation = annotatedStmt.getAnnotation();
                 Statement innerStmt = annotatedStmt.getStatement();
 
-                if ("observed".equals(annotation.getName())) {
-                    // Validate that it's applied to a distribution assignment
-                    if (!(innerStmt instanceof DistributionAssignment)) {
-                        logger.warning("@observed annotation can only be applied to distribution assignments");
-                        continue;
+                for (Annotation annotation : annotatedStmt.getAnnotations()) {
+
+                    if ("observed".equals(annotation.getName())) {
+                        // Validate that it's applied to a distribution assignment
+                        if (!(innerStmt instanceof DistributionAssignment)) {
+                            logger.warning("@observed annotation can only be applied to distribution assignments");
+                            continue;
+                        }
+
+                        // Get the variable name
+                        String varName = ((DistributionAssignment) innerStmt).getVariableName();
+
+                        // Validate that it has a data parameter
+                        if (!annotation.hasParameter("data")) {
+                            logger.warning("@observed annotation requires a 'data' parameter");
+                            continue;
+                        }
+
+                        // Get the data reference
+                        String dataRef = annotation.getParameterAsIdentifer("data");
+
+                        // Validate that the data reference points to a variable with @data annotation
+                        if (!registry.isDataAnnotated(dataRef)) {
+                            throw new IllegalArgumentException(
+                                    "data parameter '" + dataRef + "' in @observed annotation must reference " +
+                                            "a variable previously annotated with @data"
+                            );
+                        }
+
+                        // Store the reference in the registry
+                        registry.markAsObservedVariable(varName, dataRef);
+                        logger.info("Found @observed annotation for variable: " + varName +
+                                " with data reference: " + dataRef);
                     }
-
-                    // Get the variable name
-                    String varName = ((DistributionAssignment) innerStmt).getVariableName();
-
-                    // Validate that it has a data parameter
-                    if (!annotation.hasParameter("data")) {
-                        logger.warning("@observed annotation requires a 'data' parameter");
-                        continue;
-                    }
-
-                    // Get the data reference
-                    String dataRef = annotation.getParameterAsString("data");
-
-                    // Validate that the data reference points to a variable with @data annotation
-                    if (!registry.isDataAnnotated(dataRef)) {
-                        throw new IllegalArgumentException(
-                                "data parameter '" + dataRef + "' in @observed annotation must reference " +
-                                        "a variable previously annotated with @data"
-                        );
-                    }
-
-                    // Store the reference in the registry
-                    registry.markAsObservedVariable(varName, dataRef);
-                    logger.info("Found @observed annotation for variable: " + varName +
-                            " with data reference: " + dataRef);
                 }
             }
         }

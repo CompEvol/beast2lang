@@ -1,6 +1,3 @@
-/**
- * Grammar for Beast2 Model Definition Language
- */
 grammar Beast2ModelLanguage;
 
 // Parser Rules
@@ -29,6 +26,7 @@ statement
     | annotation? distributionAssignment
     ;
 
+// Allow annotation values to be any expression (including function calls)
 annotation
     : AT annotationName annotationBody?
     ;
@@ -41,8 +39,9 @@ annotationBody
     : LPAREN annotationParameter (COMMA annotationParameter)* RPAREN
     ;
 
+// Update: allow full expressions as parameter values
 annotationParameter
-    : identifier EQUALS (literal | identifier)
+    : identifier EQUALS expression
     ;
 
 variableDeclaration

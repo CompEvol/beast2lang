@@ -369,11 +369,11 @@ public class PhyloSpecModelTransformer {
         if (transformedStmts.size() != 1) {
             // Can't annotate multiple statements - just annotate the first one
             logger.warning("Annotation applied to a pattern that expands to multiple statements!");
-            return new AnnotatedStatement(annotStmt.getAnnotation(), transformedStmts.get(0));
+            return new AnnotatedStatement(annotStmt.getAnnotations(), transformedStmts.get(0));
         }
 
         // Create new annotated statement with the same annotation
-        return new AnnotatedStatement(annotStmt.getAnnotation(), transformedStmts.get(0));
+        return new AnnotatedStatement(annotStmt.getAnnotations(), transformedStmts.get(0));
     }
 
     /**

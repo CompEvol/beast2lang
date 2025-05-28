@@ -12,10 +12,15 @@ import java.util.Set;
  */
 public class Annotation {
     private final String name;
-    private final Map<String, Object> parameters;
+    private final Map<String, Expression> parameters;
 
     // Set of allowed annotation types
-    private static final Set<String> ALLOWED_ANNOTATIONS = new HashSet<>(Arrays.asList("data", "observed"));
+// In Annotation.java
+    private static final Set<String> ALLOWED_ANNOTATIONS = new HashSet<>(Arrays.asList(
+            "data",
+            "observed",
+            "calibration"
+    ));
 
     /**
      * Constructor for an annotation with parameters
@@ -24,7 +29,7 @@ public class Annotation {
      * @param parameters map of parameter name to parameter value
      * @throws IllegalArgumentException if the annotation name is not allowed
      */
-    public Annotation(String name, Map<String, Object> parameters) {
+    public Annotation(String name, Map<String, Expression> parameters) {
         if (!ALLOWED_ANNOTATIONS.contains(name.toLowerCase())) {
             throw new IllegalArgumentException("Unsupported annotation type: " + name +
                     ". Only " + ALLOWED_ANNOTATIONS + " annotations are allowed.");
@@ -62,7 +67,7 @@ public class Annotation {
      *
      * @return an unmodifiable map of parameter name to parameter value
      */
-    public Map<String, Object> getParameters() {
+    public Map<String, Expression> getParameters() {
         return Collections.unmodifiableMap(parameters);
     }
 
@@ -92,8 +97,11 @@ public class Annotation {
      * @param paramName the parameter name
      * @return the parameter value as a string, or null if not found
      */
-    public String getParameterAsString(String paramName) {
-        Object value = parameters.get(paramName);
+    public String getParameterAsIdentifer(String paramName) {
+        Expression value = parameters.get(paramName);
+
+        if (value instanceof Identifier id) return id.getName();
+
         return value != null ? value.toString() : null;
     }
 
@@ -126,7 +134,7 @@ public class Annotation {
         if (!parameters.isEmpty()) {
             sb.append(" {");
             boolean first = true;
-            for (Map.Entry<String, Object> entry : parameters.entrySet()) {
+            for (Map.Entry<String, Expression> entry : parameters.entrySet()) {
                 if (!first) {
                     sb.append(", ");
                 }
@@ -134,7 +142,7 @@ public class Annotation {
 
                 sb.append(entry.getKey()).append("=");
                 Object value = entry.getValue();
-                if (value instanceof String) {
+                if (value instanceof Literal && ((Literal) value).getType().equals(Literal.LiteralType.STRING)) {
                     sb.append("\"").append(value).append("\"");
                 } else {
                     sb.append(value);
