@@ -208,20 +208,36 @@ public class DistributionAssignmentHandler extends BaseHandler {
 
         for (Argument arg : funcCall.getArguments()) {
             String argName = arg.getName();
-            Type expectedType = factory.getInputType(object, argName);
+
+            // Safely get expected type
+            Type expectedType = null;
+            try {
+                expectedType = factory.getInputType(object, argName);
+            } catch (Exception e) {
+                // Object doesn't have this input - log and skip
+                logger.warning("Object " + object.getClass().getSimpleName() +
+                        " doesn't have input '" + argName + "': " + e.getMessage());
+                continue;
+            }
 
             Object argValue = ExpressionResolver.resolveValueWithAutoboxing(
                     arg.getValue(), registry, expectedType);
 
             try {
                 factory.setInputValue(object, argName, argValue);
+                logger.fine("Set input '" + argName + "' on " + object.getClass().getSimpleName());
             } catch (Exception e) {
                 logger.warning("Failed to set input " + argName + ": " + e.getMessage());
 
                 // Try parameter conversion as fallback
                 if (argValue != null) {
-                    Object paramValue = factory.createParameterForType(argValue, expectedType);
-                    factory.setInputValue(object, argName, paramValue);
+                    try {
+                        Object paramValue = factory.createParameterForType(argValue, expectedType);
+                        factory.setInputValue(object, argName, paramValue);
+                        logger.info("Successfully set input '" + argName + "' using parameter conversion");
+                    } catch (Exception e2) {
+                        logger.warning("Parameter conversion also failed for '" + argName + "': " + e2.getMessage());
+                    }
                 }
             }
         }

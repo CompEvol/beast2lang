@@ -7,6 +7,7 @@ import beast.base.inference.Distribution;
 import beast.base.inference.State;
 import beast.base.inference.StateNode;
 import beast.base.inference.distribution.Prior;
+import beast.base.inference.parameter.RealParameter;
 import org.beast2.modelLanguage.builder.ModelObjectFactory;
 import org.beast2.modelLanguage.model.*;
 
@@ -157,6 +158,31 @@ public class StatementCreator {
                 }
             }
         }
+    }
+
+    public boolean isParameterFixed(RealParameter param) {
+        // Check if this parameter is in the state (estimated parameters are in state)
+        if (state != null) {
+            for (StateNode stateNode : state.stateNodeInput.get()) {
+                if (stateNode == param) {
+                    return false; // It's in the state, so it's estimated
+                }
+            }
+        }
+
+        // Check if it has estimate=false explicitly
+        try {
+            for (Input<?> input : param.getInputs().values()) {
+                if ("estimate".equals(input.getName()) && input.get() instanceof Boolean) {
+                    return !(Boolean) input.get();
+                }
+            }
+        } catch (Exception e) {
+            // Ignore
+        }
+
+        // If it's not in state and has generic ID, consider it fixed
+        return param.getID() != null && param.getID().matches("RealParameter\\d*");
     }
 
     // Delegate methods to reduce duplication

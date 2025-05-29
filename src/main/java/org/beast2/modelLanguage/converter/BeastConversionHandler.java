@@ -1,15 +1,16 @@
 package org.beast2.modelLanguage.converter;
 
 import beast.base.core.BEASTInterface;
+import beast.base.core.Input;
 import beast.base.evolution.alignment.Alignment;
 import beast.base.evolution.alignment.Sequence;
 import beast.base.evolution.tree.MRCAPrior;
 import beast.base.evolution.tree.TreeDistribution;
 import beast.base.evolution.alignment.TaxonSet;
-import beast.base.evolution.tree.TreeInterface;
-import beast.base.inference.Distribution;
 import org.beast2.modelLanguage.model.*;
 
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.*;
 import java.util.logging.Logger;
 
@@ -36,59 +37,71 @@ public class BeastConversionHandler {
     public String generateAlignmentId(Alignment alignment) {
         if (alignment.getID() != null && !alignment.getID().isEmpty()) {
             String baseId = alignment.getID().replaceAll("[^a-zA-Z0-9_]", "_");
-            // Ensure uniqueness
-            String uniqueId = baseId;
-            int counter = 1;
-            while (objectToIdMap.containsValue(uniqueId)) {
-                uniqueId = baseId + "_" + counter++;
+
+            // If the ID already exists in the map, check if it's the same object
+            for (Map.Entry<BEASTInterface, String> entry : objectToIdMap.entrySet()) {
+                if (entry.getValue().equals(baseId) && entry.getKey() != alignment) {
+                    // Only add counter if it's a different object with the same ID
+                    String uniqueId = baseId;
+                    int counter = 2;
+                    while (objectToIdMap.containsValue(uniqueId)) {
+                        uniqueId = baseId + "_" + counter++;
+                    }
+                    return uniqueId;
+                }
             }
-            return uniqueId;
+            return baseId;
         }
-        return "alignment" + (alignmentCounter++);
+        return "alignment" + (++alignmentCounter);
     }
 
     /**
-     * Check if this is a tree distribution (SABirthDeathModel, MRCAPrior, etc.)
+     * Check if this is a tree distribution (YuleModel, SABirthDeathModel etc)
      */
     public boolean isTreeDistribution(BEASTInterface obj) {
-        return obj instanceof TreeDistribution || obj instanceof MRCAPrior;
+        return obj instanceof TreeDistribution;
     }
 
     /**
-     * Extract sequence data and create AlignmentFromNexus statement
+     * Extract sequence data and create nexus statement
      */
     public Statement createAlignmentFromEmbeddedData(Alignment alignment, String alignmentId) {
-        // Option 1: Use nexus() function
-        List<Argument> nexusArgs = new ArrayList<>();
+        // Save sequence data to a separate nexus file
+        String fileName = alignmentId + ".nex";
+        saveAlignmentToFile(alignment,fileName);
 
-        // Extract sequences to create nexus data
-        StringBuilder nexusData = new StringBuilder();
-        nexusData.append("#NEXUS\n");
-        nexusData.append("BEGIN DATA;\n");
-        nexusData.append("DIMENSIONS NTAX=").append(alignment.getTaxonCount());
-        nexusData.append(" NCHAR=").append(alignment.getSiteCount()).append(";\n");
-        nexusData.append("FORMAT DATATYPE=").append(alignment.getDataType().getTypeDescription());
-        nexusData.append(" MISSING=? GAP=-;\n");
-        nexusData.append("MATRIX\n");
-
-        for (Sequence seq : alignment.sequenceInput.get()) {
-            nexusData.append(seq.taxonInput.get()).append(" ");
-            nexusData.append(seq.dataInput.get()).append("\n");
-        }
-
-        nexusData.append(";\nEND;\n");
-
-        nexusArgs.add(new Argument("data", new Literal(nexusData.toString(), Literal.LiteralType.STRING)));
-
-        Expression nexusExpr = new NexusFunction(nexusArgs);
+        Expression expr = new NexusFunction(fileName);
 
         // Create the variable declaration with @data annotation
-        VariableDeclaration decl = new VariableDeclaration("Alignment", alignmentId, nexusExpr);
+        VariableDeclaration decl = new VariableDeclaration("Alignment", alignmentId, expr);
 
         Map<String, Expression> params = new HashMap<>();
         Annotation annotation = new Annotation("data", params);
 
         return new AnnotatedStatement(Arrays.asList(annotation), decl);
+    }
+
+    // Add this helper method to actually write the nexus file
+    public void saveAlignmentToFile(Alignment alignment, String fileName) {
+        try (PrintWriter writer = new PrintWriter(fileName)) {
+            writer.println("#NEXUS");
+            writer.println("BEGIN DATA;");
+            writer.println("DIMENSIONS NTAX=" + alignment.getTaxonCount() +
+                    " NCHAR=" + alignment.getSiteCount() + ";");
+            writer.println("FORMAT DATATYPE=" + alignment.getDataType().getTypeDescription() +
+                    " MISSING=? GAP=-;");
+            writer.println("MATRIX");
+
+            for (Sequence seq : alignment.sequenceInput.get()) {
+                writer.println(seq.taxonInput.get() + " " + seq.dataInput.get());
+            }
+
+            writer.println(";");
+            writer.println("END;");
+        } catch (IOException e) {
+            logger.severe("Failed to write alignment file: " + fileName);
+            throw new RuntimeException("Failed to write alignment file", e);
+        }
     }
 
     /**
@@ -117,9 +130,6 @@ public class BeastConversionHandler {
         return grouped;
     }
 
-    /**
-     * Create compound distribution statement for multiple distributions on same variable
-     */
     public Statement createDistributionStatementWithCalibrations(
             BEASTInterface target,
             BEASTInterface mainDistribution,
@@ -143,23 +153,60 @@ public class BeastConversionHandler {
         List<Annotation> annotations = new ArrayList<>();
 
         for (MRCAPrior prior : calibrations) {
-            Map<String, Expression> params = new HashMap<>();
+            try {
+                Map<String, Expression> params = new HashMap<>();
 
-            // Add taxonset parameter
-            TaxonSet taxonSet = prior.taxonsetInput.get();
-            if (taxonSet != null && objectToIdMap.containsKey(taxonSet)) {
-                params.put("taxonset", new Identifier(objectToIdMap.get(taxonSet)));
+                // Add taxonset parameter
+                TaxonSet taxonSet = prior.taxonsetInput.get();
+                if (taxonSet != null) {
+                    String taxonSetId = objectToIdMap.get(taxonSet);
+                    if (taxonSetId != null) {
+                        params.put("taxonset", new Identifier(taxonSetId));
+                    }
+                }
+
+                // FIXED: Add distribution parameter - use the existing createDistributionExpression method
+                if (prior.distInput.get() != null) {
+                    BEASTInterface dist = prior.distInput.get();
+                    Expression distExpression = createDistributionExpression(dist, converter);
+                    params.put("distribution", distExpression);
+                    logger.info("Created calibration with distribution: " + dist.getClass().getSimpleName());
+                }
+
+                // FIXED: Add leaf parameter if tipsonly is true
+                Boolean tipsOnly = prior.onlyUseTipsInput.get();
+                if (tipsOnly != null && tipsOnly) {
+                    params.put("leaf", new Literal(true, Literal.LiteralType.BOOLEAN));
+                    logger.info("Added leaf=true for tipsonly MRCAPrior: " + prior.getID());
+                }
+
+                Boolean monophyletic = prior.isMonophyleticInput.get();
+                if (monophyletic != null && monophyletic && (tipsOnly == null || !tipsOnly)) {
+                    params.put("monophyletic", new Literal(true, Literal.LiteralType.BOOLEAN));
+                    logger.info("  Added monophyletic=true for node constraint: " + prior.getID());
+                }
+
+
+                // Only add the annotation if we have a taxonset
+                if (params.containsKey("taxonset")) {
+                    annotations.add(new Annotation("calibration", params));
+                }
+            } catch (Exception e) {
+                logger.warning("Failed to create calibration annotation: " + e.getMessage());
             }
-
-            // Add distribution parameter
-            if (prior.distInput.get() != null) {
-                params.put("distribution", converter.createExpressionForObject(prior.distInput.get()));
-            }
-
-            annotations.add(new Annotation("calibration", params));
         }
 
         return new AnnotatedStatement(annotations, distAssign);
+    }
+
+    /**
+     * FIXED: Create a proper distribution expression instead of using object references
+     */
+    private Expression createDistributionExpression(BEASTInterface dist, Beast2ToBeast2LangConverter converter) {
+        // Use the converter's expression creation method to get a proper function call
+        Expression expr = converter.createExpressionForObject(dist);
+        logger.info("Created distribution expression for " + dist.getClass().getSimpleName() + ": " + expr);
+        return expr;
     }
 
     /**

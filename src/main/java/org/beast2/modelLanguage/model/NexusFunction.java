@@ -21,6 +21,10 @@ public class NexusFunction extends Expression {
         this.arguments = arguments != null ? new ArrayList<>(arguments) : new ArrayList<>();
     }
 
+    public NexusFunction(String file) {
+        this(List.of(new Argument("file", new Literal(file, Literal.LiteralType.STRING))));
+    }
+
     /**
      * Get the arguments for the nexus function.
      *

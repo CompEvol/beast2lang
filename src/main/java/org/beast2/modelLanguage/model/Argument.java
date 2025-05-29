@@ -1,10 +1,5 @@
 package org.beast2.modelLanguage.model;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 /**
  * Represents a named argument in a function call
  */
@@ -23,5 +18,14 @@ public class Argument {
     
     public Expression getValue() {
         return value;
+    }
+
+    @Override
+    public String toString() {
+        if (name != null && !name.isEmpty()) {
+            return name + "=" + (value != null ? value.toString() : "null");
+        } else {
+            return value != null ? value.toString() : "null";
+        }
     }
 }

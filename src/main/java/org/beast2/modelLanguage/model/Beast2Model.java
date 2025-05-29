@@ -34,7 +34,7 @@ public class Beast2Model {
     /**
      * Add a requires statement to the model
      *
-     * @param requiresStatement the requires statement to add
+     * @param requiresStatement the "requires" statement to add
      */
     public void addRequires(RequiresStatement requiresStatement) {
         requires.add(requiresStatement);

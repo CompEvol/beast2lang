@@ -1,10 +1,5 @@
 package org.beast2.modelLanguage.model;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 /**
  * Represents a reference to a previously defined variable
  */
@@ -24,4 +19,11 @@ public class Identifier extends Expression {
     public <T> T accept(ModelVisitor<T> visitor) {
         return visitor.visit(this);
     }
+
+    @Override
+    public String toString() {
+        return name;
+    }
 }
+
+

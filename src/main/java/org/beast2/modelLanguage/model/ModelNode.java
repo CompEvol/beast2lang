@@ -1,10 +1,5 @@
 package org.beast2.modelLanguage.model;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 /**
  * Abstract base class for all model nodes in the Beast2 model definition
  */

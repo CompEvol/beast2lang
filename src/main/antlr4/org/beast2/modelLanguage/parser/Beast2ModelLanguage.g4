@@ -21,9 +21,10 @@ pluginName
     : IDENTIFIER (DOT IDENTIFIER)*   // Allow periods for plugin names like "BEAST.base"
     ;
 
+// Updated to support multiple annotations
 statement
-    : annotation? variableDeclaration
-    | annotation? distributionAssignment
+    : annotation* variableDeclaration
+    | annotation* distributionAssignment
     ;
 
 // Allow annotation values to be any expression (including function calls)
@@ -147,8 +148,9 @@ INTEGER_LITERAL
     ;
 
 FLOAT_LITERAL
-    : '-'? [0-9]+ '.' [0-9]*
-    | '-'? '.' [0-9]+
+    : '-'? [0-9]+ '.' [0-9]* ([eE] [+-]? [0-9]+)?     // 1.23, 1.23e5, 1.23E-10
+    | '-'? '.' [0-9]+ ([eE] [+-]? [0-9]+)?            // .123, .123e5, .123E-10
+    | '-'? [0-9]+ [eE] [+-]? [0-9]+                   // 123e5, 123E-10 (integer with exponent)
     ;
 
 STRING_LITERAL

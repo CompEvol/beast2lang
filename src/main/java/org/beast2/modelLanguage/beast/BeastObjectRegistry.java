@@ -5,7 +5,10 @@ import beast.base.evolution.tree.MRCAPrior;
 import beast.base.inference.Distribution;
 import beast.base.inference.StateNode;
 import org.beast2.modelLanguage.builder.ObjectRegistry;
+import org.beast2.modelLanguage.builder.handlers.DistributionAssignmentHandler;
 import org.beast2.modelLanguage.model.Calibration;
+import org.beast2.modelLanguage.model.DistributionAssignment;
+import org.beast2.modelLanguage.model.FunctionCall;
 
 import java.util.*;
 import java.util.logging.Logger;
@@ -133,11 +136,134 @@ public class BeastObjectRegistry implements ObjectRegistry {
 
     @Override
     public void addCalibration(String treeVar, Calibration calibration) {
+        try {
+            // Get the taxon set for this calibration
+            TaxonSet taxonSet = (TaxonSet) objects.get(calibration.getTaxonset());
+            if (taxonSet == null) {
+                logger.warning("TaxonSet not found for calibration: " + calibration.getTaxonset());
+                return;
+            }
 
-        MRCAPrior mrcaPrior = new MRCAPrior();
-        TaxonSet taxonSet = (TaxonSet)objects.get(calibration.getTaxonset());
+            // Get the tree for this calibration
+            StateNode treeStateNode = stateNodes.get(treeVar);
+            if (treeStateNode == null) {
+                logger.warning("Tree StateNode not found: " + treeVar);
+                return;
+            }
 
-        // TODO
+            // Create a new MRCAPrior
+            MRCAPrior mrcaPrior = new MRCAPrior();
+
+            // Set the taxon set
+            mrcaPrior.setInputValue("taxonset", taxonSet);
+
+            // Set the tree
+            mrcaPrior.setInputValue("tree", treeStateNode);
+
+            // Set monophyletic constraint
+            mrcaPrior.setInputValue("monophyletic", calibration.isMonophyletic());
+
+            // Handle the distribution if present
+            if (calibration.hasDistribution()) {
+                // Create the distribution object from the FunctionCall
+                String distId = taxonSet.getID() + ".parametricDistribution";
+                Object distObject = createDistributionFromFunctionCall(calibration.getDistribution(), distId);
+                if (distObject instanceof Distribution) {
+                    // Register the distribution in the registry
+                    register(distId, distObject);
+
+                    // Set it on the MRCAPrior
+                    mrcaPrior.setInputValue("distr", distObject);
+                    logger.info("Created and registered distribution: " + distId + " for calibration: " + calibration.getTaxonset());
+                } else {
+                    logger.warning("Failed to create distribution for calibration: " + calibration.getTaxonset());
+                }
+            } else {
+                logger.info("Creating monophyletic-only constraint (no age distribution) for: " + calibration.getTaxonset());
+            }
+
+            // Handle leaf constraints
+            if (calibration.hasLeafConstraint()) {
+                // For leaf calibrations, we might need to set the "isMonophyletic" to false
+                // and handle it differently depending on BEAST2's MRCAPrior implementation
+                logger.info("Processing leaf calibration for taxonset: " + calibration.getTaxonset());
+
+                // Note: You may need to adjust this based on how BEAST2 handles tip dating
+                // Some versions might use different parameters or require special handling
+            }
+
+            // Initialize the MRCAPrior
+            mrcaPrior.initAndValidate();
+
+            // Generate a unique ID for this MRCAPrior
+            String mrcaPriorId = generateMRCAPriorId(treeVar, calibration.getTaxonset());
+
+            // Set the ID on the MRCAPrior
+            mrcaPrior.setID(mrcaPriorId);
+
+            // Register the MRCAPrior in the registry
+            register(mrcaPriorId, mrcaPrior);
+
+            logger.info("Created MRCAPrior: " + mrcaPriorId +
+                    " for taxonset: " + calibration.getTaxonset() +
+                    " (monophyletic=" + calibration.isMonophyletic() +
+                    ", hasDistribution=" + calibration.hasDistribution() +
+                    ", leaf=" + calibration.isLeaf() + ")");
+
+        } catch (Exception e) {
+            logger.severe("Error creating MRCAPrior for calibration: " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException("Failed to create MRCAPrior for calibration", e);
+        }
+    }
+
+    /**
+     * Generate a unique ID for the MRCAPrior based on tree and taxonset
+     */
+    private String generateMRCAPriorId(String treeVar, String taxonsetName) {
+        return treeVar + ".prior." + taxonsetName;
+    }
+
+    /**
+     * Create a BEAST2 Distribution object from a FunctionCall AST node
+     */
+    private Object createDistributionFromFunctionCall(FunctionCall funcCall, String distId) {
+        try {
+            // Create a DistributionAssignment for the parametric distribution
+            DistributionAssignment distAssignment = new DistributionAssignment(
+                    funcCall.getClassName(),
+                    distId,
+                    funcCall
+            );
+
+            // Use the existing DistributionAssignmentHandler
+            DistributionAssignmentHandler handler = new DistributionAssignmentHandler();
+
+            // Create the distribution objects (this will handle all the complex logic)
+            handler.createObjects(distAssignment, this);
+
+            // The distribution should now be registered in the registry
+            Object distObject = objects.get(distId);
+
+            if (distObject == null) {
+                // If the main object wasn't created with that ID, try looking for a distribution with that name
+                // Sometimes the handler creates additional objects with modified names
+                String distName = distId + "Prior";
+                distObject = objects.get(distName);
+
+                if (distObject instanceof Distribution) {
+                    logger.info("Found distribution with modified name: " + distName);
+                    return distObject;
+                }
+            }
+
+            return distObject;
+
+        } catch (Exception e) {
+            logger.severe("Error creating distribution from function call: " + e.getMessage());
+            e.printStackTrace();
+            return null;
+        }
     }
 
     /**

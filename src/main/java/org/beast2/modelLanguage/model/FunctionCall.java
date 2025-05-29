@@ -31,4 +31,34 @@ public class FunctionCall extends Expression {
     public <T> T accept(ModelVisitor<T> visitor) {
         return visitor.visit(this);
     }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append(className).append("(");
+
+        boolean first = true;
+        for (Argument arg : arguments) {
+            if (!first) {
+                sb.append(", ");
+            }
+            first = false;
+
+            // Add parameter name if present
+            if (arg.getName() != null && !arg.getName().isEmpty()) {
+                sb.append(arg.getName()).append("=");
+            }
+
+            // Add parameter value
+            Expression value = arg.getValue();
+            if (value != null) {
+                sb.append(value.toString());
+            }
+        }
+
+        sb.append(")");
+        return sb.toString();
+    }
+
 }
+

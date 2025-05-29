@@ -6,6 +6,7 @@ import beast.base.evolution.alignment.Alignment;
 import beast.base.evolution.alignment.Sequence;
 import beast.base.evolution.alignment.TaxonSet;
 import beast.base.evolution.likelihood.TreeLikelihood;
+import beast.base.evolution.tree.MRCAPrior;
 import beast.base.inference.CompoundDistribution;
 import beast.base.inference.Distribution;
 import beast.base.inference.State;
@@ -56,6 +57,11 @@ public class Beast2ToBeast2LangConverter {
     public Beast2Model convertToBeast2Model(Distribution posterior, State state) {
         Beast2Model model = new Beast2Model();
         this.state = state;
+
+        // STEP 0: Normalize all identifiers first to maintain references
+        BeastIdentifierNormaliser normalizer = new BeastIdentifierNormaliser();
+        normalizer.normaliseIdentifiers(posterior, state);
+        logger.info("Identifier normalization completed");
 
         // Update statement creator with state
         this.statementCreator = new StatementCreator(objectToIdMap, objectFactory,
@@ -145,9 +151,15 @@ public class Beast2ToBeast2LangConverter {
                 objectToStatementMap.put(target, stmt);
                 processed.add(target);
 
+                // Mark all distributions as processed and used
                 for (BEASTInterface dist : distributions) {
                     processed.add(dist);
                     usedDistributions.add(dist);
+                    // Ensure the distribution itself gets an identifier if it doesn't have one
+                    if (!objectToIdMap.containsKey(dist)) {
+                        String distId = generateIdentifier(dist);
+                        objectToIdMap.put(dist, distId);
+                    }
                 }
             }
         }
@@ -160,6 +172,28 @@ public class Beast2ToBeast2LangConverter {
                     model.addStatement(stmt);
                     objectToStatementMap.put(node, stmt);
                     processed.add(node);
+                }
+            }
+        }
+    }
+
+    private void identifyInlinedDistributions() {
+        inlinedDistributions.clear();
+
+        for (BEASTInterface obj : objectToIdMap.keySet()) {
+            if (obj instanceof Prior prior) {
+                BEASTInterface innerDist = prior.distInput.get();
+                if (innerDist != null && objectFactory.isParametricDistribution(innerDist)) {
+                    inlinedDistributions.add(innerDist);
+                    logger.info("Found inlined distribution: " + innerDist.getID());
+                }
+            }
+            // Also handle MRCAPrior distributions that are used in calibrations
+            else if (obj instanceof MRCAPrior mrcaPrior) {
+                BEASTInterface innerDist = mrcaPrior.distInput.get();
+                if (innerDist != null && objectFactory.isParametricDistribution(innerDist)) {
+                    inlinedDistributions.add(innerDist);
+                    logger.info("Found inlined calibration distribution: " + innerDist.getID());
                 }
             }
         }
@@ -230,8 +264,6 @@ public class Beast2ToBeast2LangConverter {
         return statementCreator.createExpressionForObject(obj);
     }
 
-    // Keep the essential methods in the main converter
-
     private void identifyObjects(Distribution posterior, State state) {
         for (StateNode node : state.stateNodeInput.get()) {
             String id = generateIdentifier(node);
@@ -272,17 +304,16 @@ public class Beast2ToBeast2LangConverter {
         String baseName = className.substring(0, 1).toLowerCase() + className.substring(1);
 
         if (obj.getID() != null && !obj.getID().isEmpty()) {
+            // Since identifiers were normalized upfront, we can use them directly
             baseName = obj.getID();
-            baseName = baseName.replaceAll("[^a-zA-Z0-9_]", "");
-            if (!Character.isJavaIdentifierStart(baseName.charAt(0))) {
-                baseName = "_" + baseName;
-            }
+            // Basic cleanup for any remaining issues
+            baseName = baseName.replaceAll("[^a-zA-Z0-9_]", "_");
         }
 
         String uniqueName = baseName;
         int counter = 1;
         while (objectToIdMap.containsValue(uniqueName)) {
-            uniqueName = baseName + counter++;
+            uniqueName = baseName + "_" + counter++;
         }
 
         return uniqueName;
@@ -298,6 +329,21 @@ public class Beast2ToBeast2LangConverter {
                 ((RealParameter)obj).getDimension() == 0) {
             return false;
         }
+
+        // Skip individual Taxon objects that are part of TaxonSets
+        if (obj instanceof beast.base.evolution.alignment.Taxon) {
+            // Check if this taxon is part of any TaxonSet
+            for (BEASTInterface other : objectToIdMap.keySet()) {
+                if (other instanceof TaxonSet) {
+                    TaxonSet taxonSet = (TaxonSet) other;
+                    List<beast.base.evolution.alignment.Taxon> taxa = taxonSet.taxonsetInput.get();
+                    if (taxa != null && taxa.contains(obj)) {
+                        return false; // Skip this taxon, it will be included in the TaxonSet
+                    }
+                }
+            }
+        }
+
         if (obj instanceof TaxonSet ts) {
             if (ts.getID() == null && ts.getTaxonCount() == 0 && ts.alignmentInput.get() == null) {
                 return false;
@@ -358,20 +404,6 @@ public class Beast2ToBeast2LangConverter {
                             logger.warning("Failed to get input value: " + e.getMessage());
                         }
                     }
-                }
-            }
-        }
-    }
-
-    private void identifyInlinedDistributions() {
-        inlinedDistributions.clear();
-
-        for (BEASTInterface obj : objectToIdMap.keySet()) {
-            if (obj instanceof Prior prior) {
-                BEASTInterface innerDist = prior.distInput.get();
-                if (innerDist != null && objectFactory.isParametricDistribution(innerDist)) {
-                    inlinedDistributions.add(innerDist);
-                    logger.info("Found inlined distribution: " + innerDist.getID());
                 }
             }
         }

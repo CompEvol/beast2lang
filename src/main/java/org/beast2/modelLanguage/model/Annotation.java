@@ -132,7 +132,7 @@ public class Annotation {
         sb.append("@").append(name);
 
         if (!parameters.isEmpty()) {
-            sb.append(" {");
+            sb.append("(");
             boolean first = true;
             for (Map.Entry<String, Expression> entry : parameters.entrySet()) {
                 if (!first) {
@@ -141,14 +141,22 @@ public class Annotation {
                 first = false;
 
                 sb.append(entry.getKey()).append("=");
-                Object value = entry.getValue();
-                if (value instanceof Literal && ((Literal) value).getType().equals(Literal.LiteralType.STRING)) {
-                    sb.append("\"").append(value).append("\"");
+                Expression value = entry.getValue();
+
+                // Handle different expression types
+                if (value instanceof Literal) {
+                    Literal lit = (Literal) value;
+                    if (lit.getType() == Literal.LiteralType.STRING) {
+                        sb.append("\"").append(lit.getValue()).append("\"");
+                    } else {
+                        sb.append(lit.getValue());
+                    }
                 } else {
-                    sb.append(value);
+                    // For Identifier, FunctionCall, etc., use their toString()
+                    sb.append(value.toString());
                 }
             }
-            sb.append("}");
+            sb.append(")");
         }
 
         return sb.toString();

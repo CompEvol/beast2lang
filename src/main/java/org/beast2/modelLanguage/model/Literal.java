@@ -1,16 +1,13 @@
 package org.beast2.modelLanguage.model;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import static org.beast2.modelLanguage.parser.Beast2ModelLanguageParser.IDENTIFIER;
 
 /**
  * Represents a literal value (number, string, boolean)
  */
 public class Literal extends Expression {
-    private Object value;
-    private LiteralType type;
+    private final Object value;
+    private final LiteralType type;
     
     public enum LiteralType {
         INTEGER, FLOAT, STRING, BOOLEAN
@@ -33,5 +30,17 @@ public class Literal extends Expression {
     @Override
     public <T> T accept(ModelVisitor<T> visitor) {
         return visitor.visit(this);
+    }
+
+    @Override
+    public String toString() {
+        if (value == null) {
+            return "null";
+        }
+
+        return switch (type) {
+            case STRING -> "\"" + value + "\"";
+            default -> value.toString();
+        };
     }
 }

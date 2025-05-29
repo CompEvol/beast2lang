@@ -130,7 +130,7 @@ public abstract class BaseHandler {
     /**
      * Configure input for multiple objects (primary and secondary).
      * Tries primary first, then falls back to secondary if needed.
-     * Updated to accept ObjectRegistry instead of Map<String, Object>.
+     * Updated to handle cases where objects don't have the specified input.
      *
      * @param name Input name
      * @param arg Argument containing the value
@@ -145,27 +145,45 @@ public abstract class BaseHandler {
             return;
         }
 
-        // Get the value from the expression - use getAllObjects() for read access
+        // Get the value from the expression
         Object argValue = ExpressionResolver.resolveValue(arg.getValue(), registry);
 
-        // Get expected types
-        Type primaryExpectedType = factory.getInputType(primaryObject, name);
-        Type secondaryExpectedType = (secondaryObject != null && factory.isModelObject(secondaryObject)) ?
-                factory.getInputType(secondaryObject, name) : null;
+        // Get expected types safely
+        Type primaryExpectedType = null;
+        Type secondaryExpectedType = null;
+
+        try {
+            primaryExpectedType = factory.getInputType(primaryObject, name);
+        } catch (Exception e) {
+            // Primary object doesn't have this input - that's OK, we'll try secondary
+            logger.fine("Primary object (" + primaryObject.getClass().getSimpleName() +
+                    ") doesn't have input '" + name + "': " + e.getMessage());
+        }
+
+        if (secondaryObject != null && factory.isModelObject(secondaryObject)) {
+            try {
+                secondaryExpectedType = factory.getInputType(secondaryObject, name);
+            } catch (Exception e) {
+                // Secondary object doesn't have this input either
+                logger.fine("Secondary object (" + secondaryObject.getClass().getSimpleName() +
+                        ") doesn't have input '" + name + "': " + e.getMessage());
+            }
+        }
 
         boolean inputSet = false;
 
-        // First, try to set the input on the primary object
+        // First, try to set the input on the primary object (if it has that input)
         if (primaryExpectedType != null) {
             try {
                 Object primaryValue = factory.canAutobox(argValue, primaryExpectedType) ?
                         factory.autobox(argValue, primaryExpectedType, registry) : argValue;
 
-                logger.info("Attempting to set input '" + name + "' on primary object");
+                logger.info("Setting input '" + name + "' on primary object (" +
+                        primaryObject.getClass().getSimpleName() + ")");
                 factory.setInputValue(primaryObject, name, primaryValue);
                 inputSet = true;
             } catch (Exception e) {
-                logger.warning("Failed to set input on primary object: " + e.getMessage());
+                logger.warning("Failed to set input '" + name + "' on primary object: " + e.getMessage());
             }
         }
 
@@ -175,16 +193,19 @@ public abstract class BaseHandler {
                 Object secondaryValue = factory.canAutobox(argValue, secondaryExpectedType) ?
                         factory.autobox(argValue, secondaryExpectedType, registry) : argValue;
 
-                logger.info("Falling back to secondary object for input: " + name);
+                logger.info("Setting input '" + name + "' on secondary object (" +
+                        secondaryObject.getClass().getSimpleName() + ")");
                 factory.setInputValue(secondaryObject, name, secondaryValue);
                 inputSet = true;
             } catch (Exception e) {
-                logger.warning("Failed to set input on secondary object: " + e.getMessage());
+                logger.warning("Failed to set input '" + name + "' on secondary object: " + e.getMessage());
             }
         }
 
         if (!inputSet) {
-            logger.warning("Could not set input '" + name + "' on either primary or secondary object");
+            logger.warning("Could not set input '" + name + "' on either primary or secondary object. " +
+                    "Primary has input: " + (primaryExpectedType != null) +
+                    ", Secondary has input: " + (secondaryExpectedType != null));
         }
     }
 }
