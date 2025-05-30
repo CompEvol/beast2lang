@@ -330,6 +330,10 @@ public class Beast2ToBeast2LangConverter {
             return false;
         }
 
+        if (specialHandler.shouldSuppressObject(obj)) {
+            return false;
+        }
+
         // Skip individual Taxon objects that are part of TaxonSets
         if (obj instanceof beast.base.evolution.alignment.Taxon) {
             // Check if this taxon is part of any TaxonSet

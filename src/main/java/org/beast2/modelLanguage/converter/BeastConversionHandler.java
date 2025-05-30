@@ -6,6 +6,7 @@ import beast.base.evolution.alignment.Alignment;
 import beast.base.evolution.alignment.Sequence;
 import beast.base.evolution.tree.MRCAPrior;
 import beast.base.evolution.tree.TreeDistribution;
+import beast.base.evolution.tree.TreeIntervals;
 import beast.base.evolution.alignment.TaxonSet;
 import org.beast2.modelLanguage.model.*;
 
@@ -56,7 +57,7 @@ public class BeastConversionHandler {
     }
 
     /**
-     * Check if this is a tree distribution (YuleModel, SABirthDeathModel etc)
+     * Check if this is a tree distribution (TreeDistribution subclasses)
      */
     public boolean isTreeDistribution(BEASTInterface obj) {
         return obj instanceof TreeDistribution;
@@ -113,10 +114,11 @@ public class BeastConversionHandler {
 
         for (BEASTInterface obj : objects) {
             if (isTreeDistribution(obj)) {
-                TreeDistribution dist = (TreeDistribution) obj;
-                BEASTInterface tree = (BEASTInterface) dist.treeInput.get();
+                BEASTInterface tree = getTreeFromDistribution(obj);
                 if (tree != null) {
-                    grouped.computeIfAbsent(tree, k -> new ArrayList<>()).add(dist);
+                    grouped.computeIfAbsent(tree, k -> new ArrayList<>()).add(obj);
+                    logger.info("Grouped tree distribution " + obj.getClass().getSimpleName() +
+                            " with tree " + tree.getID());
                 }
             } else if (obj instanceof MRCAPrior) {
                 MRCAPrior prior = (MRCAPrior) obj;
@@ -128,6 +130,53 @@ public class BeastConversionHandler {
         }
 
         return grouped;
+    }
+
+    /**
+     * Check if object should be suppressed from decompiled output
+     */
+    public boolean shouldSuppressObject(BEASTInterface obj) {
+        // Suppress TreeIntervals that are used as intermediaries for TreeDistributions
+        if (obj instanceof TreeIntervals) {
+            TreeIntervals intervals = (TreeIntervals) obj;
+
+            // Check if this TreeIntervals is used by any TreeDistribution
+            for (BEASTInterface other : objectToIdMap.keySet()) {
+                if (other instanceof TreeDistribution) {
+                    TreeDistribution treeDist = (TreeDistribution) other;
+                    if (treeDist.treeIntervalsInput.get() == intervals) {
+                        logger.info("Suppressing TreeIntervals " + obj.getID() +
+                                " - used as intermediary for " + other.getClass().getSimpleName());
+                        return true;
+                    }
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * FIXED: Extract tree from distribution, handling TreeDistribution's XOR inputs
+     */
+    private BEASTInterface getTreeFromDistribution(BEASTInterface distribution) {
+        if (distribution instanceof TreeDistribution) {
+            TreeDistribution treeDist = (TreeDistribution) distribution;
+
+            // TreeDistribution has XOR between treeInput and treeIntervalsInput
+            // First try direct tree input
+            if (treeDist.treeInput.get() != null) {
+                return (BEASTInterface) treeDist.treeInput.get();
+            }
+
+            // If no direct tree, try treeIntervals input (like BayesianSkyline uses)
+            if (treeDist.treeIntervalsInput.get() != null) {
+                TreeIntervals intervals = treeDist.treeIntervalsInput.get();
+                return intervals.treeInput.get();
+            }
+        }
+
+        return null;
     }
 
     public Statement createDistributionStatementWithCalibrations(
@@ -165,7 +214,7 @@ public class BeastConversionHandler {
                     }
                 }
 
-                // FIXED: Add distribution parameter - use the existing createDistributionExpression method
+                // Add distribution parameter - use the existing createDistributionExpression method
                 if (prior.distInput.get() != null) {
                     BEASTInterface dist = prior.distInput.get();
                     Expression distExpression = createDistributionExpression(dist, converter);
@@ -173,7 +222,7 @@ public class BeastConversionHandler {
                     logger.info("Created calibration with distribution: " + dist.getClass().getSimpleName());
                 }
 
-                // FIXED: Add leaf parameter if tipsonly is true
+                // Add leaf parameter if tipsonly is true
                 Boolean tipsOnly = prior.onlyUseTipsInput.get();
                 if (tipsOnly != null && tipsOnly) {
                     params.put("leaf", new Literal(true, Literal.LiteralType.BOOLEAN));
@@ -185,7 +234,6 @@ public class BeastConversionHandler {
                     params.put("monophyletic", new Literal(true, Literal.LiteralType.BOOLEAN));
                     logger.info("  Added monophyletic=true for node constraint: " + prior.getID());
                 }
-
 
                 // Only add the annotation if we have a taxonset
                 if (params.containsKey("taxonset")) {
@@ -200,7 +248,7 @@ public class BeastConversionHandler {
     }
 
     /**
-     * FIXED: Create a proper distribution expression instead of using object references
+     * Create a proper distribution expression instead of using object references
      */
     private Expression createDistributionExpression(BEASTInterface dist, Beast2ToBeast2LangConverter converter) {
         // Use the converter's expression creation method to get a proper function call

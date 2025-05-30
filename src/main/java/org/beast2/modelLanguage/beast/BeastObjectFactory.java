@@ -3,6 +3,7 @@ package org.beast2.modelLanguage.beast;
 import beast.base.core.BEASTInterface;
 import beast.base.core.Function;
 import beast.base.core.Input;
+import beast.base.inference.distribution.MarkovChainDistribution;
 import beast.base.inference.distribution.ParametricDistribution;
 import beast.base.parser.NexusParser;
 import beast.base.evolution.likelihood.TreeLikelihood;
@@ -54,15 +55,16 @@ public class BeastObjectFactory implements ModelObjectFactory {
     /**
      * Map from distribution classes to their primary input names
      */
-    private static final Map<Class<?>, String> CLASS_TO_ARGUMENT_INPUT = new HashMap<>();
+    private static final Map<Class<?>, String> DISTRIBUTION_CLASS_TO_ARGUMENT_INPUT = new HashMap<>();
 
     // Initialize the map with known mappings
     static {
-        CLASS_TO_ARGUMENT_INPUT.put(Prior.class, "x");
-        CLASS_TO_ARGUMENT_INPUT.put(Coalescent.class, "treeIntervals");
-        CLASS_TO_ARGUMENT_INPUT.put(TreeDistribution.class, "tree");
-        CLASS_TO_ARGUMENT_INPUT.put(MRCAPrior.class, "tree");
-        CLASS_TO_ARGUMENT_INPUT.put(TreeLikelihood.class, "data");
+        DISTRIBUTION_CLASS_TO_ARGUMENT_INPUT.put(Prior.class, "x");
+        DISTRIBUTION_CLASS_TO_ARGUMENT_INPUT.put(Coalescent.class, "treeIntervals");
+        DISTRIBUTION_CLASS_TO_ARGUMENT_INPUT.put(TreeDistribution.class, "tree");
+        DISTRIBUTION_CLASS_TO_ARGUMENT_INPUT.put(MRCAPrior.class, "tree");
+        DISTRIBUTION_CLASS_TO_ARGUMENT_INPUT.put(TreeLikelihood.class, "data");
+        DISTRIBUTION_CLASS_TO_ARGUMENT_INPUT.put(MarkovChainDistribution.class, "parameter");
     }
 
     /**
@@ -364,14 +366,14 @@ public class BeastObjectFactory implements ModelObjectFactory {
         // Search for the most specific class match in our map
         Class<?> distClass = distributionObject.getClass();
         while (distClass != null) {
-            if (CLASS_TO_ARGUMENT_INPUT.containsKey(distClass)) {
-                return CLASS_TO_ARGUMENT_INPUT.get(distClass);
+            if (DISTRIBUTION_CLASS_TO_ARGUMENT_INPUT.containsKey(distClass)) {
+                return DISTRIBUTION_CLASS_TO_ARGUMENT_INPUT.get(distClass);
             }
 
             // Check interfaces as well
             for (Class<?> iface : distClass.getInterfaces()) {
-                if (CLASS_TO_ARGUMENT_INPUT.containsKey(iface)) {
-                    return CLASS_TO_ARGUMENT_INPUT.get(iface);
+                if (DISTRIBUTION_CLASS_TO_ARGUMENT_INPUT.containsKey(iface)) {
+                    return DISTRIBUTION_CLASS_TO_ARGUMENT_INPUT.get(iface);
                 }
             }
 
