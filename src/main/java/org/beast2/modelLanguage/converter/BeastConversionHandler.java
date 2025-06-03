@@ -8,6 +8,7 @@ import beast.base.evolution.tree.MRCAPrior;
 import beast.base.evolution.tree.TreeDistribution;
 import beast.base.evolution.tree.TreeIntervals;
 import beast.base.evolution.alignment.TaxonSet;
+import beast.base.inference.parameter.IntegerParameter;
 import org.beast2.modelLanguage.model.*;
 
 import java.io.IOException;
@@ -32,6 +33,300 @@ public class BeastConversionHandler {
         this.usedDistributions = usedDistributions;
     }
 
+    // ===== ESSENTIAL METHODS =====
+
+    /**
+     * Check if this parameter requires a RandomComposition prior
+     * Detection based on: (a) IntegerParameter and (b) only operated on by DeltaExchange operators
+     */
+    public boolean requiresRandomCompositionPrior(BEASTInterface obj, BEASTInterface mcmc) {
+        if (!(obj instanceof IntegerParameter)) {
+            return false;
+        }
+
+        IntegerParameter param = (IntegerParameter) obj;
+        String paramId = param.getID();
+
+        logger.info("Checking IntegerParameter: " + paramId + " for RandomComposition requirement");
+
+        // Find operators that operate on this parameter
+        List<BEASTInterface> operatorsOnParam = findOperatorsForParameterInMCMC(param, mcmc);
+
+        if (operatorsOnParam.isEmpty()) {
+            logger.info("No operators found for " + paramId + " - not a RandomComposition candidate");
+            return false;
+        }
+
+        // Check if ALL operators on this parameter are DeltaExchange operators with integer=true
+        boolean allAreDeltaExchange = true;
+        for (BEASTInterface operator : operatorsOnParam) {
+            if (!isDeltaExchangeOperatorWithInteger(operator, param)) {
+                allAreDeltaExchange = false;
+                logger.info("Found non-DeltaExchange operator " + operator.getClass().getSimpleName() +
+                        " on " + paramId + " - not a RandomComposition candidate");
+                break;
+            }
+        }
+
+        if (allAreDeltaExchange) {
+            logger.info("Confirmed RandomComposition needed for " + paramId +
+                    " (only operated on by DeltaExchange operators with integer=true)");
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Create a RandomComposition distribution assignment for parameters with DeltaExchange constraints
+     */
+    public Statement createRandomCompositionStatement(IntegerParameter param,
+                                                      Beast2ToBeast2LangConverter converter,
+                                                      BEASTInterface mcmc) {
+        String paramId = objectToIdMap.get(param);
+
+        // Calculate n as the sum of the current parameter values
+        int n = calculateSumOfParameterValues(param);
+        int k = param.getDimension();
+
+        logger.info("Creating RandomComposition for " + paramId + " with n=" + n + " (sum of current values), k=" + k);
+
+        // Create the RandomComposition expression
+        List<Argument> args = new ArrayList<>();
+        args.add(new Argument("n", new Literal(n, Literal.LiteralType.INTEGER)));
+        args.add(new Argument("k", new Literal(k, Literal.LiteralType.INTEGER)));
+
+        Expression randomCompExpr = new FunctionCall("RandomComposition", args);
+
+        logger.info("Created RandomComposition statement for " + paramId + " with n=" + n + ", k=" + k);
+
+        return new DistributionAssignment("IntegerParameter", paramId, randomCompExpr);
+    }
+
+    /**
+     * Find operators in MCMC that operate on the given parameter
+     */
+    private List<BEASTInterface> findOperatorsForParameterInMCMC(IntegerParameter param, BEASTInterface mcmc) {
+        List<BEASTInterface> operators = new ArrayList<>();
+        findOperatorsRecursively(param, mcmc, operators, new HashSet<>());
+        return operators;
+    }
+
+    /**
+     * Recursively search for operators that reference the parameter
+     */
+    private void findOperatorsRecursively(IntegerParameter param, BEASTInterface obj,
+                                          List<BEASTInterface> operators, Set<BEASTInterface> visited) {
+        if (obj == null || visited.contains(obj)) {
+            return;
+        }
+        visited.add(obj);
+
+        // Check if this object is an operator that references our parameter
+        if (obj instanceof beast.base.inference.Operator && operatorReferencesParameter(obj, param)) {
+            operators.add(obj);
+            logger.info("Found operator " + obj.getClass().getSimpleName() + " operating on " + param.getID());
+        }
+
+        // Recursively check all inputs
+        for (Input<?> input : obj.getInputs().values()) {
+            if (input.get() != null) {
+                if (input.get() instanceof BEASTInterface) {
+                    findOperatorsRecursively(param, (BEASTInterface) input.get(), operators, visited);
+                } else if (input.get() instanceof List) {
+                    for (Object item : (List<?>) input.get()) {
+                        if (item instanceof BEASTInterface) {
+                            findOperatorsRecursively(param, (BEASTInterface) item, operators, visited);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Check if an operator references the given parameter
+     */
+    private boolean operatorReferencesParameter(BEASTInterface operator, IntegerParameter param) {
+        for (Input<?> input : operator.getInputs().values()) {
+            Object value = input.get();
+            if (value == param || (value instanceof List && ((List<?>) value).contains(param))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Check if an operator is a DeltaExchange operator with integer=true operating on the given parameter
+     */
+    private boolean isDeltaExchangeOperatorWithInteger(BEASTInterface operator, IntegerParameter param) {
+        if (!(operator instanceof beast.base.inference.Operator)) {
+            return false;
+        }
+
+        // Check if it's a DeltaExchange type operator by looking at the class hierarchy
+        boolean isDeltaExchange = false;
+        Class<?> currentClass = operator.getClass();
+
+        while (currentClass != null && currentClass != Object.class) {
+            if (currentClass.getSimpleName().contains("DeltaExchange")) {
+                isDeltaExchange = true;
+                break;
+            }
+            currentClass = currentClass.getSuperclass();
+        }
+
+        if (!isDeltaExchange) {
+            return false;
+        }
+
+        // Check if it has integer=true and operates on our parameter
+        boolean hasIntegerTrue = false;
+        boolean operatesOnParam = false;
+
+        for (Input<?> input : operator.getInputs().values()) {
+            String inputName = input.getName();
+            Object value = input.get();
+
+            if ("integer".equals(inputName) && Boolean.TRUE.equals(value)) {
+                hasIntegerTrue = true;
+            }
+
+            if (value == param || (value instanceof List && ((List<?>) value).contains(param))) {
+                operatesOnParam = true;
+            }
+        }
+
+        return hasIntegerTrue && operatesOnParam;
+    }
+
+    /**
+     * Heuristic detection when operator information is not available
+     */
+    private boolean requiresRandomCompositionPriorHeuristic(IntegerParameter param) {
+        String paramId = param.getID();
+
+        int dimension = param.getDimension();
+        if (dimension <= 1) {
+            logger.info(paramId + " has dimension " + dimension + " - not a composition vector");
+            return false;
+        }
+
+        // Calculate sum of current values
+        int sum = 0;
+        for (int i = 0; i < dimension; i++) {
+            sum += param.getValue(i);
+        }
+
+        // Check if it looks like a composition vector
+        boolean looksLikeComposition = (sum >= dimension);
+
+        if (!looksLikeComposition) {
+            logger.info(paramId + " sum=" + sum + ", dimension=" + dimension + " - doesn't look like composition");
+            return false;
+        }
+
+        // Additional check: if ID contains common composition parameter patterns
+        boolean hasCompositionName = paramId.toLowerCase().contains("group") ||
+                paramId.toLowerCase().contains("size") ||
+                paramId.toLowerCase().contains("count");
+
+        if (hasCompositionName || sum > dimension) {
+            logger.info("Heuristic: RandomComposition needed for " + paramId +
+                    " (dimension=" + dimension + ", sum=" + sum + ", pattern match=" + hasCompositionName + ")");
+            return true;
+        }
+
+        logger.info(paramId + " doesn't match heuristic composition criteria");
+        return false;
+    }
+
+    /**
+     * Calculate the sum of values in an IntegerParameter
+     */
+    private int calculateSumOfParameterValues(IntegerParameter param) {
+        int sum = 0;
+        for (int i = 0; i < param.getDimension(); i++) {
+            sum += param.getValue(i);
+        }
+        logger.info("Sum of values in " + param.getID() + ": " + sum);
+        return sum;
+    }
+
+    /**
+     * Check if a secondary input should be suppressed for distribution statements
+     */
+    public boolean shouldSuppressSecondaryInput(String inputName, Object value, BEASTInterface distribution) {
+        if (distribution == null) return false;
+
+        String distributionType = distribution.getClass().getSimpleName();
+        return shouldSuppressNaturalBound(inputName, value, distributionType);
+    }
+
+    /**
+     * Check if a bound should be suppressed because it's the natural domain of the distribution
+     */
+    public boolean shouldSuppressNaturalBound(String inputName, Object value, String distributionType) {
+        if (value == null) return true;
+
+        switch (distributionType.toLowerCase()) {
+            case "gamma":
+            case "exponential":
+            case "lognormal":
+            case "chi2":
+            case "inversegamma":
+                // These distributions naturally have lower=0
+                if ("lower".equals(inputName) && isEffectivelyZero(value)) {
+                    return true;
+                }
+                break;
+
+            case "dirichlet":
+                // Dirichlet naturally has lower=0, upper=1 for each component
+                if ("lower".equals(inputName) && isEffectivelyZero(value)) {
+                    return true;
+                }
+                if ("upper".equals(inputName) && isEffectivelyOne(value)) {
+                    return true;
+                }
+                break;
+
+            case "beta":
+                // Beta naturally has lower=0, upper=1
+                if ("lower".equals(inputName) && isEffectivelyZero(value)) {
+                    return true;
+                }
+                if ("upper".equals(inputName) && isEffectivelyOne(value)) {
+                    return true;
+                }
+                break;
+
+            case "uniform":
+                // Don't suppress bounds for Uniform - they're essential parameters
+                break;
+
+            default:
+                break;
+        }
+
+        return false;
+    }
+
+    private boolean isEffectivelyZero(Object value) {
+        if (value instanceof Number) {
+            return Math.abs(((Number) value).doubleValue()) < 1e-10;
+        }
+        return false;
+    }
+
+    private boolean isEffectivelyOne(Object value) {
+        if (value instanceof Number) {
+            return Math.abs(((Number) value).doubleValue() - 1.0) < 1e-10;
+        }
+        return false;
+    }
+
     /**
      * Generate unique alignment identifier
      */
@@ -39,10 +334,8 @@ public class BeastConversionHandler {
         if (alignment.getID() != null && !alignment.getID().isEmpty()) {
             String baseId = alignment.getID().replaceAll("[^a-zA-Z0-9_]", "_");
 
-            // If the ID already exists in the map, check if it's the same object
             for (Map.Entry<BEASTInterface, String> entry : objectToIdMap.entrySet()) {
                 if (entry.getValue().equals(baseId) && entry.getKey() != alignment) {
-                    // Only add counter if it's a different object with the same ID
                     String uniqueId = baseId;
                     int counter = 2;
                     while (objectToIdMap.containsValue(uniqueId)) {
@@ -67,13 +360,10 @@ public class BeastConversionHandler {
      * Extract sequence data and create nexus statement
      */
     public Statement createAlignmentFromEmbeddedData(Alignment alignment, String alignmentId) {
-        // Save sequence data to a separate nexus file
         String fileName = alignmentId + ".nex";
-        saveAlignmentToFile(alignment,fileName);
+        saveAlignmentToFile(alignment, fileName);
 
         Expression expr = new NexusFunction(fileName);
-
-        // Create the variable declaration with @data annotation
         VariableDeclaration decl = new VariableDeclaration("Alignment", alignmentId, expr);
 
         Map<String, Expression> params = new HashMap<>();
@@ -82,7 +372,9 @@ public class BeastConversionHandler {
         return new AnnotatedStatement(Arrays.asList(annotation), decl);
     }
 
-    // Add this helper method to actually write the nexus file
+    /**
+     * Write alignment to nexus file
+     */
     public void saveAlignmentToFile(Alignment alignment, String fileName) {
         try (PrintWriter writer = new PrintWriter(fileName)) {
             writer.println("#NEXUS");
@@ -117,8 +409,6 @@ public class BeastConversionHandler {
                 BEASTInterface tree = getTreeFromDistribution(obj);
                 if (tree != null) {
                     grouped.computeIfAbsent(tree, k -> new ArrayList<>()).add(obj);
-                    logger.info("Grouped tree distribution " + obj.getClass().getSimpleName() +
-                            " with tree " + tree.getID());
                 }
             } else if (obj instanceof MRCAPrior) {
                 MRCAPrior prior = (MRCAPrior) obj;
@@ -136,49 +426,42 @@ public class BeastConversionHandler {
      * Check if object should be suppressed from decompiled output
      */
     public boolean shouldSuppressObject(BEASTInterface obj) {
-        // Suppress TreeIntervals that are used as intermediaries for TreeDistributions
         if (obj instanceof TreeIntervals) {
             TreeIntervals intervals = (TreeIntervals) obj;
-
-            // Check if this TreeIntervals is used by any TreeDistribution
             for (BEASTInterface other : objectToIdMap.keySet()) {
                 if (other instanceof TreeDistribution) {
                     TreeDistribution treeDist = (TreeDistribution) other;
                     if (treeDist.treeIntervalsInput.get() == intervals) {
-                        logger.info("Suppressing TreeIntervals " + obj.getID() +
-                                " - used as intermediary for " + other.getClass().getSimpleName());
                         return true;
                     }
                 }
             }
         }
-
         return false;
     }
 
     /**
-     * FIXED: Extract tree from distribution, handling TreeDistribution's XOR inputs
+     * Extract tree from distribution, handling TreeDistribution's XOR inputs
      */
     private BEASTInterface getTreeFromDistribution(BEASTInterface distribution) {
         if (distribution instanceof TreeDistribution) {
             TreeDistribution treeDist = (TreeDistribution) distribution;
 
-            // TreeDistribution has XOR between treeInput and treeIntervalsInput
-            // First try direct tree input
             if (treeDist.treeInput.get() != null) {
                 return (BEASTInterface) treeDist.treeInput.get();
             }
 
-            // If no direct tree, try treeIntervals input (like BayesianSkyline uses)
             if (treeDist.treeIntervalsInput.get() != null) {
                 TreeIntervals intervals = treeDist.treeIntervalsInput.get();
                 return intervals.treeInput.get();
             }
         }
-
         return null;
     }
 
+    /**
+     * Create distribution statement with calibrations
+     */
     public Statement createDistributionStatementWithCalibrations(
             BEASTInterface target,
             BEASTInterface mainDistribution,
@@ -188,24 +471,18 @@ public class BeastConversionHandler {
         String targetId = objectToIdMap.get(target);
         String className = target.getClass().getSimpleName();
 
-        // Create the main distribution assignment
         Expression distExpr = converter.createExpressionForObject(mainDistribution);
-        DistributionAssignment distAssign = new DistributionAssignment(
-                className, targetId, distExpr);
+        DistributionAssignment distAssign = new DistributionAssignment(className, targetId, distExpr);
 
-        // If no calibrations, return the simple statement
         if (calibrations.isEmpty()) {
             return distAssign;
         }
 
-        // Create calibration annotations
         List<Annotation> annotations = new ArrayList<>();
-
         for (MRCAPrior prior : calibrations) {
             try {
                 Map<String, Expression> params = new HashMap<>();
 
-                // Add taxonset parameter
                 TaxonSet taxonSet = prior.taxonsetInput.get();
                 if (taxonSet != null) {
                     String taxonSetId = objectToIdMap.get(taxonSet);
@@ -214,28 +491,22 @@ public class BeastConversionHandler {
                     }
                 }
 
-                // Add distribution parameter - use the existing createDistributionExpression method
                 if (prior.distInput.get() != null) {
                     BEASTInterface dist = prior.distInput.get();
-                    Expression distExpression = createDistributionExpression(dist, converter);
+                    Expression distExpression = converter.createExpressionForObject(dist);
                     params.put("distribution", distExpression);
-                    logger.info("Created calibration with distribution: " + dist.getClass().getSimpleName());
                 }
 
-                // Add leaf parameter if tipsonly is true
                 Boolean tipsOnly = prior.onlyUseTipsInput.get();
                 if (tipsOnly != null && tipsOnly) {
                     params.put("leaf", new Literal(true, Literal.LiteralType.BOOLEAN));
-                    logger.info("Added leaf=true for tipsonly MRCAPrior: " + prior.getID());
                 }
 
                 Boolean monophyletic = prior.isMonophyleticInput.get();
                 if (monophyletic != null && monophyletic && (tipsOnly == null || !tipsOnly)) {
                     params.put("monophyletic", new Literal(true, Literal.LiteralType.BOOLEAN));
-                    logger.info("  Added monophyletic=true for node constraint: " + prior.getID());
                 }
 
-                // Only add the annotation if we have a taxonset
                 if (params.containsKey("taxonset")) {
                     annotations.add(new Annotation("calibration", params));
                 }
@@ -245,16 +516,6 @@ public class BeastConversionHandler {
         }
 
         return new AnnotatedStatement(annotations, distAssign);
-    }
-
-    /**
-     * Create a proper distribution expression instead of using object references
-     */
-    private Expression createDistributionExpression(BEASTInterface dist, Beast2ToBeast2LangConverter converter) {
-        // Use the converter's expression creation method to get a proper function call
-        Expression expr = converter.createExpressionForObject(dist);
-        logger.info("Created distribution expression for " + dist.getClass().getSimpleName() + ": " + expr);
-        return expr;
     }
 
     /**
@@ -279,27 +540,20 @@ public class BeastConversionHandler {
      * Check if object is a data source (like AlignmentFromNexus)
      */
     public boolean isDataSource(BEASTInterface obj) {
-        // Check the actual class name
         String className = obj.getClass().getName();
-        logger.info("Checking if " + className + " is a data source");
 
-        // AlignmentFromNexus is always a data source
         if (className.contains("AlignmentFromNexus")) {
-            logger.info("Found AlignmentFromNexus - it's a data source");
             return true;
         }
 
-        // Check for fileName input
         if (obj instanceof Alignment) {
             for (var input : obj.getInputs().values()) {
                 if (input.getName().equals("fileName") && input.get() != null) {
-                    logger.info("Found fileName input - it's a data source");
                     return true;
                 }
             }
         }
 
-        logger.info("Not a data source");
         return false;
     }
 

@@ -24,17 +24,17 @@ public class BeastIdentifierNormaliser {
     /**
      * Normalize all identifiers in the BEAST object graph before conversion
      */
-    public void normaliseIdentifiers(Distribution posterior, State state) {
+    public void normaliseIdentifiers(BEASTInterface beastObject, State state) {
         logger.info("Starting identifier normalization...");
 
         // First pass: collect all objects and plan transformations
-        collectObjects(posterior);
+        collectObjects(beastObject);
         for (StateNode node : state.stateNodeInput.get()) {
             collectObjects(node);
         }
 
         // Second pass: apply the transformations
-        applyTransformations(posterior);
+        applyTransformations(beastObject);
         for (StateNode node : state.stateNodeInput.get()) {
             applyTransformations(node);
         }

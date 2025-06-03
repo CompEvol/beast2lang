@@ -7,12 +7,10 @@ import beast.base.evolution.alignment.Sequence;
 import beast.base.evolution.alignment.TaxonSet;
 import beast.base.evolution.likelihood.TreeLikelihood;
 import beast.base.evolution.tree.MRCAPrior;
-import beast.base.inference.CompoundDistribution;
-import beast.base.inference.Distribution;
-import beast.base.inference.State;
-import beast.base.inference.StateNode;
+import beast.base.inference.*;
 import beast.base.inference.distribution.Prior;
 import beast.base.inference.parameter.RealParameter;
+import beast.base.inference.parameter.IntegerParameter;
 import org.beast2.modelLanguage.beast.BeastObjectFactory;
 import org.beast2.modelLanguage.builder.ModelObjectFactory;
 import org.beast2.modelLanguage.model.*;
@@ -36,6 +34,7 @@ public class Beast2ToBeast2LangConverter {
     private final Map<String, Alignment> processedAlignments = new HashMap<>();
     private final Set<BEASTInterface> usedDistributions = new HashSet<>();
     private final Set<BEASTInterface> inlinedDistributions = new HashSet<>();
+    private final Set<BEASTInterface> randomCompositionParameters = new HashSet<>();
 
     // Helper components
     private final ModelObjectFactory objectFactory;
@@ -43,6 +42,7 @@ public class Beast2ToBeast2LangConverter {
     private StatementCreator statementCreator;
 
     private State state = null;
+    private BEASTInterface mcmc = null;
 
     public Beast2ToBeast2LangConverter() {
         this.objectFactory = new BeastObjectFactory();
@@ -54,24 +54,32 @@ public class Beast2ToBeast2LangConverter {
     /**
      * Convert a BEAST2 analysis to a Beast2Lang model.
      */
-    public Beast2Model convertToBeast2Model(Distribution posterior, State state) {
+    public Beast2Model convertToBeast2Model(Distribution posterior, State state, BEASTInterface mcmc) {
         Beast2Model model = new Beast2Model();
         this.state = state;
+        this.mcmc = mcmc;
 
         // STEP 0: Normalize all identifiers first to maintain references
         BeastIdentifierNormaliser normalizer = new BeastIdentifierNormaliser();
         normalizer.normaliseIdentifiers(posterior, state);
+        // Also normalize MCMC identifiers if provided, but don't add to object graph
+        if (mcmc != null) {
+            normalizer.normaliseIdentifiers(mcmc, state);
+        }
         logger.info("Identifier normalization completed");
 
-        // Update statement creator with state
+        // Update statement creator with state and MCMC context
         this.statementCreator = new StatementCreator(objectToIdMap, objectFactory,
                 specialHandler, usedDistributions, state);
 
         // Add common imports
         addCommonImports(model);
 
-        // First pass: identify all objects and generate identifiers
+        // First pass: identify all objects and generate identifiers (posterior and state only)
         identifyObjects(posterior, state);
+
+        // Pre-pass: identify parameters that need RandomComposition priors (with MCMC context)
+        identifyRandomCompositionParameters();
 
         // Pre-pass: identify all distributions used in ~ statements
         identifyUsedDistributions();
@@ -88,6 +96,9 @@ public class Beast2ToBeast2LangConverter {
 
         // Process alignments first
         processAlignments(model, statementProcessed);
+
+        // Process RandomComposition parameters before state nodes
+        processRandomCompositionParameters(model, statementProcessed);
 
         // Process state nodes with their distributions
         processStateNodesWithDistributions(model, statementProcessed, distributionsByTarget);
@@ -108,6 +119,49 @@ public class Beast2ToBeast2LangConverter {
 
         return model;
     }
+
+    /**
+     * Identify parameters that need RandomComposition priors
+     */
+    private void identifyRandomCompositionParameters() {
+        randomCompositionParameters.clear();
+
+        for (BEASTInterface obj : objectToIdMap.keySet()) {
+            // Pass MCMC context for operator interrogation
+            if (specialHandler.requiresRandomCompositionPrior(obj, mcmc)) {
+                randomCompositionParameters.add(obj);
+                logger.info("Identified RandomComposition parameter: " + obj.getID());
+            }
+        }
+    }
+
+    /**
+     * Process parameters that need RandomComposition priors
+     */
+    private void processRandomCompositionParameters(Beast2Model model, Set<BEASTInterface> processed) {
+        for (BEASTInterface param : randomCompositionParameters) {
+            if (processed.contains(param)) {
+                continue;
+            }
+
+            IntegerParameter intParam = (IntegerParameter) param;
+            // Pass MCMC context for operator interrogation
+            Statement stmt = specialHandler.createRandomCompositionStatement(intParam, this, mcmc);
+
+            if (stmt != null) {
+                model.addStatement(stmt);
+                objectToStatementMap.put(param, stmt);
+                processed.add(param);
+
+                // Mark this parameter as having a distribution
+                usedDistributions.add(param);
+
+                logger.info("Created RandomComposition statement for: " + param.getID());
+            }
+        }
+    }
+
+    // EXISTING METHODS (unchanged)
 
     private void processAlignments(Beast2Model model, Set<BEASTInterface> processed) {
         for (BEASTInterface obj : objectToIdMap.keySet()) {
@@ -164,9 +218,9 @@ public class Beast2ToBeast2LangConverter {
             }
         }
 
-        // Process other state nodes
+        // Process other state nodes (but skip those with RandomComposition priors)
         for (StateNode node : state.stateNodeInput.get()) {
-            if (!processed.contains(node)) {
+            if (!processed.contains(node) && !randomCompositionParameters.contains(node)) {
                 Statement stmt = statementCreator.createStatement(node);
                 if (stmt != null) {
                     model.addStatement(stmt);
@@ -356,6 +410,11 @@ public class Beast2ToBeast2LangConverter {
         if (obj instanceof TreeLikelihood) return false;
         if (usedDistributions.contains(obj)) return false;
         if (inlinedDistributions.contains(obj)) return false;
+        if (randomCompositionParameters.contains(obj)) return false; // Skip these, they're handled separately
+
+        // Skip operators - they don't become statements in Beast2Lang
+        if (obj instanceof beast.base.inference.Operator) return false;
+
         if (obj instanceof CompoundDistribution) {
             String id = obj.getID();
             if (id != null && (id.equals("prior") || id.equals("likelihood") || id.equals("posterior"))) {

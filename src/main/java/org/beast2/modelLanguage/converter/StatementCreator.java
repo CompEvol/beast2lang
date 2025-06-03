@@ -122,7 +122,7 @@ public class StatementCreator {
         // Check if we need to add secondary inputs
         List<Argument> additionalArgs = new ArrayList<>();
         if (param instanceof StateNode) {
-            collectSecondaryInputs(param, additionalArgs);
+            collectSecondaryInputs(param, additionalArgs, actualDistribution); // Pass distribution context
         }
 
         // If we have additional args, we need to create a modified function call
@@ -142,14 +142,14 @@ public class StatementCreator {
         }
     }
 
-    private void collectSecondaryInputs(BEASTInterface stateNode, List<Argument> additionalArgs) {
+    private void collectSecondaryInputs(BEASTInterface stateNode, List<Argument> additionalArgs, BEASTInterface distribution) {
         logger.info("Checking secondary inputs for StateNode: " + stateNode.getID());
 
         // Collect any inputs set on the state node that should be secondary inputs
         for (Input<?> input : stateNode.getInputs().values()) {
             logger.info("  Input '" + input.getName() + "' has value: " + input.get());
 
-            if (input.get() != null && !shouldSkipSecondaryInput(stateNode, input)) {
+            if (input.get() != null && !shouldSkipSecondaryInput(stateNode, input, distribution)) {
                 String inputName = input.getName();
                 Expression inputValue = createExpressionForInput(input);
                 if (inputValue != null) {
@@ -158,6 +158,51 @@ public class StatementCreator {
                 }
             }
         }
+    }
+
+    private boolean shouldSkipSecondaryInput(BEASTInterface stateNode, Input<?> input, BEASTInterface distribution) {
+        String inputName = input.getName();
+        Object value = input.get();
+
+        // Skip calculated inputs
+        if (isCalculatedInput(stateNode, input)) {
+            logger.info("    Skipping '" + inputName + "' - calculated input");
+            return true;
+        }
+
+        // Skip empty inputs
+        if (value == null || (value instanceof List && ((List<?>) value).isEmpty())) {
+            logger.info("    Skipping '" + inputName + "' - empty");
+            return true;
+        }
+
+        // Skip if it's at default value
+        if (InputValidator.isDefaultValue(stateNode, input)) {
+            logger.info("    Skipping '" + inputName + "' - at default value");
+            return true;
+        }
+
+        // Skip certain standard StateNode inputs that aren't meant to be secondary
+        Set<String> skipInputs = new HashSet<>(Arrays.asList(
+                "id", "spec", "name", "estimate"
+        ));
+
+        if (skipInputs.contains(inputName)) {
+            logger.info("    Skipping '" + inputName + "' - standard StateNode input");
+            return true;
+        }
+
+        // NEW: Skip natural domain bounds for standard distributions
+        if (distribution != null && ("lower".equals(inputName) || "upper".equals(inputName))) {
+            if (specialHandler.shouldSuppressSecondaryInput(inputName, value, distribution)) {
+                logger.info("    Skipping '" + inputName + "' - natural domain bound for " +
+                        distribution.getClass().getSimpleName());
+                return true;
+            }
+        }
+
+        logger.info("    Including '" + inputName + "' as secondary input");
+        return false;
     }
 
     public boolean isParameterFixed(RealParameter param) {
