@@ -356,7 +356,7 @@ public class Beast2Lang implements Callable<Integer> {
 
                 // Convert to Beast2Lang model
                 Beast2ToBeast2LangConverter converter = new Beast2ToBeast2LangConverter();
-                Beast2Model model = converter.convertToBeast2Model(posterior, state);
+                Beast2Model model = converter.convertToBeast2Model(posterior, state, mcmc);
 
                 // Write the model to a file
                 Beast2ModelWriter writer = new Beast2ModelWriter();
@@ -452,15 +452,14 @@ public class Beast2Lang implements Callable<Integer> {
             CompoundDistribution posterior = (CompoundDistribution) mcmc.posteriorInput.get();
             State state = mcmc.startStateInput.get();
 
-            // Convert to Beast2Lang model
+            // Convert to Beast2Lang model - PASS THE MCMC OBJECT TOO
             Beast2ToBeast2LangConverter converter = new Beast2ToBeast2LangConverter();
-            Beast2Model model = converter.convertToBeast2Model(posterior, state);
+            Beast2Model model = converter.convertToBeast2Model(posterior, state, mcmc);  // ADD mcmc PARAMETER
 
             String required = extractRequiredPackages(inputFile);
             if (required != null) {
                 addRequiresFromString(model, required);
             }
-
 
             // Write the model to a file
             Beast2ModelWriter writer = new Beast2ModelWriter();
@@ -474,7 +473,6 @@ public class Beast2Lang implements Callable<Integer> {
 
         } catch (Exception e) {
             System.err.println("Error decompiling BEAST2 XML: " + e.getMessage());
-
             if (debug) {
                 e.printStackTrace();
             } else {
@@ -484,7 +482,6 @@ public class Beast2Lang implements Callable<Integer> {
                 e.printStackTrace(pw);
                 logger.severe("Detailed error: " + sw.toString());
             }
-
             return 1;
         }
     }
