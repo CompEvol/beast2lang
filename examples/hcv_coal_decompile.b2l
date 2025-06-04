@@ -16,7 +16,7 @@ Frequencies estimatedFreqs_s_hcv = Frequencies(frequencies=freqParameter_s_hcv);
 StrictClockModel StrictClock_c_hcv = StrictClockModel(clock.rate=7.9E-4);
 GTR gtr_s_hcv = GTR(rateCG=rateCG_s_hcv, rateAG=rateAG_s_hcv, rateCT=1.0, rateAT=rateAT_s_hcv, rateAC=rateAC_s_hcv, rateGT=rateGT_s_hcv, frequencies=estimatedFreqs_s_hcv);
 SiteModel SiteModel_s_hcv = SiteModel(proportionInvariant=0.0, shape=gammaShape_s_hcv, mutationRate=1.0, gammaCategoryCount=4, substModel=gtr_s_hcv);
-Tree Tree_t_hcv ~ BayesianSkyline(groupSizes=bGroupSizes_t_hcv, popSizes=bPopSizes_t_hcv, treeIntervals=BSPTreeIntervals_t_hcv);
+Tree Tree_t_hcv ~ BayesianSkyline(groupSizes=bGroupSizes_t_hcv, popSizes=bPopSizes_t_hcv);
 ThreadedTreeLikelihood treeLikelihood_hcv = ThreadedTreeLikelihood(data=hcv, siteModel=SiteModel_s_hcv, tree=Tree_t_hcv, branchRateModel=StrictClock_c_hcv);
 @observed(data=hcv)
 Alignment alignment_hcv ~ TreeLikelihood(siteModel=SiteModel_s_hcv, tree=Tree_t_hcv, branchRateModel=StrictClock_c_hcv);
