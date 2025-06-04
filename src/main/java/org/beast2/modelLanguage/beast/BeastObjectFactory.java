@@ -3,6 +3,7 @@ package org.beast2.modelLanguage.beast;
 import beast.base.core.BEASTInterface;
 import beast.base.core.Function;
 import beast.base.core.Input;
+import beast.base.evolution.tree.coalescent.BayesianSkyline;
 import beast.base.inference.distribution.MarkovChainDistribution;
 import beast.base.inference.distribution.ParametricDistribution;
 import beast.base.parser.NexusParser;
@@ -61,6 +62,7 @@ public class BeastObjectFactory implements ModelObjectFactory {
     static {
         DISTRIBUTION_CLASS_TO_ARGUMENT_INPUT.put(Prior.class, "x");
         DISTRIBUTION_CLASS_TO_ARGUMENT_INPUT.put(Coalescent.class, "treeIntervals");
+        DISTRIBUTION_CLASS_TO_ARGUMENT_INPUT.put(BayesianSkyline.class, "treeIntervals");
         DISTRIBUTION_CLASS_TO_ARGUMENT_INPUT.put(TreeDistribution.class, "tree");
         DISTRIBUTION_CLASS_TO_ARGUMENT_INPUT.put(MRCAPrior.class, "tree");
         DISTRIBUTION_CLASS_TO_ARGUMENT_INPUT.put(TreeLikelihood.class, "data");

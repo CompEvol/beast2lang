@@ -23,13 +23,13 @@ public class StatementCreator {
 
     private final Map<BEASTInterface, String> objectToIdMap;
     private final ModelObjectFactory objectFactory;
-    private final BeastConversionHandler specialHandler;
+    private final BeastConversionUtilities specialHandler;
     private final Set<BEASTInterface> usedDistributions;
     private final State state;
 
     public StatementCreator(Map<BEASTInterface, String> objectToIdMap,
                             ModelObjectFactory objectFactory,
-                            BeastConversionHandler specialHandler,
+                            BeastConversionUtilities specialHandler,
                             Set<BEASTInterface> usedDistributions,
                             State state) {
         this.objectToIdMap = objectToIdMap;
@@ -127,8 +127,8 @@ public class StatementCreator {
 
         // If we have additional args, we need to create a modified function call
         if (!additionalArgs.isEmpty()) {
-            // Get the regular arguments for the distribution
-            List<Argument> distArgs = createArgumentsForObject(actualDistribution);
+            // Get the regular arguments for the distribution (with primary input filtered)
+            List<Argument> distArgs = createArgumentsForDistribution(actualDistribution);
 
             // Combine them with the secondary inputs
             List<Argument> allArgs = new ArrayList<>(distArgs);
@@ -137,20 +137,40 @@ public class StatementCreator {
             // Create a new function call with all arguments
             return new FunctionCall(actualDistribution.getClass().getSimpleName(), allArgs);
         } else {
-            // No secondary inputs, use the regular expression
-            return createExpressionForObject(actualDistribution);
+            // No secondary inputs, but still need proper filtering
+            List<Argument> distArgs = createArgumentsForDistribution(actualDistribution);
+            return new FunctionCall(actualDistribution.getClass().getSimpleName(), distArgs);
         }
     }
 
     private void collectSecondaryInputs(BEASTInterface stateNode, List<Argument> additionalArgs, BEASTInterface distribution) {
-        logger.info("Checking secondary inputs for StateNode: " + stateNode.getID());
+        logger.info("Checking secondary inputs for StateNode: " + stateNode.getID() + " of class " + stateNode.getClass().getName());
+
+        // Log all available inputs
+        logger.info("Available inputs for " + stateNode.getID() + ":");
+        for (String inputName : stateNode.getInputs().keySet()) {
+            logger.info("  - " + inputName);
+        }
+
+        // Get the primary input name for this distribution to avoid including it
+        String primaryInputName = null;
+        if (distribution != null && objectFactory.isDistribution(distribution)) {
+            primaryInputName = objectFactory.getPrimaryInputName(distribution);
+            logger.info("Primary input name for " + distribution.getClass().getSimpleName() + ": " + primaryInputName);
+        }
 
         // Collect any inputs set on the state node that should be secondary inputs
         for (Input<?> input : stateNode.getInputs().values()) {
-            logger.info("  Input '" + input.getName() + "' has value: " + input.get());
+            String inputName = input.getName();
+            logger.info("  Input '" + inputName + "' has value: " + input.get());
+
+            // IMPORTANT: Skip if this is the primary input of the distribution
+            if (primaryInputName != null && primaryInputName.equals(inputName)) {
+                logger.info("    Skipping '" + inputName + "' - it's the primary input for the distribution");
+                continue;
+            }
 
             if (input.get() != null && !shouldSkipSecondaryInput(stateNode, input, distribution)) {
-                String inputName = input.getName();
                 Expression inputValue = createExpressionForInput(input);
                 if (inputValue != null) {
                     logger.info("  Adding secondary input: " + inputName);
@@ -203,6 +223,22 @@ public class StatementCreator {
 
         logger.info("    Including '" + inputName + "' as secondary input");
         return false;
+    }
+
+    public Expression createDistributionExpression(BEASTInterface distribution) {
+        // Ensure the distribution is marked as used so primary input is filtered
+        usedDistributions.add(distribution);
+
+        // Create arguments with primary input filtered
+        List<Argument> distArgs = createArgumentsForDistribution(distribution);
+        return new FunctionCall(distribution.getClass().getSimpleName(), distArgs);
+    }
+
+    private List<Argument> createArgumentsForDistribution(BEASTInterface distribution) {
+        // Ensure the distribution is marked as used so primary input is filtered
+        usedDistributions.add(distribution);
+        ExpressionCreator exprCreator = new ExpressionCreator(objectToIdMap, this);
+        return exprCreator.createArgumentsForObject(distribution, usedDistributions, objectFactory);
     }
 
     public boolean isParameterFixed(RealParameter param) {
@@ -277,42 +313,6 @@ public class StatementCreator {
             }
         }
         return null;
-    }
-
-    private boolean shouldSkipSecondaryInput(BEASTInterface stateNode, Input<?> input) {
-        String inputName = input.getName();
-
-        // Skip calculated inputs
-        if (isCalculatedInput(stateNode, input)) {
-            logger.info("    Skipping '" + inputName + "' - calculated input");
-            return true;
-        }
-
-        // Skip empty inputs
-        if (input.get() == null ||
-                (input.get() instanceof List && ((List<?>) input.get()).isEmpty())) {
-            logger.info("    Skipping '" + inputName + "' - empty");
-            return true;
-        }
-
-        // Skip if it's at default value
-        if (InputValidator.isDefaultValue(stateNode, input)) {
-            logger.info("    Skipping '" + inputName + "' - at default value");
-            return true;
-        }
-
-        // Skip certain standard StateNode inputs that aren't meant to be secondary
-        Set<String> skipInputs = new HashSet<>(Arrays.asList(
-                "id", "spec", "name", "estimate"
-        ));
-
-        if (skipInputs.contains(inputName)) {
-            logger.info("    Skipping '" + inputName + "' - standard StateNode input");
-            return true;
-        }
-
-        logger.info("    Including '" + inputName + "' as secondary input");
-        return false;
     }
 
     private boolean isCalculatedInput(BEASTInterface obj, Input<?> input) {
