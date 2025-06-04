@@ -16,7 +16,11 @@ import java.util.logging.Logger;
 public class AlignmentProcessingPhase implements ConversionPhase {
     private static final Logger logger = Logger.getLogger(AlignmentProcessingPhase.class.getName());
 
-    // Instance variable to track alignment naming
+    // Configuration constants
+    private static final int DEFAULT_INLINE_THRESHOLD = 80; // Default max sequences for inlining
+    private static final int DEFAULT_SEQUENCE_LENGTH_THRESHOLD = 1000; // Default max sequence length for inlining
+
+    // Instance variables
     private int alignmentCounter = 0;
 
     @Override
@@ -24,6 +28,8 @@ public class AlignmentProcessingPhase implements ConversionPhase {
         logger.info("Processing alignments...");
 
         int alignmentCount = 0;
+        int inlinedCount = 0;
+        int externalCount = 0;
 
         for (BEASTInterface obj : context.getObjectToIdMap().keySet()) {
             if (obj instanceof Alignment alignment) {
@@ -36,7 +42,13 @@ public class AlignmentProcessingPhase implements ConversionPhase {
 
                 Statement stmt;
                 if (alignment.sequenceInput.get() != null && !alignment.sequenceInput.get().isEmpty()) {
-                    stmt = createAlignmentFromEmbeddedData(alignment, alignmentId);
+                    if (shouldInlineAlignment(alignment)) {
+                        stmt = createInlineAlignment(alignment, alignmentId);
+                        inlinedCount++;
+                    } else {
+                        stmt = createAlignmentFromEmbeddedData(alignment, alignmentId);
+                        externalCount++;
+                    }
                 } else {
                     stmt = context.getStatementCreator().createStatement(alignment);
                 }
@@ -47,7 +59,71 @@ public class AlignmentProcessingPhase implements ConversionPhase {
             }
         }
 
-        logger.info("Processed " + alignmentCount + " alignments");
+        logger.info(String.format("Processed %d alignments (%d inlined, %d external)",
+                alignmentCount, inlinedCount, externalCount));
+    }
+
+    /**
+     * Determine whether an alignment should be inlined or written to external file
+     */
+    private boolean shouldInlineAlignment(Alignment alignment) {
+        // Simple heuristic: inline small alignments
+        int taxonCount = alignment.getTaxonCount();
+        int siteCount = alignment.getSiteCount();
+
+        if (taxonCount > DEFAULT_INLINE_THRESHOLD) {
+            logger.fine(String.format("Alignment %s has %d taxa (> %d threshold), using external file",
+                    alignment.getID(), taxonCount, DEFAULT_INLINE_THRESHOLD));
+            return false;
+        }
+
+        if (siteCount > DEFAULT_SEQUENCE_LENGTH_THRESHOLD) {
+            logger.fine(String.format("Alignment %s has %d sites (> %d threshold), using external file",
+                    alignment.getID(), siteCount, DEFAULT_SEQUENCE_LENGTH_THRESHOLD));
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Create an inline alignment statement
+     */
+    private Statement createInlineAlignment(Alignment alignment, String alignmentId) {
+        // Create sequence map
+        Map<String, Expression> sequenceMap = new LinkedHashMap<>();
+
+        for (Sequence seq : alignment.sequenceInput.get()) {
+            String taxonName = seq.taxonInput.get();
+            String sequenceData = seq.dataInput.get();
+
+            // Clean up taxon names if needed (replace spaces, special chars)
+            String cleanTaxonName = taxonName.replaceAll("[^a-zA-Z0-9_]", "_");
+
+            sequenceMap.put(cleanTaxonName, new Literal(sequenceData, Literal.LiteralType.STRING));
+        }
+
+        // Create the alignment expression
+        List<Argument> args = new ArrayList<>();
+        args.add(new Argument("sequences", new MapExpression(sequenceMap)));
+
+        // Add dataType if it's not standard
+        String dataType = alignment.getDataType().getTypeDescription();
+        if (!"nucleotide".equalsIgnoreCase(dataType)) {
+            args.add(new Argument("dataType", new Literal(dataType, Literal.LiteralType.STRING)));
+        }
+
+        Expression alignmentExpr = new AlignmentFunction(args);
+        VariableDeclaration decl = new VariableDeclaration("Alignment", alignmentId, alignmentExpr);
+
+        // Add @data annotation
+        Map<String, Expression> params = new HashMap<>();
+        Annotation annotation = new Annotation("data", params);
+
+        logger.fine(String.format("Created inline alignment for %s with %d sequences",
+                alignmentId, sequenceMap.size()));
+
+        return new AnnotatedStatement(List.of(annotation), decl);
     }
 
     /**
@@ -121,6 +197,6 @@ public class AlignmentProcessingPhase implements ConversionPhase {
 
     @Override
     public String getDescription() {
-        return "Processes alignment objects and creates nexus() statements or embedded data";
+        return "Processes alignment objects and creates nexus() statements or inline alignment() expressions";
     }
 }

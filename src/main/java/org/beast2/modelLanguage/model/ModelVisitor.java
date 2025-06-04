@@ -12,4 +12,6 @@ public interface ModelVisitor<T> {
     T visit(Literal literal);
     T visit(ArrayLiteral arrayLiteral);
     T visit(NexusFunction nexusFunction);
+    T visit(AlignmentFunction alignmentFunction);
+    T visit(MapExpression mapExpression);
 }

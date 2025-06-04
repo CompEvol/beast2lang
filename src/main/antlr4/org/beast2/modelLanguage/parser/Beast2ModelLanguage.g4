@@ -56,6 +56,8 @@ distributionAssignment
 expression
     : functionCall                  # FunctionCallExpr
     | nexusFunction                 # NexusFunctionExpr
+    | alignmentFunction             # AlignmentFunctionExpr
+    | mapExpression                 # MapExpr
     | identifier                    # IdentifierExpr
     | literal                       # LiteralExpr
     | arrayLiteral                  # ArrayLiteralExpr
@@ -67,6 +69,19 @@ functionCall
 
 nexusFunction
     : NEXUS LPAREN argumentList? RPAREN
+    ;
+
+alignmentFunction
+    : ALIGNMENT LPAREN argumentList? RPAREN
+    ;
+
+mapExpression
+    : LBRACE mapEntry (COMMA mapEntry)* RBRACE
+    | LBRACE RBRACE  // empty map
+    ;
+
+mapEntry
+    : identifier COLON expression
     ;
 
 argumentList
@@ -130,9 +145,11 @@ RBRACKET    : ']';
 DOT         : '.';
 AT          : '@';
 STAR        : '*';
+COLON       : ':';
 IMPORT      : 'import';
 REQUIRES    : 'requires';
 NEXUS       : 'nexus';
+ALIGNMENT   : 'alignment';
 
 BOOLEAN_LITERAL
     : 'true'

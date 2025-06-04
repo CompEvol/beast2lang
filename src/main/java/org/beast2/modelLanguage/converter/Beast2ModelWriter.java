@@ -3,8 +3,7 @@ package org.beast2.modelLanguage.converter;
 import org.beast2.modelLanguage.model.*;
 
 import java.util.List;
-import java.util.Set;
-import java.util.TreeSet;
+import java.util.Map;
 
 /**
  * Converts a Beast2Model to a Beast2Lang script as a string.
@@ -47,7 +46,7 @@ public class Beast2ModelWriter {
 
         return sb.toString();
     }
-    
+
     /**
      * Write an import statement
      */
@@ -105,12 +104,7 @@ public class Beast2ModelWriter {
                 sb.append(paramName).append("=");
                 Object value = annotation.getParameters().get(paramName);
 
-                // Write parameter value
-                if (value instanceof String) {
-                    sb.append(value);
-                } else {
-                    sb.append(value);
-                }
+                sb.append(value);
             }
 
             sb.append(")");
@@ -151,6 +145,10 @@ public class Beast2ModelWriter {
             writeFunctionCall((FunctionCall) expr);
         } else if (expr instanceof NexusFunction) {
             writeNexusFunction((NexusFunction) expr);
+        } else if (expr instanceof AlignmentFunction) {
+            writeAlignmentFunction((AlignmentFunction) expr);
+        } else if (expr instanceof MapExpression) {
+            writeMapExpression((MapExpression) expr);
         } else if (expr instanceof Identifier) {
             writeIdentifier((Identifier) expr);
         } else if (expr instanceof Literal) {
@@ -203,6 +201,104 @@ public class Beast2ModelWriter {
     }
 
     /**
+     * Write an alignment function
+     */
+    private void writeAlignmentFunction(AlignmentFunction func) {
+        sb.append("alignment(");
+
+        List<Argument> arguments = func.getArguments();
+        boolean hasSequences = false;
+
+        // Check if we have sequences argument
+        for (Argument arg : arguments) {
+            if ("sequences".equals(arg.getName()) && arg.getValue() instanceof MapExpression) {
+                hasSequences = true;
+                break;
+            }
+        }
+
+        if (hasSequences) {
+            // Multi-line format for better readability
+            sb.append("\n");
+
+            for (int i = 0; i < arguments.size(); i++) {
+                if (i > 0) {
+                    sb.append(",\n");
+                }
+
+                Argument arg = arguments.get(i);
+                sb.append(INDENT).append(arg.getName()).append(": ");
+
+                if ("sequences".equals(arg.getName()) && arg.getValue() instanceof MapExpression sequences) {
+                    // Write sequences map with proper indentation
+                    writeIndentedMapExpression(sequences);
+                } else {
+                    writeExpression(arg.getValue());
+                }
+            }
+
+            sb.append("\n)");
+        } else {
+            // Single line format
+            for (int i = 0; i < arguments.size(); i++) {
+                if (i > 0) {
+                    sb.append(", ");
+                }
+                Argument arg = arguments.get(i);
+                sb.append(arg.getName()).append("=");
+                writeExpression(arg.getValue());
+            }
+            sb.append(")");
+        }
+    }
+
+    /**
+     * Write a map expression with indentation
+     */
+    private void writeIndentedMapExpression(MapExpression mapExpr) {
+        sb.append("{\n");
+
+        Map<String, Expression> entries = mapExpr.getEntries();
+        boolean first = true;
+
+        for (Map.Entry<String, Expression> entry : entries.entrySet()) {
+            if (!first) {
+                sb.append(",\n");
+            }
+            first = false;
+
+            sb.append(Beast2ModelWriter.INDENT).append(INDENT);
+            sb.append(entry.getKey()).append(": ");
+            writeExpression(entry.getValue());
+        }
+
+        sb.append("\n").append(Beast2ModelWriter.INDENT).append("}");
+    }
+
+    /**
+     * Write a map expression
+     */
+    private void writeMapExpression(MapExpression mapExpr) {
+        sb.append("{");
+
+        Map<String, Expression> entries = mapExpr.getEntries();
+        boolean first = true;
+
+        for (Map.Entry<String, Expression> entry : entries.entrySet()) {
+            if (!first) {
+                sb.append(", ");
+            }
+            first = false;
+
+            sb.append(entry.getKey());
+            sb.append(": ");
+            writeExpression(entry.getValue());
+        }
+
+        sb.append("}");
+    }
+
+    /**
      * Write an identifier
      */
     private void writeIdentifier(Identifier id) {
@@ -216,16 +312,9 @@ public class Beast2ModelWriter {
         Object value = literal.getValue();
 
         switch (literal.getType()) {
-            case STRING:
-                sb.append("\"").append(value).append("\"");
-                break;
-            case INTEGER:
-            case FLOAT:
-            case BOOLEAN:
-                sb.append(value);
-                break;
-            default:
-                throw new IllegalArgumentException("Unknown literal type: " + literal.getType());
+            case STRING -> sb.append("\"").append(value).append("\"");
+            case INTEGER, FLOAT, BOOLEAN -> sb.append(value);
+            default -> throw new IllegalArgumentException("Unknown literal type: " + literal.getType());
         }
     }
 
