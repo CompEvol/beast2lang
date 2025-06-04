@@ -48,6 +48,12 @@ public class VariableDeclarationHandler extends BaseHandler {
             return handleNexusFunction(declaredTypeName, variableName, (NexusFunction) value, registry);
         }
 
+        // Handle alignment function calls
+        if (value instanceof AlignmentFunction) {
+            return handleAlignmentFunction(declaredTypeName, variableName, (AlignmentFunction) value, registry);
+        }
+
+
         // Handle function calls
         if (!(value instanceof FunctionCall funcCall)) {
             throw new IllegalArgumentException("Value must be a function call, literal, array literal, or nexus function");
@@ -73,6 +79,39 @@ public class VariableDeclarationHandler extends BaseHandler {
         factory.initAndValidate(modelObject);
 
         return modelObject;
+    }
+
+    // Add this method:
+    private Object handleAlignmentFunction(String declaredTypeName, String variableName,
+                                           AlignmentFunction alignmentFunction, ObjectRegistry registry) throws Exception {
+        // Check if the declared type is compatible with Alignment
+        Class<?> declaredType;
+        try {
+            declaredType = loadClass(declaredTypeName);
+        } catch (ClassNotFoundException e) {
+            logger.warning("Class not found: " + declaredTypeName);
+            throw new ClassNotFoundException("Declared type not found: " + declaredTypeName);
+        }
+
+        // Use the AlignmentFunctionHandler to process the alignment function
+        AlignmentFunctionHandler handler = new AlignmentFunctionHandler();
+        Object alignment = handler.processFunction(alignmentFunction, registry);
+
+        // Set the ID if it wasn't set by the handler
+        try {
+            String currentId = factory.getID(alignment);
+            if (currentId == null || currentId.isEmpty()) {
+                factory.setID(alignment, variableName);
+            }
+        } catch (Exception e) {
+            logger.warning("Could not set ID on alignment: " + e.getMessage());
+        }
+
+        // Store the object in the registry
+        registry.register(variableName, alignment);
+
+        logger.info("Created alignment from inline data: " + variableName);
+        return alignment;
     }
 
     /**

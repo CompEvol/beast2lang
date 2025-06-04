@@ -1,6 +1,7 @@
 package org.beast2.modelLanguage.builder.handlers;
 
 import java.lang.reflect.Type;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.logging.Logger;
 
@@ -42,9 +43,33 @@ public class ExpressionResolver {
         } else if (expr instanceof NexusFunction) {
             // Handle nexus function
             return handleNexusFunction((NexusFunction) expr, objectRegistry);
+        } else if (expr instanceof AlignmentFunction) {
+            // Handle alignment function
+            return handleAlignmentFunction((AlignmentFunction) expr, objectRegistry);
+        } else if (expr instanceof MapExpression) {
+            // Handle map expressions
+            return resolveMapExpression((MapExpression) expr, objectRegistry);
         }
 
         return null;
+    }
+
+    private static Object handleAlignmentFunction(AlignmentFunction alignmentFunction, ObjectRegistry objectRegistry) {
+        try {
+            AlignmentFunctionHandler handler = new AlignmentFunctionHandler();
+            return handler.processFunction(alignmentFunction, objectRegistry);
+        } catch (Exception e) {
+            logger.severe("Error processing alignment() function: " + e.getMessage());
+            throw new RuntimeException("Failed to process alignment() function", e);
+        }
+    }
+
+    private static Map<String, Object> resolveMapExpression(MapExpression mapExpr, ObjectRegistry objectRegistry) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        for (Map.Entry<String, Expression> entry : mapExpr.getEntries().entrySet()) {
+            result.put(entry.getKey(), resolveValue(entry.getValue(), objectRegistry));
+        }
+        return result;
     }
 
     /**
