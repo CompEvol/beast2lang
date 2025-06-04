@@ -137,6 +137,81 @@ public class BeastObjectFactory implements ModelObjectFactory {
         return parser.m_alignment;
     }
 
+    /**
+     * Create an alignment from inline sequence data.
+     * Uses BEAST's Alignment and Sequence classes to build the alignment programmatically.
+     */
+    @Override
+    public Object createAlignmentFromSequences(Map<String, String> sequences, String dataType, String alignmentId) throws Exception {
+        if (sequences == null || sequences.isEmpty()) {
+            throw new IllegalArgumentException("Sequences map cannot be null or empty");
+        }
+
+        // Create a new Alignment object
+        beast.base.evolution.alignment.Alignment alignment = new beast.base.evolution.alignment.Alignment();
+
+        // Create Sequence objects for each taxon
+        List<beast.base.evolution.alignment.Sequence> sequenceList = new ArrayList<>();
+
+        for (Map.Entry<String, String> entry : sequences.entrySet()) {
+            String taxonName = entry.getKey();
+            String sequenceData = entry.getValue();
+
+            // Create a Sequence object
+            beast.base.evolution.alignment.Sequence sequence = new beast.base.evolution.alignment.Sequence();
+            sequence.initByName(
+                    "taxon", taxonName,
+                    "value", sequenceData
+            );
+
+            sequenceList.add(sequence);
+        }
+
+        // Determine the data type
+        String dataTypeString = dataType.toLowerCase();
+        Object dataTypeObject = null;
+
+        switch (dataTypeString) {
+            case "nucleotide":
+            case "dna":
+                dataTypeObject = new beast.base.evolution.datatype.Nucleotide();
+                break;
+            case "aminoacid":
+            case "protein":
+                dataTypeObject = new beast.base.evolution.datatype.Aminoacid();
+                break;
+            case "binary":
+                dataTypeObject = new beast.base.evolution.datatype.Binary();
+                break;
+            case "integer":
+                dataTypeObject = new beast.base.evolution.datatype.IntegerData();
+                break;
+            default:
+                // Try to load as a class name
+                try {
+                    Class<?> dataTypeClass = loadClass(dataType);
+                    dataTypeObject = dataTypeClass.getDeclaredConstructor().newInstance();
+                } catch (Exception e) {
+                    logger.warning("Unknown data type: " + dataType + ", defaulting to nucleotide");
+                    dataTypeObject = new beast.base.evolution.datatype.Nucleotide();
+                }
+        }
+
+        // Initialize the alignment with sequences and data type
+        alignment.initByName(
+                "sequence", sequenceList,
+                "dataType", dataTypeObject
+        );
+
+        // Set the ID
+        alignment.setID(alignmentId);
+
+        logger.info("Created alignment '" + alignmentId + "' with " + sequences.size() +
+                " sequences of type " + dataType);
+
+        return alignment;
+    }
+
     // Type checking methods
 
     @Override

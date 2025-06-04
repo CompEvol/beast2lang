@@ -200,9 +200,6 @@ public class Beast2ModelWriter {
         sb.append(")");
     }
 
-    /**
-     * Write an alignment function
-     */
     private void writeAlignmentFunction(AlignmentFunction func) {
         sb.append("alignment(");
 
@@ -227,7 +224,7 @@ public class Beast2ModelWriter {
                 }
 
                 Argument arg = arguments.get(i);
-                sb.append(INDENT).append(arg.getName()).append(": ");
+                sb.append(INDENT).append(arg.getName()).append(" = ");  // Changed from ": " to " = "
 
                 if ("sequences".equals(arg.getName()) && arg.getValue() instanceof MapExpression sequences) {
                     // Write sequences map with proper indentation
@@ -245,7 +242,7 @@ public class Beast2ModelWriter {
                     sb.append(", ");
                 }
                 Argument arg = arguments.get(i);
-                sb.append(arg.getName()).append("=");
+                sb.append(arg.getName()).append("=");  // No change needed here
                 writeExpression(arg.getValue());
             }
             sb.append(")");
