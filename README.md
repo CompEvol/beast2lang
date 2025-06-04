@@ -390,13 +390,14 @@ beast2lang/
 
 When using the `~` syntax, BEAST2Lang automatically connects random variables to distribution inputs:
 
-| Distribution Class | Primary Input | Description |
-|-------------------|---------------|-------------|
-| `Prior` | `"x"` | The parameter being assigned a prior |
-| `Coalescent` | `"treeIntervals"` | Tree intervals for coalescent |
-| `TreeDistribution` | `"tree"` | Tree for tree distributions |
-| `MRCAPrior` | `"tree"` | Tree for MRCA constraints |
-| `TreeLikelihood` | `"data"` | (observed) alignment data |
+| Distribution Class        | Primary Input | Description                                       |
+|---------------------------|---------------|---------------------------------------------------|
+| `Prior`                   | `"x"` | The parameter being assigned a prior              |
+| `Coalescent`              | `"treeIntervals"` | Tree intervals for coalescent                     |
+| `BayesianSkyline`         | `"treeIntervals"` | Tree intervals for Bayesian skyline               |
+| `TreeDistribution`        | `"tree"` | Tree for tree distributions                       |
+| `MRCAPrior`               | `"tree"` | Tree for MRCA constraints                         |
+| `TreeLikelihood`          | `"data"` | (observed) alignment data                         |
 | `MarkovChainDistribution` | `"parameter"` | The parameter being assigned a Markov chain prior |
 
 ### Parser Technology
