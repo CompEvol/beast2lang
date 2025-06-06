@@ -18,6 +18,7 @@ import org.beast2.modelLanguage.beast.Beast2AnalysisBuilder;
 import beast.base.inference.MCMC;
 
 import org.beast2.modelLanguage.schema.BEAST2ModelLibraryGenerator;
+import org.beast2.modelLanguage.schema.validation.ValidationResult;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import picocli.CommandLine;
@@ -517,7 +518,6 @@ public class Beast2Lang implements Callable<Integer> {
             // Load external packages if needed
             PackageManager.loadExternalJars();
 
-            // Create the schema generator
             BEAST2ModelLibraryGenerator generator = new BEAST2ModelLibraryGenerator();
 
             // Generate the schema
@@ -574,10 +574,12 @@ public class Beast2Lang implements Callable<Integer> {
 
             System.out.println("\nSchema written to: " + outputFile.getPath());
 
-            // Run closure test if requested
             if (testClosure) {
-                System.out.println("\nRunning closure test...");
-                generator.testClosure(schema);
+                ValidationResult validation = generator.validateSchema(schema);
+                System.out.println(validation.generateReport());  // Clean
+
+                System.out.println(generator.filter.getFilterReport().generateReport());
+
             }
 
             return 0;
