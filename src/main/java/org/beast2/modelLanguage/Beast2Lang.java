@@ -17,6 +17,8 @@ import org.beast2.modelLanguage.model.Beast2Analysis;
 import org.beast2.modelLanguage.beast.Beast2AnalysisBuilder;
 import beast.base.inference.MCMC;
 
+import org.beast2.modelLanguage.schema.BEAST2ModelLibraryGenerator;
+import org.json.JSONArray;
 import org.json.JSONObject;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
@@ -30,6 +32,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.*;
 import java.util.concurrent.Callable;
@@ -484,6 +487,135 @@ public class Beast2Lang implements Callable<Integer> {
             }
             return 1;
         }
+    }
+
+    @Command(name = "schema", description = "Generate BEAST2 engine library schema")
+    public Integer generateSchema(
+            @Option(names = {"-o", "--output"}, description = "Output JSON file", defaultValue = "beast2-model-library.json")
+            File outputFile,
+            @Option(names = {"--packages"}, description = "Additional packages to include (comma-separated)")
+            String packages,
+            @Option(names = {"--debug"}, description = "Enable debug logging", defaultValue = "false")
+            boolean debug,
+            @Option(names = {"--pretty"}, description = "Pretty print JSON output", defaultValue = "true")
+            boolean prettyPrint,
+            @Option(names = {"--test-closure"}, description = "Test type closure after generation", defaultValue = "false")
+            boolean testClosure) {
+
+        // Set debug level if requested
+        if (debug) {
+            java.util.logging.Logger rootLogger = java.util.logging.Logger.getLogger("");
+            rootLogger.setLevel(Level.FINE);
+            for (java.util.logging.Handler handler : rootLogger.getHandlers()) {
+                handler.setLevel(Level.FINE);
+            }
+        }
+
+        try {
+            System.out.println("Generating BEAST2 model library schema...");
+
+            // Load external packages if needed
+            PackageManager.loadExternalJars();
+
+            // Create the schema generator
+            BEAST2ModelLibraryGenerator generator = new BEAST2ModelLibraryGenerator();
+
+            // Generate the schema
+            String schema = generator.generateModelLibrary();
+
+            // Write to file
+            writeOutput(outputFile, schema, prettyPrint);
+
+            // Print summary
+            JSONObject schemaObj = new JSONObject(schema);
+            JSONObject modelLibrary = schemaObj.getJSONObject("modelLibrary");
+            JSONArray components = modelLibrary.getJSONArray("components");
+
+            System.out.println("\nSchema generation complete!");
+            System.out.println("Engine: " + modelLibrary.getString("engine") + " " + modelLibrary.getString("engineVersion"));
+            System.out.println("Total components: " + components.length());
+
+            // Count distributions vs non-distributions
+            int distributionCount = 0;
+            int nonDistributionCount = 0;
+
+            for (int i = 0; i < components.length(); i++) {
+                JSONObject component = components.getJSONObject(i);
+                if (component.getBoolean("isDistribution")) {
+                    distributionCount++;
+                } else {
+                    nonDistributionCount++;
+                }
+            }
+
+            System.out.println("Distributions: " + distributionCount);
+            System.out.println("Non-distributions: " + nonDistributionCount);
+
+            // Count abstract vs concrete components
+            int abstractCount = 0;
+            int interfaceCount = 0;
+            int concreteCount = 0;
+
+            for (int i = 0; i < components.length(); i++) {
+                JSONObject component = components.getJSONObject(i);
+                if (component.getBoolean("isInterface")) {
+                    interfaceCount++;
+                } else if (component.getBoolean("isAbstract")) {
+                    abstractCount++;
+                } else {
+                    concreteCount++;
+                }
+            }
+
+            System.out.println("\nComponent types:");
+            System.out.println("  Interfaces: " + interfaceCount);
+            System.out.println("  Abstract classes: " + abstractCount);
+            System.out.println("  Concrete classes: " + concreteCount);
+
+            System.out.println("\nSchema written to: " + outputFile.getPath());
+
+            // Run closure test if requested
+            if (testClosure) {
+                System.out.println("\nRunning closure test...");
+                generator.testClosure(schema);
+            }
+
+            return 0;
+
+        } catch (Exception e) {
+            System.err.println("Error generating schema: " + e.getMessage());
+            if (debug) {
+                e.printStackTrace();
+            } else {
+                // Print a more useful stack trace
+                StringWriter sw = new StringWriter();
+                PrintWriter pw = new PrintWriter(sw);
+                e.printStackTrace(pw);
+                logger.severe("Detailed error: " + sw.toString());
+            }
+            return 1;
+        }
+    }
+
+    /**
+     * Write output with optional pretty printing
+     */
+    private void writeOutput(File outputFile, String schema, boolean prettyPrint) throws IOException {
+        if (prettyPrint) {
+            // Re-parse and pretty print with proper indentation
+            JSONObject schemaObj = new JSONObject(schema);
+            Files.write(outputFile.toPath(), schemaObj.toString(2).getBytes(StandardCharsets.UTF_8));
+        } else {
+            Files.write(outputFile.toPath(), schema.getBytes(StandardCharsets.UTF_8));
+        }
+    }
+
+    /**
+     * Capitalize first letter of a string
+     */
+    private String capitalize(String str) {
+        if (str == null || str.isEmpty()) return str;
+        return str.substring(0, 1).toUpperCase() + str.substring(1);
     }
 
     // Helper method to extract required attribute from XML
