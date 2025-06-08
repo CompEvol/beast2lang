@@ -187,9 +187,58 @@ public class BEAST2ModelLibraryGenerator {
         return definitions;
     }
 
+    // Add this method to BEAST2ModelLibraryGenerator class
+
     /**
-     * Create the schema structure
+     * Create type definitions for common BEAST2 types
      */
+    private JSONObject createTypeDefinitions() {
+        JSONObject typeDefinitions = new JSONObject();
+
+        // Function can accept Real and Real[] (since RealParameter implements Function)
+        JSONObject functionDef = new JSONObject();
+        functionDef.put("acceptsTypes", new JSONArray()
+                .put("Double")
+                .put("Double[]")
+                .put("Float")
+                .put("Float[]")
+                .put("Integer")
+                .put("Integer[]")
+        );
+        typeDefinitions.put("Function", functionDef);
+
+        // RealParameter can accept primitive values
+        JSONObject realParamDef = new JSONObject();
+        realParamDef.put("primitiveAssignable", true);
+        realParamDef.put("acceptedPrimitives", new JSONArray()
+                .put("Double")
+                .put("Double[]")
+                .put("Integer")
+                .put("Integer[]")
+        );
+        typeDefinitions.put("RealParameter", realParamDef);
+
+        // IntegerParameter can accept primitive values
+        JSONObject intParamDef = new JSONObject();
+        intParamDef.put("primitiveAssignable", true);
+        intParamDef.put("acceptedPrimitives", new JSONArray()
+                .put("Integer")
+                .put("Long")
+        );
+        typeDefinitions.put("IntegerParameter", intParamDef);
+
+        // BooleanParameter can accept primitive values
+        JSONObject boolParamDef = new JSONObject();
+        boolParamDef.put("primitiveAssignable", true);
+        boolParamDef.put("acceptedPrimitives", new JSONArray()
+                .put("Boolean")
+        );
+        typeDefinitions.put("BooleanParameter", boolParamDef);
+
+        return typeDefinitions;
+    }
+
+    // Update the createSchema method to include type definitions:
     private JSONObject createSchema(JSONArray componentDefinitions) {
         JSONObject schema = new JSONObject();
         JSONObject modelLibrary = new JSONObject();
@@ -203,6 +252,9 @@ public class BEAST2ModelLibraryGenerator {
 
         // Add components
         modelLibrary.put("components", componentDefinitions);
+
+        // Add type definitions
+        modelLibrary.put("typeDefinitions", createTypeDefinitions());
 
         schema.put("modelLibrary", modelLibrary);
         return schema;

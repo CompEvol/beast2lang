@@ -188,6 +188,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -200,11 +205,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           },
           {
@@ -485,6 +485,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -497,11 +502,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           },
           {
@@ -662,6 +662,31 @@
         ],
         "properties": [
           {
+            "name": "weights",
+            "type": "int[]",
+            "access": "read-only"
+          },
+          {
+            "name": "nrTaxa",
+            "type": "int",
+            "access": "read-only"
+          },
+          {
+            "name": "counts",
+            "type": "List",
+            "access": "read-only"
+          },
+          {
+            "name": "types",
+            "type": "TreeMap",
+            "access": "read-only"
+          },
+          {
+            "name": "siteCount",
+            "type": "int",
+            "access": "read-only"
+          },
+          {
             "name": "dimension",
             "type": "int",
             "access": "read-only"
@@ -687,11 +712,6 @@
             "access": "read-only"
           },
           {
-            "name": "siteCount",
-            "type": "int",
-            "access": "read-only"
-          },
-          {
             "name": "stateCounts",
             "type": "List",
             "access": "read-only"
@@ -704,26 +724,6 @@
           {
             "name": "excludedPatternCount",
             "type": "int",
-            "access": "read-only"
-          },
-          {
-            "name": "weights",
-            "type": "int[]",
-            "access": "read-only"
-          },
-          {
-            "name": "nrTaxa",
-            "type": "int",
-            "access": "read-only"
-          },
-          {
-            "name": "counts",
-            "type": "List",
-            "access": "read-only"
-          },
-          {
-            "name": "types",
-            "type": "TreeMap",
             "access": "read-only"
           },
           {
@@ -742,13 +742,13 @@
             "access": "read-only"
           },
           {
-            "name": "estimated",
-            "type": "boolean",
+            "name": "current",
+            "type": "StateNode",
             "access": "read-only"
           },
           {
-            "name": "current",
-            "type": "StateNode",
+            "name": "estimated",
+            "type": "boolean",
             "access": "read-only"
           },
           {
@@ -767,6 +767,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -779,11 +784,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           },
           {
@@ -928,6 +928,31 @@
         ],
         "properties": [
           {
+            "name": "weights",
+            "type": "int[]",
+            "access": "read-only"
+          },
+          {
+            "name": "nrTaxa",
+            "type": "int",
+            "access": "read-only"
+          },
+          {
+            "name": "counts",
+            "type": "List",
+            "access": "read-only"
+          },
+          {
+            "name": "types",
+            "type": "TreeMap",
+            "access": "read-only"
+          },
+          {
+            "name": "siteCount",
+            "type": "int",
+            "access": "read-only"
+          },
+          {
             "name": "dimension",
             "type": "int",
             "access": "read-only"
@@ -953,11 +978,6 @@
             "access": "read-only"
           },
           {
-            "name": "siteCount",
-            "type": "int",
-            "access": "read-only"
-          },
-          {
             "name": "stateCounts",
             "type": "List",
             "access": "read-only"
@@ -970,26 +990,6 @@
           {
             "name": "excludedPatternCount",
             "type": "int",
-            "access": "read-only"
-          },
-          {
-            "name": "weights",
-            "type": "int[]",
-            "access": "read-only"
-          },
-          {
-            "name": "nrTaxa",
-            "type": "int",
-            "access": "read-only"
-          },
-          {
-            "name": "counts",
-            "type": "List",
-            "access": "read-only"
-          },
-          {
-            "name": "types",
-            "type": "TreeMap",
             "access": "read-only"
           },
           {
@@ -1008,13 +1008,13 @@
             "access": "read-only"
           },
           {
-            "name": "estimated",
-            "type": "boolean",
+            "name": "current",
+            "type": "StateNode",
             "access": "read-only"
           },
           {
-            "name": "current",
-            "type": "StateNode",
+            "name": "estimated",
+            "type": "boolean",
             "access": "read-only"
           },
           {
@@ -1033,6 +1033,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -1045,11 +1050,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           },
           {
@@ -1217,6 +1217,26 @@
             "access": "read-only"
           },
           {
+            "name": "weights",
+            "type": "int[]",
+            "access": "read-only"
+          },
+          {
+            "name": "nrTaxa",
+            "type": "int",
+            "access": "read-only"
+          },
+          {
+            "name": "types",
+            "type": "TreeMap",
+            "access": "read-only"
+          },
+          {
+            "name": "siteCount",
+            "type": "int",
+            "access": "read-only"
+          },
+          {
             "name": "dimension",
             "type": "int",
             "access": "read-only"
@@ -1242,11 +1262,6 @@
             "access": "read-only"
           },
           {
-            "name": "siteCount",
-            "type": "int",
-            "access": "read-only"
-          },
-          {
             "name": "stateCounts",
             "type": "List",
             "access": "read-only"
@@ -1259,21 +1274,6 @@
           {
             "name": "excludedPatternCount",
             "type": "int",
-            "access": "read-only"
-          },
-          {
-            "name": "weights",
-            "type": "int[]",
-            "access": "read-only"
-          },
-          {
-            "name": "nrTaxa",
-            "type": "int",
-            "access": "read-only"
-          },
-          {
-            "name": "types",
-            "type": "TreeMap",
             "access": "read-only"
           },
           {
@@ -1292,13 +1292,13 @@
             "access": "read-only"
           },
           {
-            "name": "estimated",
-            "type": "boolean",
+            "name": "current",
+            "type": "StateNode",
             "access": "read-only"
           },
           {
-            "name": "current",
-            "type": "StateNode",
+            "name": "estimated",
+            "type": "boolean",
             "access": "read-only"
           },
           {
@@ -1317,6 +1317,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -1329,11 +1334,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           },
           {
@@ -1390,13 +1390,13 @@
         ],
         "properties": [
           {
-            "name": "likelihoods",
-            "type": "double[][]",
+            "name": "taxon",
+            "type": "String",
             "access": "read-only"
           },
           {
-            "name": "taxon",
-            "type": "String",
+            "name": "likelihoods",
+            "type": "double[][]",
             "access": "read-only"
           },
           {
@@ -1415,6 +1415,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -1427,11 +1432,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           }
         ]
@@ -1462,6 +1462,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -1474,11 +1479,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           }
         ]
@@ -1513,6 +1513,11 @@
         ],
         "properties": [
           {
+            "name": "nrTaxa",
+            "type": "int",
+            "access": "read-only"
+          },
+          {
             "name": "taxaNames",
             "type": "Set",
             "access": "read-only"
@@ -1528,11 +1533,6 @@
             "access": "read-only"
           },
           {
-            "name": "nrTaxa",
-            "type": "int",
-            "access": "read-only"
-          },
-          {
             "name": "inputs",
             "type": "Map",
             "access": "read-only"
@@ -1540,6 +1540,11 @@
           {
             "name": "outputs",
             "type": "Set",
+            "access": "read-only"
+          },
+          {
+            "name": "description",
+            "type": "String",
             "access": "read-only"
           },
           {
@@ -1555,11 +1560,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           }
         ]
@@ -1645,6 +1645,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -1657,11 +1662,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           }
         ]
@@ -1706,6 +1706,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -1718,11 +1723,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           }
         ]
@@ -1800,6 +1800,11 @@
         ],
         "properties": [
           {
+            "name": "rates",
+            "type": "double[]",
+            "access": "read-only"
+          },
+          {
             "name": "distribution",
             "type": "ParametricDistribution",
             "access": "read-only"
@@ -1812,11 +1817,6 @@
           {
             "name": "meanRate",
             "type": "Function",
-            "access": "read-only"
-          },
-          {
-            "name": "rates",
-            "type": "double[]",
             "access": "read-only"
           },
           {
@@ -1835,6 +1835,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -1847,11 +1852,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           }
         ]
@@ -1878,8 +1878,8 @@
             "access": "read-only"
           },
           {
-            "name": "stateCount",
-            "type": "int",
+            "name": "codeMap",
+            "type": "String",
             "access": "read-only"
           },
           {
@@ -1888,8 +1888,8 @@
             "access": "read-only"
           },
           {
-            "name": "codeMap",
-            "type": "String",
+            "name": "stateCount",
+            "type": "int",
             "access": "read-only"
           },
           {
@@ -1908,6 +1908,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -1920,11 +1925,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           }
         ]
@@ -1951,8 +1951,8 @@
             "access": "read-only"
           },
           {
-            "name": "stateCount",
-            "type": "int",
+            "name": "codeMap",
+            "type": "String",
             "access": "read-only"
           },
           {
@@ -1961,8 +1961,8 @@
             "access": "read-only"
           },
           {
-            "name": "codeMap",
-            "type": "String",
+            "name": "stateCount",
+            "type": "int",
             "access": "read-only"
           },
           {
@@ -1981,6 +1981,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -1993,11 +1998,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           }
         ]
@@ -2024,8 +2024,8 @@
             "access": "read-only"
           },
           {
-            "name": "stateCount",
-            "type": "int",
+            "name": "codeMap",
+            "type": "String",
             "access": "read-only"
           },
           {
@@ -2034,8 +2034,8 @@
             "access": "read-only"
           },
           {
-            "name": "codeMap",
-            "type": "String",
+            "name": "stateCount",
+            "type": "int",
             "access": "read-only"
           },
           {
@@ -2054,6 +2054,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -2066,11 +2071,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           }
         ]
@@ -2097,8 +2097,8 @@
             "access": "read-only"
           },
           {
-            "name": "stateCount",
-            "type": "int",
+            "name": "codeMap",
+            "type": "String",
             "access": "read-only"
           },
           {
@@ -2107,8 +2107,8 @@
             "access": "read-only"
           },
           {
-            "name": "codeMap",
-            "type": "String",
+            "name": "stateCount",
+            "type": "int",
             "access": "read-only"
           },
           {
@@ -2127,6 +2127,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -2139,11 +2144,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           }
         ]
@@ -2190,8 +2190,8 @@
             "access": "read-only"
           },
           {
-            "name": "stateCount",
-            "type": "int",
+            "name": "codeMap",
+            "type": "String",
             "access": "read-only"
           },
           {
@@ -2200,8 +2200,8 @@
             "access": "read-only"
           },
           {
-            "name": "codeMap",
-            "type": "String",
+            "name": "stateCount",
+            "type": "int",
             "access": "read-only"
           },
           {
@@ -2220,6 +2220,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -2232,11 +2237,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           }
         ]
@@ -2263,8 +2263,8 @@
             "access": "read-only"
           },
           {
-            "name": "stateCount",
-            "type": "int",
+            "name": "codeMap",
+            "type": "String",
             "access": "read-only"
           },
           {
@@ -2273,8 +2273,8 @@
             "access": "read-only"
           },
           {
-            "name": "codeMap",
-            "type": "String",
+            "name": "stateCount",
+            "type": "int",
             "access": "read-only"
           },
           {
@@ -2293,6 +2293,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -2305,11 +2310,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           }
         ]
@@ -2368,8 +2368,8 @@
             "access": "read-only"
           },
           {
-            "name": "stateCount",
-            "type": "int",
+            "name": "codeMap",
+            "type": "String",
             "access": "read-only"
           },
           {
@@ -2378,8 +2378,8 @@
             "access": "read-only"
           },
           {
-            "name": "codeMap",
-            "type": "String",
+            "name": "stateCount",
+            "type": "int",
             "access": "read-only"
           },
           {
@@ -2398,6 +2398,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -2410,11 +2415,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           }
         ]
@@ -2446,6 +2446,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -2458,11 +2463,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           }
         ]
@@ -2494,6 +2494,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -2506,11 +2511,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           }
         ]
@@ -2542,6 +2542,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -2554,11 +2559,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           }
         ]
@@ -2590,6 +2590,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -2602,11 +2607,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           }
         ]
@@ -2638,6 +2638,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -2650,11 +2655,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           }
         ]
@@ -2737,6 +2737,11 @@
         ],
         "properties": [
           {
+            "name": "beagle",
+            "type": "Beagle",
+            "access": "read-only"
+          },
+          {
             "name": "patternCount",
             "type": "int",
             "access": "read-only"
@@ -2754,11 +2759,6 @@
           {
             "name": "matrixBufferHelper",
             "type": "BeagleTreeLikelihood.BufferIndexHelper",
-            "access": "read-only"
-          },
-          {
-            "name": "beagle",
-            "type": "Beagle",
             "access": "read-only"
           },
           {
@@ -2842,6 +2842,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -2854,11 +2859,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           },
           {
@@ -2967,6 +2967,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -2979,11 +2984,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           },
           {
@@ -3137,6 +3137,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -3149,11 +3154,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           },
           {
@@ -3326,6 +3326,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -3338,11 +3343,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           },
           {
@@ -3424,6 +3424,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -3436,11 +3441,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           },
           {
@@ -3536,6 +3536,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -3548,11 +3553,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           }
         ]
@@ -3684,6 +3684,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -3696,11 +3701,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           },
           {
@@ -3837,6 +3837,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -3849,11 +3854,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           },
           {
@@ -3947,6 +3947,26 @@
             "access": "read-only"
           },
           {
+            "name": "nodesAsArray",
+            "type": "Node[]",
+            "access": "read-only"
+          },
+          {
+            "name": "externalNodes",
+            "type": "List",
+            "access": "read-only"
+          },
+          {
+            "name": "internalNodes",
+            "type": "List",
+            "access": "read-only"
+          },
+          {
+            "name": "taxonset",
+            "type": "TaxonSet",
+            "access": "read-only"
+          },
+          {
             "name": "internalNodeCount",
             "type": "int",
             "access": "read-only"
@@ -3972,26 +3992,6 @@
             "access": "read-only"
           },
           {
-            "name": "nodesAsArray",
-            "type": "Node[]",
-            "access": "read-only"
-          },
-          {
-            "name": "externalNodes",
-            "type": "List",
-            "access": "read-only"
-          },
-          {
-            "name": "internalNodes",
-            "type": "List",
-            "access": "read-only"
-          },
-          {
-            "name": "taxonset",
-            "type": "TaxonSet",
-            "access": "read-only"
-          },
-          {
             "name": "dateTrait",
             "type": "TraitSet",
             "access": "read-only"
@@ -4012,13 +4012,13 @@
             "access": "read-only"
           },
           {
-            "name": "estimated",
-            "type": "boolean",
+            "name": "current",
+            "type": "StateNode",
             "access": "read-only"
           },
           {
-            "name": "current",
-            "type": "StateNode",
+            "name": "estimated",
+            "type": "boolean",
             "access": "read-only"
           },
           {
@@ -4037,6 +4037,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -4049,11 +4054,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           },
           {
@@ -4176,6 +4176,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -4188,11 +4193,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           },
           {
@@ -4248,6 +4248,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -4260,11 +4265,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           }
         ]
@@ -4380,6 +4380,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -4392,11 +4397,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           },
           {
@@ -4519,26 +4519,6 @@
             "access": "read-only"
           },
           {
-            "name": "internalNodeCount",
-            "type": "int",
-            "access": "read-only"
-          },
-          {
-            "name": "leafNodeCount",
-            "type": "int",
-            "access": "read-only"
-          },
-          {
-            "name": "nodeCount",
-            "type": "int",
-            "access": "read-only"
-          },
-          {
-            "name": "dateType",
-            "type": "String",
-            "access": "read-only"
-          },
-          {
             "name": "nodesAsArray",
             "type": "Node[]",
             "access": "read-only"
@@ -4556,6 +4536,26 @@
           {
             "name": "taxonset",
             "type": "TaxonSet",
+            "access": "read-only"
+          },
+          {
+            "name": "internalNodeCount",
+            "type": "int",
+            "access": "read-only"
+          },
+          {
+            "name": "leafNodeCount",
+            "type": "int",
+            "access": "read-only"
+          },
+          {
+            "name": "nodeCount",
+            "type": "int",
+            "access": "read-only"
+          },
+          {
+            "name": "dateType",
+            "type": "String",
             "access": "read-only"
           },
           {
@@ -4579,13 +4579,13 @@
             "access": "read-only"
           },
           {
-            "name": "estimated",
-            "type": "boolean",
+            "name": "current",
+            "type": "StateNode",
             "access": "read-only"
           },
           {
-            "name": "current",
-            "type": "StateNode",
+            "name": "estimated",
+            "type": "boolean",
             "access": "read-only"
           },
           {
@@ -4604,6 +4604,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -4616,11 +4621,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           },
           {
@@ -4697,6 +4697,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -4709,11 +4714,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           }
         ]
@@ -4831,6 +4831,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -4843,11 +4848,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           },
           {
@@ -4976,6 +4976,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -4988,11 +4993,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           },
           {
@@ -5132,6 +5132,26 @@
             "access": "read-only"
           },
           {
+            "name": "nodesAsArray",
+            "type": "Node[]",
+            "access": "read-only"
+          },
+          {
+            "name": "externalNodes",
+            "type": "List",
+            "access": "read-only"
+          },
+          {
+            "name": "internalNodes",
+            "type": "List",
+            "access": "read-only"
+          },
+          {
+            "name": "taxonset",
+            "type": "TaxonSet",
+            "access": "read-only"
+          },
+          {
             "name": "internalNodeCount",
             "type": "int",
             "access": "read-only"
@@ -5157,26 +5177,6 @@
             "access": "read-only"
           },
           {
-            "name": "nodesAsArray",
-            "type": "Node[]",
-            "access": "read-only"
-          },
-          {
-            "name": "externalNodes",
-            "type": "List",
-            "access": "read-only"
-          },
-          {
-            "name": "internalNodes",
-            "type": "List",
-            "access": "read-only"
-          },
-          {
-            "name": "taxonset",
-            "type": "TaxonSet",
-            "access": "read-only"
-          },
-          {
             "name": "dateTrait",
             "type": "TraitSet",
             "access": "read-only"
@@ -5197,13 +5197,13 @@
             "access": "read-only"
           },
           {
-            "name": "estimated",
-            "type": "boolean",
+            "name": "current",
+            "type": "StateNode",
             "access": "read-only"
           },
           {
-            "name": "current",
-            "type": "StateNode",
+            "name": "estimated",
+            "type": "boolean",
             "access": "read-only"
           },
           {
@@ -5222,6 +5222,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -5234,11 +5239,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           },
           {
@@ -5292,6 +5292,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -5304,11 +5309,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           }
         ]
@@ -5419,6 +5419,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -5431,11 +5436,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           },
           {
@@ -5550,6 +5550,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -5562,11 +5567,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           }
         ]
@@ -5664,6 +5664,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -5676,11 +5681,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           }
         ]
@@ -5758,6 +5758,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -5770,11 +5775,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           }
         ]
@@ -5872,6 +5872,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -5884,11 +5889,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           }
         ]
@@ -5986,6 +5986,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -5998,11 +6003,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           }
         ]
@@ -6039,6 +6039,7 @@
             "type": "RealParameter",
             "description": "A set of frequencies specified as space separated values summing to 1",
             "required": false,
+            "recommended": true,
             "dimension": {
               "type": "contextual",
               "resolution": [
@@ -6084,6 +6085,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -6096,11 +6102,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           }
         ]
@@ -6178,6 +6179,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -6190,11 +6196,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           }
         ]
@@ -6314,6 +6315,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -6326,11 +6332,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           }
         ]
@@ -6391,6 +6392,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -6403,11 +6409,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           }
         ]
@@ -6505,6 +6506,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -6517,11 +6523,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           }
         ]
@@ -6575,6 +6576,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -6587,11 +6593,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           }
         ]
@@ -6689,6 +6690,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -6701,11 +6707,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           }
         ]
@@ -6772,6 +6773,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -6784,11 +6790,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           }
         ]
@@ -6908,6 +6909,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -6920,11 +6926,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           }
         ]
@@ -7030,6 +7031,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -7042,11 +7048,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           }
         ]
@@ -7123,6 +7124,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -7135,11 +7141,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           }
         ]
@@ -7252,6 +7253,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -7264,11 +7270,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           }
         ]
@@ -7366,6 +7367,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -7378,11 +7384,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           }
         ]
@@ -7451,6 +7452,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -7463,11 +7469,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           },
           {
@@ -7581,6 +7582,26 @@
             "access": "read-only"
           },
           {
+            "name": "nodesAsArray",
+            "type": "Node[]",
+            "access": "read-only"
+          },
+          {
+            "name": "externalNodes",
+            "type": "List",
+            "access": "read-only"
+          },
+          {
+            "name": "internalNodes",
+            "type": "List",
+            "access": "read-only"
+          },
+          {
+            "name": "taxonset",
+            "type": "TaxonSet",
+            "access": "read-only"
+          },
+          {
             "name": "internalNodeCount",
             "type": "int",
             "access": "read-only"
@@ -7606,26 +7627,6 @@
             "access": "read-only"
           },
           {
-            "name": "nodesAsArray",
-            "type": "Node[]",
-            "access": "read-only"
-          },
-          {
-            "name": "externalNodes",
-            "type": "List",
-            "access": "read-only"
-          },
-          {
-            "name": "internalNodes",
-            "type": "List",
-            "access": "read-only"
-          },
-          {
-            "name": "taxonset",
-            "type": "TaxonSet",
-            "access": "read-only"
-          },
-          {
             "name": "dateTrait",
             "type": "TraitSet",
             "access": "read-only"
@@ -7646,13 +7647,13 @@
             "access": "read-only"
           },
           {
-            "name": "estimated",
-            "type": "boolean",
+            "name": "current",
+            "type": "StateNode",
             "access": "read-only"
           },
           {
-            "name": "current",
-            "type": "StateNode",
+            "name": "estimated",
+            "type": "boolean",
             "access": "read-only"
           },
           {
@@ -7671,6 +7672,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -7683,11 +7689,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           },
           {
@@ -7802,6 +7803,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -7814,11 +7820,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           },
           {
@@ -7920,6 +7921,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -7932,11 +7938,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           },
           {
@@ -8025,6 +8026,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -8037,11 +8043,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           }
         ]
@@ -8072,13 +8073,13 @@
         ],
         "properties": [
           {
-            "name": "parameterIds",
-            "type": "List",
+            "name": "n0",
+            "type": "double",
             "access": "read-only"
           },
           {
-            "name": "n0",
-            "type": "double",
+            "name": "parameterIds",
+            "type": "List",
             "access": "read-only"
           },
           {
@@ -8102,6 +8103,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -8114,11 +8120,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           }
         ]
@@ -8156,17 +8157,17 @@
         ],
         "properties": [
           {
+            "name": "n0",
+            "type": "double",
+            "access": "read-only"
+          },
+          {
             "name": "parameterIds",
             "type": "List",
             "access": "read-only"
           },
           {
             "name": "growthRate",
-            "type": "double",
-            "access": "read-only"
-          },
-          {
-            "name": "n0",
             "type": "double",
             "access": "read-only"
           },
@@ -8191,6 +8192,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -8203,11 +8209,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           }
         ]
@@ -8319,26 +8320,6 @@
             "access": "read-only"
           },
           {
-            "name": "internalNodeCount",
-            "type": "int",
-            "access": "read-only"
-          },
-          {
-            "name": "leafNodeCount",
-            "type": "int",
-            "access": "read-only"
-          },
-          {
-            "name": "nodeCount",
-            "type": "int",
-            "access": "read-only"
-          },
-          {
-            "name": "dateType",
-            "type": "String",
-            "access": "read-only"
-          },
-          {
             "name": "nodesAsArray",
             "type": "Node[]",
             "access": "read-only"
@@ -8356,6 +8337,26 @@
           {
             "name": "taxonset",
             "type": "TaxonSet",
+            "access": "read-only"
+          },
+          {
+            "name": "internalNodeCount",
+            "type": "int",
+            "access": "read-only"
+          },
+          {
+            "name": "leafNodeCount",
+            "type": "int",
+            "access": "read-only"
+          },
+          {
+            "name": "nodeCount",
+            "type": "int",
+            "access": "read-only"
+          },
+          {
+            "name": "dateType",
+            "type": "String",
             "access": "read-only"
           },
           {
@@ -8379,13 +8380,13 @@
             "access": "read-only"
           },
           {
-            "name": "estimated",
-            "type": "boolean",
+            "name": "current",
+            "type": "StateNode",
             "access": "read-only"
           },
           {
-            "name": "current",
-            "type": "StateNode",
+            "name": "estimated",
+            "type": "boolean",
             "access": "read-only"
           },
           {
@@ -8404,6 +8405,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -8416,11 +8422,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           },
           {
@@ -8486,6 +8487,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -8498,11 +8504,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           }
         ]
@@ -8625,6 +8626,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -8637,11 +8643,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           },
           {
@@ -8707,6 +8708,31 @@
             "access": "read-only"
           },
           {
+            "name": "height",
+            "type": "double",
+            "access": "read-only"
+          },
+          {
+            "name": "nr",
+            "type": "int",
+            "access": "read-only"
+          },
+          {
+            "name": "left",
+            "type": "Node",
+            "access": "read-only"
+          },
+          {
+            "name": "right",
+            "type": "Node",
+            "access": "read-only"
+          },
+          {
+            "name": "fake",
+            "type": "boolean",
+            "access": "read-only"
+          },
+          {
             "name": "internalNodeCount",
             "type": "int",
             "access": "read-only"
@@ -8767,11 +8793,6 @@
             "access": "read-only"
           },
           {
-            "name": "childCount",
-            "type": "int",
-            "access": "read-only"
-          },
-          {
             "name": "directAncestor",
             "type": "boolean",
             "access": "read-only"
@@ -8787,28 +8808,8 @@
             "access": "read-only"
           },
           {
-            "name": "height",
-            "type": "double",
-            "access": "read-only"
-          },
-          {
-            "name": "nr",
+            "name": "childCount",
             "type": "int",
-            "access": "read-only"
-          },
-          {
-            "name": "left",
-            "type": "Node",
-            "access": "read-only"
-          },
-          {
-            "name": "right",
-            "type": "Node",
-            "access": "read-only"
-          },
-          {
-            "name": "fake",
-            "type": "boolean",
             "access": "read-only"
           },
           {
@@ -8819,6 +8820,11 @@
           {
             "name": "outputs",
             "type": "Set",
+            "access": "read-only"
+          },
+          {
+            "name": "description",
+            "type": "String",
             "access": "read-only"
           },
           {
@@ -8834,11 +8840,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           }
         ]
@@ -8926,6 +8927,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -8938,11 +8944,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           }
         ]
@@ -9023,6 +9024,26 @@
             "access": "read-only"
           },
           {
+            "name": "nodesAsArray",
+            "type": "Node[]",
+            "access": "read-only"
+          },
+          {
+            "name": "externalNodes",
+            "type": "List",
+            "access": "read-only"
+          },
+          {
+            "name": "internalNodes",
+            "type": "List",
+            "access": "read-only"
+          },
+          {
+            "name": "taxonset",
+            "type": "TaxonSet",
+            "access": "read-only"
+          },
+          {
             "name": "internalNodeCount",
             "type": "int",
             "access": "read-only"
@@ -9048,26 +9069,6 @@
             "access": "read-only"
           },
           {
-            "name": "nodesAsArray",
-            "type": "Node[]",
-            "access": "read-only"
-          },
-          {
-            "name": "externalNodes",
-            "type": "List",
-            "access": "read-only"
-          },
-          {
-            "name": "internalNodes",
-            "type": "List",
-            "access": "read-only"
-          },
-          {
-            "name": "taxonset",
-            "type": "TaxonSet",
-            "access": "read-only"
-          },
-          {
             "name": "dateTrait",
             "type": "TraitSet",
             "access": "read-only"
@@ -9088,13 +9089,13 @@
             "access": "read-only"
           },
           {
-            "name": "estimated",
-            "type": "boolean",
+            "name": "current",
+            "type": "StateNode",
             "access": "read-only"
           },
           {
-            "name": "current",
-            "type": "StateNode",
+            "name": "estimated",
+            "type": "boolean",
             "access": "read-only"
           },
           {
@@ -9113,6 +9114,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -9125,11 +9131,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           },
           {
@@ -9163,6 +9164,11 @@
         ],
         "properties": [
           {
+            "name": "delta",
+            "type": "double",
+            "access": "read-only"
+          },
+          {
             "name": "intervalCount",
             "type": "int",
             "access": "read-only"
@@ -9188,11 +9194,6 @@
             "access": "read-only"
           },
           {
-            "name": "delta",
-            "type": "double",
-            "access": "read-only"
-          },
-          {
             "name": "dirtyCalculation",
             "type": "boolean",
             "access": "read-only"
@@ -9208,6 +9209,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -9220,11 +9226,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           }
         ]
@@ -9368,6 +9369,26 @@
             "access": "read-only"
           },
           {
+            "name": "nodesAsArray",
+            "type": "Node[]",
+            "access": "read-only"
+          },
+          {
+            "name": "externalNodes",
+            "type": "List",
+            "access": "read-only"
+          },
+          {
+            "name": "internalNodes",
+            "type": "List",
+            "access": "read-only"
+          },
+          {
+            "name": "taxonset",
+            "type": "TaxonSet",
+            "access": "read-only"
+          },
+          {
             "name": "internalNodeCount",
             "type": "int",
             "access": "read-only"
@@ -9393,26 +9414,6 @@
             "access": "read-only"
           },
           {
-            "name": "nodesAsArray",
-            "type": "Node[]",
-            "access": "read-only"
-          },
-          {
-            "name": "externalNodes",
-            "type": "List",
-            "access": "read-only"
-          },
-          {
-            "name": "internalNodes",
-            "type": "List",
-            "access": "read-only"
-          },
-          {
-            "name": "taxonset",
-            "type": "TaxonSet",
-            "access": "read-only"
-          },
-          {
             "name": "dateTrait",
             "type": "TraitSet",
             "access": "read-only"
@@ -9433,13 +9434,13 @@
             "access": "read-only"
           },
           {
-            "name": "estimated",
-            "type": "boolean",
+            "name": "current",
+            "type": "StateNode",
             "access": "read-only"
           },
           {
-            "name": "current",
-            "type": "StateNode",
+            "name": "estimated",
+            "type": "boolean",
             "access": "read-only"
           },
           {
@@ -9458,6 +9459,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -9470,11 +9476,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           },
           {
@@ -9586,6 +9587,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -9598,11 +9604,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           },
           {
@@ -9637,13 +9638,15 @@
             "name": "alpha",
             "type": "Function",
             "description": "first shape parameter, defaults to 1",
-            "required": false
+            "required": false,
+            "recommended": true
           },
           {
             "name": "beta",
             "type": "Function",
             "description": "the other shape parameter, defaults to 1",
-            "required": false
+            "required": false,
+            "recommended": true
           },
           {
             "name": "offset",
@@ -9656,7 +9659,7 @@
         "properties": [
           {
             "name": "distribution",
-            "type": "ContinuousDistribution",
+            "type": "Distribution",
             "access": "read-only"
           },
           {
@@ -9665,13 +9668,13 @@
             "access": "read-only"
           },
           {
-            "name": "integerDistribution",
-            "type": "boolean",
+            "name": "mean",
+            "type": "double",
             "access": "read-only"
           },
           {
-            "name": "mean",
-            "type": "double",
+            "name": "integerDistribution",
+            "type": "boolean",
             "access": "read-only"
           },
           {
@@ -9690,6 +9693,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -9702,11 +9710,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           }
         ]
@@ -9758,13 +9761,13 @@
             "access": "read-only"
           },
           {
-            "name": "integerDistribution",
-            "type": "boolean",
+            "name": "mean",
+            "type": "double",
             "access": "read-only"
           },
           {
-            "name": "mean",
-            "type": "double",
+            "name": "integerDistribution",
+            "type": "boolean",
             "access": "read-only"
           },
           {
@@ -9783,6 +9786,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -9795,11 +9803,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           }
         ]
@@ -9851,13 +9854,13 @@
             "access": "read-only"
           },
           {
-            "name": "integerDistribution",
-            "type": "boolean",
+            "name": "mean",
+            "type": "double",
             "access": "read-only"
           },
           {
-            "name": "mean",
-            "type": "double",
+            "name": "integerDistribution",
+            "type": "boolean",
             "access": "read-only"
           },
           {
@@ -9876,6 +9879,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -9888,11 +9896,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           }
         ]
@@ -9922,7 +9925,8 @@
             "name": "mean",
             "type": "Function",
             "description": "mean parameter, defaults to 1",
-            "required": false
+            "required": false,
+            "recommended": true
           },
           {
             "name": "offset",
@@ -9935,7 +9939,7 @@
         "properties": [
           {
             "name": "distribution",
-            "type": "ContinuousDistribution",
+            "type": "Distribution",
             "access": "read-only"
           },
           {
@@ -9944,13 +9948,13 @@
             "access": "read-only"
           },
           {
-            "name": "integerDistribution",
-            "type": "boolean",
+            "name": "mean",
+            "type": "double",
             "access": "read-only"
           },
           {
-            "name": "mean",
-            "type": "double",
+            "name": "integerDistribution",
+            "type": "boolean",
             "access": "read-only"
           },
           {
@@ -9969,6 +9973,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -9981,11 +9990,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           }
         ]
@@ -10015,13 +10019,15 @@
             "name": "alpha",
             "type": "Function",
             "description": "shape parameter, defaults to 2",
-            "required": false
+            "required": false,
+            "recommended": true
           },
           {
             "name": "beta",
             "type": "Function",
             "description": "second parameter depends on mode, defaults to 2.For mode=ShapeScale beta is interpreted as scale. For mode=ShapeRate beta is interpreted as rate. For mode=ShapeMean beta is interpreted as mean.For mode=OneParameter beta is ignored.",
-            "required": false
+            "required": false,
+            "recommended": true
           },
           {
             "name": "mode",
@@ -10041,7 +10047,7 @@
         "properties": [
           {
             "name": "distribution",
-            "type": "ContinuousDistribution",
+            "type": "Distribution",
             "access": "read-only"
           },
           {
@@ -10050,13 +10056,13 @@
             "access": "read-only"
           },
           {
-            "name": "integerDistribution",
-            "type": "boolean",
+            "name": "mean",
+            "type": "double",
             "access": "read-only"
           },
           {
-            "name": "mean",
-            "type": "double",
+            "name": "integerDistribution",
+            "type": "boolean",
             "access": "read-only"
           },
           {
@@ -10075,6 +10081,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -10087,11 +10098,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           }
         ]
@@ -10154,13 +10160,13 @@
             "access": "read-only"
           },
           {
-            "name": "integerDistribution",
-            "type": "boolean",
+            "name": "mean",
+            "type": "double",
             "access": "read-only"
           },
           {
-            "name": "mean",
-            "type": "double",
+            "name": "integerDistribution",
+            "type": "boolean",
             "access": "read-only"
           },
           {
@@ -10179,6 +10185,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -10191,11 +10202,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           }
         ]
@@ -10245,7 +10251,7 @@
         "properties": [
           {
             "name": "distribution",
-            "type": "ContinuousDistribution",
+            "type": "Distribution",
             "access": "read-only"
           },
           {
@@ -10254,13 +10260,13 @@
             "access": "read-only"
           },
           {
-            "name": "integerDistribution",
-            "type": "boolean",
+            "name": "mean",
+            "type": "double",
             "access": "read-only"
           },
           {
-            "name": "mean",
-            "type": "double",
+            "name": "integerDistribution",
+            "type": "boolean",
             "access": "read-only"
           },
           {
@@ -10279,6 +10285,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -10291,11 +10302,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           }
         ]
@@ -10325,13 +10331,15 @@
             "name": "M",
             "type": "Function",
             "description": "M parameter of lognormal distribution. Equal to the mean of the log-transformed distribution.",
-            "required": false
+            "required": false,
+            "recommended": true
           },
           {
             "name": "S",
             "type": "Function",
             "description": "S parameter of lognormal distribution. Equal to the standard deviation of the log-transformed distribution.",
-            "required": false
+            "required": false,
+            "recommended": true
           },
           {
             "name": "meanInRealSpace",
@@ -10360,13 +10368,13 @@
             "access": "read-only"
           },
           {
-            "name": "integerDistribution",
-            "type": "boolean",
+            "name": "mean",
+            "type": "double",
             "access": "read-only"
           },
           {
-            "name": "mean",
-            "type": "double",
+            "name": "integerDistribution",
+            "type": "boolean",
             "access": "read-only"
           },
           {
@@ -10385,6 +10393,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -10397,11 +10410,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           }
         ]
@@ -10527,6 +10535,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -10539,11 +10552,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           },
           {
@@ -10578,13 +10586,15 @@
             "name": "mean",
             "type": "Function",
             "description": "mean of the normal distribution, defaults to 0",
-            "required": false
+            "required": false,
+            "recommended": true
           },
           {
             "name": "sigma",
             "type": "Function",
             "description": "standard deviation of the normal distribution, defaults to 1",
-            "required": false
+            "required": false,
+            "recommended": true
           },
           {
             "name": "tau",
@@ -10603,7 +10613,7 @@
         "properties": [
           {
             "name": "distribution",
-            "type": "ContinuousDistribution",
+            "type": "Distribution",
             "access": "read-only"
           },
           {
@@ -10617,13 +10627,13 @@
             "access": "read-only"
           },
           {
-            "name": "integerDistribution",
-            "type": "boolean",
+            "name": "mean",
+            "type": "double",
             "access": "read-only"
           },
           {
-            "name": "mean",
-            "type": "double",
+            "name": "integerDistribution",
+            "type": "boolean",
             "access": "read-only"
           },
           {
@@ -10642,6 +10652,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -10654,11 +10669,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           }
         ]
@@ -10704,13 +10714,13 @@
             "access": "read-only"
           },
           {
-            "name": "integerDistribution",
-            "type": "boolean",
+            "name": "mean",
+            "type": "double",
             "access": "read-only"
           },
           {
-            "name": "mean",
-            "type": "double",
+            "name": "integerDistribution",
+            "type": "boolean",
             "access": "read-only"
           },
           {
@@ -10729,6 +10739,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -10741,11 +10756,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           }
         ]
@@ -10802,13 +10812,13 @@
             "access": "read-only"
           },
           {
-            "name": "integerDistribution",
-            "type": "boolean",
+            "name": "mean",
+            "type": "double",
             "access": "read-only"
           },
           {
-            "name": "mean",
-            "type": "double",
+            "name": "integerDistribution",
+            "type": "boolean",
             "access": "read-only"
           },
           {
@@ -10827,6 +10837,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -10839,11 +10854,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           }
         ]
@@ -10939,6 +10949,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -10951,11 +10966,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           },
           {
@@ -10991,6 +11001,7 @@
             "type": "Double",
             "description": "lower bound on the interval, default 0",
             "required": false,
+            "recommended": true,
             "default": "0.0"
           },
           {
@@ -10998,6 +11009,7 @@
             "type": "Double",
             "description": "lower bound on the interval, default 1",
             "required": false,
+            "recommended": true,
             "default": "1.0"
           },
           {
@@ -11020,13 +11032,13 @@
             "access": "read-only"
           },
           {
-            "name": "integerDistribution",
-            "type": "boolean",
+            "name": "mean",
+            "type": "double",
             "access": "read-only"
           },
           {
-            "name": "mean",
-            "type": "double",
+            "name": "integerDistribution",
+            "type": "boolean",
             "access": "read-only"
           },
           {
@@ -11045,6 +11057,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -11057,11 +11074,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           }
         ]
@@ -11148,18 +11160,13 @@
             "access": "read-only"
           },
           {
+            "name": "values",
+            "type": "Object[]",
+            "access": "read-only"
+          },
+          {
             "name": "dimension",
             "type": "int",
-            "access": "read-only"
-          },
-          {
-            "name": "lastDirty",
-            "type": "int",
-            "access": "read-only"
-          },
-          {
-            "name": "storedValues",
-            "type": "Object[]",
             "access": "read-only"
           },
           {
@@ -11178,7 +11185,12 @@
             "access": "read-only"
           },
           {
-            "name": "values",
+            "name": "lastDirty",
+            "type": "int",
+            "access": "read-only"
+          },
+          {
+            "name": "storedValues",
             "type": "Object[]",
             "access": "read-only"
           },
@@ -11193,13 +11205,13 @@
             "access": "read-only"
           },
           {
-            "name": "estimated",
-            "type": "boolean",
+            "name": "current",
+            "type": "StateNode",
             "access": "read-only"
           },
           {
-            "name": "current",
-            "type": "StateNode",
+            "name": "estimated",
+            "type": "boolean",
             "access": "read-only"
           },
           {
@@ -11218,6 +11230,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -11230,11 +11247,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           },
           {
@@ -11324,13 +11336,13 @@
             "access": "read-only"
           },
           {
-            "name": "estimated",
-            "type": "boolean",
+            "name": "current",
+            "type": "StateNode",
             "access": "read-only"
           },
           {
-            "name": "current",
-            "type": "StateNode",
+            "name": "estimated",
+            "type": "boolean",
             "access": "read-only"
           },
           {
@@ -11349,6 +11361,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -11361,11 +11378,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           },
           {
@@ -11456,6 +11468,11 @@
             "access": "read-only"
           },
           {
+            "name": "current",
+            "type": "StateNode",
+            "access": "read-only"
+          },
+          {
             "name": "arrayValue",
             "type": "double",
             "access": "read-only"
@@ -11463,11 +11480,6 @@
           {
             "name": "dimension",
             "type": "int",
-            "access": "read-only"
-          },
-          {
-            "name": "current",
-            "type": "StateNode",
             "access": "read-only"
           },
           {
@@ -11486,12 +11498,7 @@
             "access": "read-only"
           },
           {
-            "name": "lastDirty",
-            "type": "int",
-            "access": "read-only"
-          },
-          {
-            "name": "storedValues",
+            "name": "values",
             "type": "Object[]",
             "access": "read-only"
           },
@@ -11511,7 +11518,12 @@
             "access": "read-only"
           },
           {
-            "name": "values",
+            "name": "lastDirty",
+            "type": "int",
+            "access": "read-only"
+          },
+          {
+            "name": "storedValues",
             "type": "Object[]",
             "access": "read-only"
           },
@@ -11546,6 +11558,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -11558,11 +11575,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           },
           {
@@ -11632,6 +11644,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -11644,11 +11661,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           },
           {
@@ -11752,18 +11764,13 @@
             "access": "read-only"
           },
           {
+            "name": "values",
+            "type": "Object[]",
+            "access": "read-only"
+          },
+          {
             "name": "dimension",
             "type": "int",
-            "access": "read-only"
-          },
-          {
-            "name": "lastDirty",
-            "type": "int",
-            "access": "read-only"
-          },
-          {
-            "name": "storedValues",
-            "type": "Object[]",
             "access": "read-only"
           },
           {
@@ -11782,7 +11789,12 @@
             "access": "read-only"
           },
           {
-            "name": "values",
+            "name": "lastDirty",
+            "type": "int",
+            "access": "read-only"
+          },
+          {
+            "name": "storedValues",
             "type": "Object[]",
             "access": "read-only"
           },
@@ -11797,13 +11809,13 @@
             "access": "read-only"
           },
           {
-            "name": "estimated",
-            "type": "boolean",
+            "name": "current",
+            "type": "StateNode",
             "access": "read-only"
           },
           {
-            "name": "current",
-            "type": "StateNode",
+            "name": "estimated",
+            "type": "boolean",
             "access": "read-only"
           },
           {
@@ -11822,6 +11834,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -11834,11 +11851,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           },
           {
@@ -11942,13 +11954,13 @@
             "access": "read-only"
           },
           {
-            "name": "estimated",
-            "type": "boolean",
+            "name": "current",
+            "type": "StateNode",
             "access": "read-only"
           },
           {
-            "name": "current",
-            "type": "StateNode",
+            "name": "estimated",
+            "type": "boolean",
             "access": "read-only"
           },
           {
@@ -11967,6 +11979,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -11979,11 +11996,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           },
           {
@@ -12087,18 +12099,13 @@
             "access": "read-only"
           },
           {
+            "name": "values",
+            "type": "Object[]",
+            "access": "read-only"
+          },
+          {
             "name": "dimension",
             "type": "int",
-            "access": "read-only"
-          },
-          {
-            "name": "lastDirty",
-            "type": "int",
-            "access": "read-only"
-          },
-          {
-            "name": "storedValues",
-            "type": "Object[]",
             "access": "read-only"
           },
           {
@@ -12117,7 +12124,12 @@
             "access": "read-only"
           },
           {
-            "name": "values",
+            "name": "lastDirty",
+            "type": "int",
+            "access": "read-only"
+          },
+          {
+            "name": "storedValues",
             "type": "Object[]",
             "access": "read-only"
           },
@@ -12132,13 +12144,13 @@
             "access": "read-only"
           },
           {
-            "name": "estimated",
-            "type": "boolean",
+            "name": "current",
+            "type": "StateNode",
             "access": "read-only"
           },
           {
-            "name": "current",
-            "type": "StateNode",
+            "name": "estimated",
+            "type": "boolean",
             "access": "read-only"
           },
           {
@@ -12157,6 +12169,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -12169,11 +12186,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           },
           {
@@ -12277,13 +12289,13 @@
             "access": "read-only"
           },
           {
-            "name": "estimated",
-            "type": "boolean",
+            "name": "current",
+            "type": "StateNode",
             "access": "read-only"
           },
           {
-            "name": "current",
-            "type": "StateNode",
+            "name": "estimated",
+            "type": "boolean",
             "access": "read-only"
           },
           {
@@ -12302,6 +12314,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -12314,11 +12331,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           },
           {
@@ -12386,6 +12398,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -12398,11 +12415,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           }
         ]
@@ -12441,6 +12453,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -12453,11 +12470,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           }
         ]
@@ -12530,6 +12542,11 @@
             "access": "read-only"
           },
           {
+            "name": "description",
+            "type": "String",
+            "access": "read-only"
+          },
+          {
             "name": "citations",
             "type": "String",
             "access": "read-only"
@@ -12542,11 +12559,6 @@
           {
             "name": "citation",
             "type": "Citation",
-            "access": "read-only"
-          },
-          {
-            "name": "description",
-            "type": "String",
             "access": "read-only"
           },
           {
@@ -12897,6 +12909,40 @@
         ],
         "arguments": []
       }
-    ]
+    ],
+    "typeDefinitions": {
+      "Function": {
+        "acceptsTypes": [
+          "Double",
+          "Double[]",
+          "Float",
+          "Float[]",
+          "Integer",
+          "Integer[]"
+        ]
+      },
+      "RealParameter": {
+        "primitiveAssignable": true,
+        "acceptedPrimitives": [
+          "Double",
+          "Double[]",
+          "Integer",
+          "Integer[]"
+        ]
+      },
+      "IntegerParameter": {
+        "primitiveAssignable": true,
+        "acceptedPrimitives": [
+          "Integer",
+          "Long"
+        ]
+      },
+      "BooleanParameter": {
+        "primitiveAssignable": true,
+        "acceptedPrimitives": [
+          "Boolean"
+        ]
+      }
+    }
   }
 }
