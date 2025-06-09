@@ -5,6 +5,7 @@ import beast.base.core.Input;
 import beast.base.inference.distribution.ParametricDistribution;
 import org.beast2.modelLanguage.beast.BeastObjectFactory;
 import org.beast2.modelLanguage.schema.core.ComponentInfo;
+import org.beast2.modelLanguage.schema.core.DistributionTypeMapper;
 import org.beast2.modelLanguage.schema.core.TypeResolver;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -19,29 +20,29 @@ import java.util.logging.Logger;
  */
 public class ComponentDefinitionBuilder {
     private static final Logger logger = Logger.getLogger(ComponentDefinitionBuilder.class.getName());
-    
+
     private final TypeResolver typeResolver;
     private final ArgumentBuilder argumentBuilder;
     private final PropertyExtractor propertyExtractor;
     private final BeastObjectFactory factory;
-    
+
     public ComponentDefinitionBuilder(TypeResolver typeResolver,
-                                    ArgumentBuilder argumentBuilder,
-                                    PropertyExtractor propertyExtractor,
-                                    BeastObjectFactory factory) {
+                                      ArgumentBuilder argumentBuilder,
+                                      PropertyExtractor propertyExtractor,
+                                      BeastObjectFactory factory) {
         this.typeResolver = typeResolver;
         this.argumentBuilder = argumentBuilder;
         this.propertyExtractor = propertyExtractor;
         this.factory = factory;
     }
-    
+
     /**
      * Build a component definition from ComponentInfo
      */
     public JSONObject buildDefinition(ComponentInfo component) {
         JSONObject definition = new JSONObject();
         Class<?> clazz = component.getClazz();
-        
+
         // Basic metadata
         definition.put("name", typeResolver.getSimpleClassName(clazz));
         definition.put("fullyQualifiedName", clazz.getName());
@@ -51,10 +52,10 @@ public class ComponentDefinitionBuilder {
         definition.put("isEnum", component.isEnum());
         definition.put("package", component.getPackageName());
         definition.put("description", component.getDescription());
-        
+
         // Add inheritance information
         addInheritanceInfo(definition, clazz);
-        
+
         // Add component-specific details
         if (component.isEnum()) {
             addEnumDetails(definition, clazz);
@@ -65,10 +66,38 @@ public class ComponentDefinitionBuilder {
             definition.put("arguments", new JSONArray());
             definition.put("properties", new JSONArray());
         }
-        
+
+        // Add generated type for distributions (only if explicitly mapped)
+        if (component.isDistribution()) {
+            String generatedType = determineGeneratedType(clazz);
+            if (generatedType != null) {
+                definition.put("generatedType", generatedType);
+            }
+            // If no explicit mapping, the frontend will use primaryArgument.type
+        }
+
         return definition;
     }
-    
+
+    /**
+     * Determine the generated type for distributions using explicit mappings only
+     */
+    private String determineGeneratedType(Class<?> clazz) {
+        try {
+            // Check if we have an explicit mapping for this class
+            Class<?> generatedClass = DistributionTypeMapper.getGeneratedType(clazz);
+            if (generatedClass != null) {
+                // Return just the simple name (e.g., "RealParameter" not "beast.base.inference.parameter.RealParameter")
+                return generatedClass.getSimpleName();
+            }
+        } catch (Exception e) {
+            // Silently ignore - will fall back to primary argument type
+        }
+
+        // No explicit mapping found
+        return null;
+    }
+
     /**
      * Add inheritance information
      */
@@ -77,35 +106,35 @@ public class ComponentDefinitionBuilder {
         if (clazz.getSuperclass() != null && BEASTInterface.class.isAssignableFrom(clazz.getSuperclass())) {
             definition.put("extends", clazz.getSuperclass().getName());
         }
-        
+
         // Interfaces
         JSONArray interfaces = new JSONArray();
         Set<String> allInterfaces = new HashSet<>();
         collectAllInterfaces(clazz, allInterfaces);
-        
+
         for (String interfaceName : allInterfaces) {
             interfaces.put(interfaceName);
         }
         definition.put("implements", interfaces);
     }
-    
+
     /**
      * Recursively collect all interfaces implemented by a class
      */
     private void collectAllInterfaces(Class<?> clazz, Set<String> interfaces) {
         if (clazz == null) return;
-        
+
         // Add direct interfaces
         for (Class<?> iface : clazz.getInterfaces()) {
             interfaces.add(iface.getName());
             // Recursively add interfaces that this interface extends
             collectAllInterfaces(iface, interfaces);
         }
-        
+
         // Recursively check superclass
         collectAllInterfaces(clazz.getSuperclass(), interfaces);
     }
-    
+
     /**
      * Add details for enum types
      */
@@ -115,7 +144,7 @@ public class ComponentDefinitionBuilder {
         valuesProperty.put("name", "values");
         valuesProperty.put("type", "String[]");
         valuesProperty.put("access", "read-only");
-        
+
         // Get enum constants
         Object[] constants = enumClass.getEnumConstants();
         if (constants != null) {
@@ -126,11 +155,11 @@ public class ComponentDefinitionBuilder {
             valuesProperty.put("value", values);
         }
         properties.put(valuesProperty);
-        
+
         definition.put("properties", properties);
         definition.put("arguments", new JSONArray());
     }
-    
+
     /**
      * Add details for concrete classes
      */
@@ -138,17 +167,17 @@ public class ComponentDefinitionBuilder {
         if (BEASTInterface.class.isAssignableFrom(clazz)) {
             try {
                 BEASTInterface instance = (BEASTInterface) clazz.getDeclaredConstructor().newInstance();
-                
+
                 if (isDistribution) {
                     addDistributionDetails(definition, instance, clazz);
                 } else {
                     addNonDistributionDetails(definition, instance, clazz);
                 }
-                
+
                 // Add properties
                 JSONArray properties = propertyExtractor.extractProperties(clazz);
                 definition.put("properties", properties);
-                
+
             } catch (Exception e) {
                 logger.fine("Can't instantiate " + clazz.getSimpleName() + ": " + e.getMessage());
                 // Can't instantiate, but still include with empty arrays
@@ -161,14 +190,14 @@ public class ComponentDefinitionBuilder {
             definition.put("properties", propertyExtractor.extractProperties(clazz));
         }
     }
-    
+
     /**
      * Add distribution-specific details
      */
     private void addDistributionDetails(JSONObject definition, BEASTInterface instance, Class<?> clazz) {
         String primaryInputName = factory.getPrimaryInputName(instance);
         boolean isParametricDistribution = ParametricDistribution.class.isAssignableFrom(clazz);
-        
+
         // Handle primary argument
         if (primaryInputName != null) {
             JSONObject primaryArg = argumentBuilder.buildPrimaryArgument(instance, primaryInputName);
@@ -179,7 +208,7 @@ public class ComponentDefinitionBuilder {
             // For ParametricDistributions, create synthetic primary argument
             definition.put("primaryArgument", argumentBuilder.createSyntheticPrimaryArgument());
         }
-        
+
         // Add other arguments (non-primary inputs)
         JSONArray arguments = new JSONArray();
         for (Input<?> input : instance.listInputs()) {
@@ -190,7 +219,7 @@ public class ComponentDefinitionBuilder {
         }
         definition.put("arguments", arguments);
     }
-    
+
     /**
      * Add non-distribution details
      */
