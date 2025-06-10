@@ -8,7 +8,7 @@
     "types": [
       {
         "name": "String",
-        "package": "phylospec.types",
+        "package": "primitive",
         "description": "Text values",
         "primitiveAssignable": true,
         "acceptedPrimitives": [
@@ -17,7 +17,7 @@
       },
       {
         "name": "Integer",
-        "package": "phylospec.types",
+        "package": "primitive",
         "description": "Integer numbers",
         "primitiveAssignable": true,
         "acceptedPrimitives": [
@@ -26,7 +26,7 @@
       },
       {
         "name": "Double",
-        "package": "phylospec.types",
+        "package": "primitive",
         "description": "Floating point numbers",
         "primitiveAssignable": true,
         "acceptedPrimitives": [
@@ -35,38 +35,11 @@
       },
       {
         "name": "Boolean",
-        "package": "phylospec.types",
+        "package": "primitive",
         "description": "True\/false values",
         "primitiveAssignable": true,
         "acceptedPrimitives": [
           "Boolean"
-        ]
-      },
-      {
-        "name": "Real",
-        "package": "phylospec.types",
-        "description": "Real numbers",
-        "primitiveAssignable": true,
-        "acceptedPrimitives": [
-          "Double"
-        ]
-      },
-      {
-        "name": "PositiveReal",
-        "package": "phylospec.types",
-        "description": "Positive real numbers",
-        "primitiveAssignable": true,
-        "acceptedPrimitives": [
-          "Double"
-        ]
-      },
-      {
-        "name": "Probability",
-        "package": "phylospec.types",
-        "description": "Values in [0,1]",
-        "primitiveAssignable": true,
-        "acceptedPrimitives": [
-          "Double"
         ]
       },
       {
@@ -122,12 +95,39 @@
         ]
       },
       {
+        "name": "CalculationNode",
+        "package": "beast.base.inference",
+        "fullyQualifiedName": "beast.base.inference.CalculationNode",
+        "description": "BEAST2 CalculationNode",
+        "isAbstract": true,
+        "isInterface": false,
+        "extends": "BEASTObject"
+      },
+      {
         "name": "StateNodeInitialiser",
         "package": "beast.base.inference",
         "fullyQualifiedName": "beast.base.inference.StateNodeInitialiser",
         "description": "BEAST2 StateNodeInitialiser",
         "isAbstract": true,
         "isInterface": true
+      },
+      {
+        "name": "GeneralParameterList",
+        "package": "beast.base.inference.parameter",
+        "fullyQualifiedName": "beast.base.inference.parameter.GeneralParameterList",
+        "description": "BEAST2 GeneralParameterList",
+        "isAbstract": true,
+        "isInterface": false,
+        "extends": "StateNode"
+      },
+      {
+        "name": "Map",
+        "package": "beast.base.inference.parameter",
+        "fullyQualifiedName": "beast.base.inference.parameter.Map",
+        "description": "BEAST2 Map",
+        "isAbstract": true,
+        "isInterface": false,
+        "extends": "StateNode"
       },
       {
         "name": "TreeDistribution",
@@ -181,6 +181,27 @@
         "extends": "SubstitutionModel.Base"
       },
       {
+        "name": "EmpiricalSubstitutionModel",
+        "package": "beast.base.evolution.substitutionmodel",
+        "fullyQualifiedName": "beast.base.evolution.substitutionmodel.EmpiricalSubstitutionModel",
+        "description": "BEAST2 EmpiricalSubstitutionModel",
+        "isAbstract": true,
+        "isInterface": false,
+        "extends": "GeneralSubstitutionModel"
+      },
+      {
+        "name": "PopulationFunction.Abstract",
+        "package": "beast.base.evolution.tree.coalescent",
+        "fullyQualifiedName": "beast.base.evolution.tree.coalescent.PopulationFunction$Abstract",
+        "description": "Inner type of PopulationFunction",
+        "isAbstract": true,
+        "isInterface": false,
+        "extends": "CalculationNode",
+        "implements": [
+          "PopulationFunction"
+        ]
+      },
+      {
         "name": "DataType.Base",
         "package": "beast.base.evolution.datatype",
         "fullyQualifiedName": "beast.base.evolution.datatype.DataType$Base",
@@ -190,6 +211,15 @@
         "extends": "BEASTObject"
       },
       {
+        "name": "UltrametricSpeciationModel",
+        "package": "beastlabs.evolution.speciation",
+        "fullyQualifiedName": "beastlabs.evolution.speciation.UltrametricSpeciationModel",
+        "description": "BEAST2 UltrametricSpeciationModel",
+        "isAbstract": true,
+        "isInterface": false,
+        "extends": "SpeciesTreeDistribution"
+      },
+      {
         "name": "SABDParameterization",
         "package": "sa.evolution.speciation",
         "fullyQualifiedName": "sa.evolution.speciation.SABDParameterization",
@@ -197,6 +227,27 @@
         "isAbstract": true,
         "isInterface": false,
         "extends": "CalculationNode"
+      },
+      {
+        "name": "LoggableFunction",
+        "package": "feast.function",
+        "fullyQualifiedName": "feast.function.LoggableFunction",
+        "description": "BEAST2 LoggableFunction",
+        "isAbstract": true,
+        "isInterface": false,
+        "extends": "CalculationNode",
+        "implements": [
+          "Function"
+        ]
+      },
+      {
+        "name": "LogFileState",
+        "package": "feast.fileio.logfileiterator",
+        "fullyQualifiedName": "feast.fileio.logfileiterator.LogFileState",
+        "description": "BEAST2 LogFileState",
+        "isAbstract": true,
+        "isInterface": false,
+        "extends": "BEASTObject"
       },
       {
         "name": "Function",
@@ -293,6 +344,22 @@
         "isInterface": true
       },
       {
+        "name": "Transform",
+        "package": "beast.base.inference.operator.kernel",
+        "fullyQualifiedName": "beast.base.inference.operator.kernel.Transform",
+        "description": "BEAST2 Transform",
+        "isAbstract": true,
+        "isInterface": true
+      },
+      {
+        "name": "Transform",
+        "package": "beastlabs.util",
+        "fullyQualifiedName": "beastlabs.util.Transform",
+        "description": "BEAST2 Transform",
+        "isAbstract": true,
+        "isInterface": true
+      },
+      {
         "name": "SiteModelInterface.Base",
         "package": "beast.base.evolution.sitemodel",
         "fullyQualifiedName": "beast.base.evolution.sitemodel.SiteModelInterface$Base",
@@ -316,6 +383,48 @@
           "Parameter"
         ],
         "primitiveAssignable": true
+      },
+      {
+        "name": "Transform.MultivariableTransform",
+        "package": "beastlabs.util",
+        "fullyQualifiedName": "beastlabs.util.Transform$MultivariableTransform",
+        "description": "Inner type of Transform",
+        "isAbstract": true,
+        "isInterface": false,
+        "extends": "BEASTObject",
+        "implements": [
+          "Transform"
+        ]
+      },
+      {
+        "name": "Transform.MultivariateTransform",
+        "package": "beastlabs.util",
+        "fullyQualifiedName": "beastlabs.util.Transform$MultivariateTransform",
+        "description": "Inner type of Transform",
+        "isAbstract": true,
+        "isInterface": false,
+        "extends": "Transform.MultivariableTransform"
+      },
+      {
+        "name": "Transform.MultivariableTransformWithParameter",
+        "package": "beastlabs.util",
+        "fullyQualifiedName": "beastlabs.util.Transform$MultivariableTransformWithParameter",
+        "description": "Inner type of Transform",
+        "isAbstract": true,
+        "isInterface": false,
+        "extends": "Transform.MultivariableTransform"
+      },
+      {
+        "name": "Transform.UnivariableTransform",
+        "package": "beastlabs.util",
+        "fullyQualifiedName": "beastlabs.util.Transform$UnivariableTransform",
+        "description": "Inner type of Transform",
+        "isAbstract": true,
+        "isInterface": false,
+        "extends": "BEASTObject",
+        "implements": [
+          "Transform"
+        ]
       },
       {
         "name": "SpeciesTreePrior.TreePopSizeFunction",
@@ -2725,12 +2834,13 @@
       },
       {
         "name": "StarBeastStartState.Method",
-        "package": "beast.base.evolution.speciation",
-        "fullyQualifiedName": "beast.base.evolution.speciation.StarBeastStartState$Method",
+        "package": "starbeast3.core",
+        "fullyQualifiedName": "starbeast3.core.StarBeastStartState$Method",
         "description": "Enum type for StarBeastStartState",
         "isEnum": true,
         "values": [
           "point-estimate",
+          "fixed",
           "random"
         ]
       },

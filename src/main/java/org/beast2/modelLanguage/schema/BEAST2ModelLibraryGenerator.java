@@ -384,16 +384,13 @@ public class BEAST2ModelLibraryGenerator {
                 {"String", "String", "Text values"},
                 {"Integer", "Integer", "Integer numbers"},
                 {"Double", "Double", "Floating point numbers"},
-                {"Boolean", "Boolean", "True/false values"},
-                {"Real", "Double", "Real numbers"},
-                {"PositiveReal", "Double", "Positive real numbers"},
-                {"Probability", "Double", "Values in [0,1]"}
+                {"Boolean", "Boolean", "True/false values"}
         };
 
         for (String[] typeInfo : primitiveTypes) {
             JSONObject type = new JSONObject();
             type.put("name", typeInfo[0]);
-            type.put("package", "phylospec.types");
+            type.put("package", "primitive");
             type.put("description", typeInfo[2]);
             type.put("primitiveAssignable", true);
 

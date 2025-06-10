@@ -45,6 +45,12 @@ public class ClosureValidator {
             // Build set of all available type names
             Set<String> availableTypes = buildAvailableTypeSet(types, generators);
 
+            // Check type inheritance closure
+            for (int i = 0; i < types.length(); i++) {
+                JSONObject type = types.getJSONObject(i);
+                checkTypeInheritance(type, availableTypes, result);
+            }
+
             // Check all generators for type closure
             for (int i = 0; i < generators.length(); i++) {
                 JSONObject generator = generators.getJSONObject(i);
@@ -83,6 +89,61 @@ public class ClosureValidator {
         availableTypes.addAll(primitiveTypes);
 
         return availableTypes;
+    }
+
+    /**
+     * Check type inheritance relationships for closure
+     */
+    private void checkTypeInheritance(JSONObject type, Set<String> availableTypes,
+                                      ValidationResult result) {
+        String typeName = type.getString("name");
+
+        // Check extends relationship
+        if (type.has("extends")) {
+            String superType = type.getString("extends");
+            String usage = typeName + " extends " + superType;
+            result.addTypeUsage(superType, usage);
+
+            if (!availableTypes.contains(superType) && !primitiveTypes.contains(superType)) {
+                // Check if it's an inference-related type
+                if (componentFilter.isInferenceType(superType)) {
+                    result.addInferenceType(superType);
+                }
+                // Check if it's a GUI-related type
+                else if (componentFilter.isGUIType(superType)) {
+                    result.addGUIType(superType);
+                }
+                else {
+                    result.addMissingType(superType);
+                    logger.warning("Type " + typeName + " extends missing type: " + superType);
+                }
+            }
+        }
+
+        // Check implements relationships
+        if (type.has("implements")) {
+            JSONArray interfaces = type.getJSONArray("implements");
+            for (int i = 0; i < interfaces.length(); i++) {
+                String interfaceType = interfaces.getString(i);
+                String usage = typeName + " implements " + interfaceType;
+                result.addTypeUsage(interfaceType, usage);
+
+                if (!availableTypes.contains(interfaceType) && !primitiveTypes.contains(interfaceType)) {
+                    // Check if it's an inference-related type
+                    if (componentFilter.isInferenceType(interfaceType)) {
+                        result.addInferenceType(interfaceType);
+                    }
+                    // Check if it's a GUI-related type
+                    else if (componentFilter.isGUIType(interfaceType)) {
+                        result.addGUIType(interfaceType);
+                    }
+                    else {
+                        result.addMissingType(interfaceType);
+                        logger.warning("Type " + typeName + " implements missing interface: " + interfaceType);
+                    }
+                }
+            }
+        }
     }
 
     /**

@@ -13,16 +13,23 @@ public class KnownTypes {
         "beast.base.inference.Distribution",
         "beast.base.inference.distribution.ParametricDistribution",
         "beast.base.inference.StateNode",
+        "beast.base.inference.CalculationNode",
         "beast.base.inference.StateNodeInitialiser",
+        "beast.base.inference.parameter.GeneralParameterList",
+        "beast.base.inference.parameter.Map",
         "beast.base.evolution.tree.TreeDistribution",
         "beast.base.evolution.speciation.SpeciesTreeDistribution",
         // Base implementations
         "beast.base.evolution.branchratemodel.BranchRateModel$Base",
         "beast.base.evolution.substitutionmodel.SubstitutionModel$Base",
         "beast.base.evolution.substitutionmodel.SubstitutionModel$NucleotideBase",
+        "beast.base.evolution.substitutionmodel.EmpiricalSubstitutionModel",
+        "beast.base.evolution.tree.coalescent.PopulationFunction$Abstract",
         "beast.base.evolution.datatype.DataType$Base",
-        // SA package type that's missing from service providers
-        "sa.evolution.speciation.SABDParameterization"
+        "beastlabs.evolution.speciation.UltrametricSpeciationModel",
+        "sa.evolution.speciation.SABDParameterization",
+        "feast.function.LoggableFunction",
+        "feast.fileio.logfileiterator.LogFileState"
     };
     
     public static final String[] IMPORTANT_NON_BEAST_INTERFACES = {
@@ -40,7 +47,9 @@ public class KnownTypes {
         "starbeast3.evolution.speciation.PopulationModel",
         // Distance and metrics
         "beast.base.evolution.distance.Distance",
-        "beast.base.evolution.tree.TreeMetric"
+        "beast.base.evolution.tree.TreeMetric",
+        "beast.base.inference.operator.kernel.Transform",
+        "beastlabs.util.Transform"
     };
     
     public static final String[] IMPORTANT_INNER_CLASSES = {
@@ -48,7 +57,12 @@ public class KnownTypes {
         "beast.base.inference.parameter.Parameter$Base",
         "beast.base.evolution.branchratemodel.BranchRateModel$Base",
         "beast.base.evolution.substitutionmodel.SubstitutionModel$Base",
-        "beast.base.evolution.datatype.DataType$Base"
+        "beast.base.evolution.datatype.DataType$Base",
+        "beastlabs.util.Transform$MultivariableTransform",
+        "beastlabs.util.Transform$MultivariateTransform",
+        "beastlabs.util.Transform$MultivariableTransformWithParameter",
+        "beastlabs.util.Transform$UnivariableTransform",
+        "beast.base.inference.operator.kernel.Transform$MultivariateTransform"
     };
     
     public static final String[] ENUMS = {
@@ -58,12 +72,6 @@ public class KnownTypes {
         "beast.evolution.tree.ClusterTree$Type",
         "beast.evolution.tree.ConstrainedClusterTree$Type"
     };
-    
-    public static final Set<String> PRIMITIVE_TYPES = Set.of(
-        "Integer", "Double", "String", "Boolean", 
-        "int", "double", "boolean", "Long", "Float", 
-        "Object", "T", "Map", "File"
-    );
     
     public static final Set<String> PACKAGE_SEARCH_PREFIXES = Set.of(
         "beast.base.evolution.substitutionmodel.",

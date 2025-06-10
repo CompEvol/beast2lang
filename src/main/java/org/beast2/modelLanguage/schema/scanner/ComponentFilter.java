@@ -22,7 +22,7 @@ public class ComponentFilter {
 
     private static final Set<String> INFERENCE_TYPES = Set.of(
             "Logger", "Operator", "MCMC", "OperatorSchedule",
-            "Runnable", "DistanceProvider"
+            "Runnable", "DistanceProvider","TreeLogFileState", "TraceLogFileState", "LogFileState"
     );
 
     private static final Set<String> GUI_TYPES = Set.of(

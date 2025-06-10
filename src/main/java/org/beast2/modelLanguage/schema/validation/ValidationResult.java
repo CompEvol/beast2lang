@@ -109,8 +109,7 @@ public class ValidationResult {
 
                 for (String type : inferenceRelatedTypes) {
                     for (String usage : getTypeUsage(type)) {
-                        String componentName = usage.substring(0, usage.lastIndexOf('.'));
-                        excludedComponents.add(componentName + " (uses inference type)");
+                        excludedComponents.add(usage + " (uses inference type)");
                     }
                 }
 
