@@ -19,6 +19,7 @@ public class KnownTypes {
         // Base implementations
         "beast.base.evolution.branchratemodel.BranchRateModel$Base",
         "beast.base.evolution.substitutionmodel.SubstitutionModel$Base",
+        "beast.base.evolution.substitutionmodel.SubstitutionModel$NucleotideBase",
         "beast.base.evolution.datatype.DataType$Base",
         // SA package type that's missing from service providers
         "sa.evolution.speciation.SABDParameterization"

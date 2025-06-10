@@ -529,45 +529,54 @@ public class Beast2Lang implements Callable<Integer> {
             // Print summary
             JSONObject schemaObj = new JSONObject(schema);
             JSONObject modelLibrary = schemaObj.getJSONObject("modelLibrary");
-            JSONArray components = modelLibrary.getJSONArray("components");
+
+            // NEW FORMAT: Get types and generators instead of components
+            JSONArray types = modelLibrary.getJSONArray("types");
+            JSONArray generators = modelLibrary.getJSONArray("generators");
 
             System.out.println("\nSchema generation complete!");
             System.out.println("Engine: " + modelLibrary.getString("engine") + " " + modelLibrary.getString("engineVersion"));
-            System.out.println("Total components: " + components.length());
+            System.out.println("Total types: " + types.length());
+            System.out.println("Total generators: " + generators.length());
 
-            // Count distributions vs non-distributions
+            // Count distributions vs functions in generators
             int distributionCount = 0;
-            int nonDistributionCount = 0;
+            int functionCount = 0;
 
-            for (int i = 0; i < components.length(); i++) {
-                JSONObject component = components.getJSONObject(i);
-                if (component.getBoolean("isDistribution")) {
+            for (int i = 0; i < generators.length(); i++) {
+                JSONObject generatorJSON = generators.getJSONObject(i);
+                if (generatorJSON.getString("generatorType").equals("distribution")) {
                     distributionCount++;
                 } else {
-                    nonDistributionCount++;
+                    functionCount++;
                 }
             }
 
-            System.out.println("Distributions: " + distributionCount);
-            System.out.println("Non-distributions: " + nonDistributionCount);
+            System.out.println("\nGenerators:");
+            System.out.println("  Distributions: " + distributionCount);
+            System.out.println("  Functions: " + functionCount);
 
-            // Count abstract vs concrete components
+            // Count type categories
             int abstractCount = 0;
             int interfaceCount = 0;
             int concreteCount = 0;
+            int primitiveCount = 0;
 
-            for (int i = 0; i < components.length(); i++) {
-                JSONObject component = components.getJSONObject(i);
-                if (component.getBoolean("isInterface")) {
+            for (int i = 0; i < types.length(); i++) {
+                JSONObject type = types.getJSONObject(i);
+                if (type.optBoolean("primitiveAssignable", false)) {
+                    primitiveCount++;
+                } else if (type.optBoolean("isInterface", false)) {
                     interfaceCount++;
-                } else if (component.getBoolean("isAbstract")) {
+                } else if (type.optBoolean("isAbstract", false)) {
                     abstractCount++;
                 } else {
                     concreteCount++;
                 }
             }
 
-            System.out.println("\nComponent types:");
+            System.out.println("\nType categories:");
+            System.out.println("  Primitives/Assignable: " + primitiveCount);
             System.out.println("  Interfaces: " + interfaceCount);
             System.out.println("  Abstract classes: " + abstractCount);
             System.out.println("  Concrete classes: " + concreteCount);
@@ -575,11 +584,9 @@ public class Beast2Lang implements Callable<Integer> {
             System.out.println("\nSchema written to: " + outputFile.getPath());
 
             if (testClosure) {
-                ValidationResult validation = generator.validateSchema(schema);
-                System.out.println(validation.generateReport());  // Clean
-
-                System.out.println(generator.filter.getFilterReport().generateReport());
-
+                System.out.println("\nRunning closure test...");
+                ValidationResult result = generator.validateSchema(schema);
+                System.out.println(result.generateReport());
             }
 
             return 0;

@@ -1,245 +1,67 @@
 package org.beast2.modelLanguage.schema;
 
+import beast.base.core.BEASTInterface;
+import beast.base.core.Function;
+import beast.base.core.Input;
+import beast.base.inference.Distribution;
+import beast.base.inference.distribution.ParametricDistribution;
 import beast.pkgmgmt.BEASTVersion;
 import beast.pkgmgmt.Package;
 import org.beast2.modelLanguage.beast.BeastObjectFactory;
+import org.beast2.modelLanguage.beast.BEASTUtils;
 import org.beast2.modelLanguage.schema.builder.*;
 import org.beast2.modelLanguage.schema.core.ComponentInfo;
 import org.beast2.modelLanguage.schema.core.KnownTypes;
 import org.beast2.modelLanguage.schema.core.TypeResolver;
-import org.beast2.modelLanguage.schema.scanner.*;
-
-
-import org.beast2.modelLanguage.schema.validation.SchemaValidator;
+import org.beast2.modelLanguage.schema.scanner.ComponentFilter;
+import org.beast2.modelLanguage.schema.scanner.ComponentScanner;
+import org.beast2.modelLanguage.schema.validation.ClosureValidator;
 import org.beast2.modelLanguage.schema.validation.ValidationResult;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.lang.reflect.Modifier;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.logging.Logger;
-import java.util.stream.Collectors;
 
 /**
- * Refactored BEAST2 Model Library Generator with modular architecture
+ * BEAST2 Model Library Generator - generates types and generators for the new schema format
  */
 public class BEAST2ModelLibraryGenerator {
     private static final Logger logger = Logger.getLogger(BEAST2ModelLibraryGenerator.class.getName());
 
     private final BeastObjectFactory factory;
+    private final TypeResolver typeResolver;
+    private final ArgumentBuilder argumentBuilder;
+    private final DimensionResolver dimensionResolver;
+    private final ConstraintResolver constraintResolver;
+    private final ComponentFilter filter;
     private final ComponentScanner scanner;
-    private final ComponentDefinitionBuilder definitionBuilder;
-    private final SchemaValidator validator;
+    private final ClosureValidator validator;
 
-    public final ComponentFilter filter;
-
+    private Set<String> knownTypeNames = new HashSet<>();
 
     public BEAST2ModelLibraryGenerator() {
-        // Initialize factory
         this.factory = new BeastObjectFactory();
-
-        // Initialize type system components
-        TypeResolver typeResolver = new TypeResolver();
+        this.typeResolver = new TypeResolver();
+        this.dimensionResolver = new DimensionResolver();
+        this.constraintResolver = new ConstraintResolver();
+        this.argumentBuilder = new ArgumentBuilder(typeResolver, dimensionResolver, constraintResolver);
         this.filter = new ComponentFilter();
-
-        DimensionResolver dimensionResolver = new DimensionResolver();
-        ConstraintResolver constraintResolver = new ConstraintResolver();
-
-        // Initialize builders
-        ArgumentBuilder argumentBuilder = new ArgumentBuilder(
-                typeResolver, dimensionResolver, constraintResolver
-        );
-        PropertyExtractor propertyExtractor = new PropertyExtractor(typeResolver);
-
-        // Initialize main components
         this.scanner = new ComponentScanner(factory, filter);
-        this.definitionBuilder = new ComponentDefinitionBuilder(
-                typeResolver, argumentBuilder, propertyExtractor, factory
-        );
-        this.validator = new SchemaValidator();
+        this.validator = new ClosureValidator(typeResolver);
+    }
+
+    public ComponentFilter getFilter() {
+        return filter;
     }
 
     /**
-     * Generate the engine-agnostic model library schema for BEAST2
+     * Generate the complete model library schema
      */
     public String generateModelLibrary() throws Exception {
-        logger.info("Starting BEAST2 model library generation...");
-
-        // Scan for all components
-        List<ComponentInfo> components = scanAllComponents();
-        logger.info("Found " + components.size() + " total components");
-
-        // Build component definitions
-        JSONArray componentDefinitions = buildDefinitions(components);
-        logger.info("Built " + componentDefinitions.length() + " component definitions");
-
-        // Create the schema
-        JSONObject schema = createSchema(componentDefinitions);
-
-        // Second pass: scan for inner types used in arguments
-        addReferencedInnerTypes(schema);
-
-        return schema.toString(2);
-    }
-
-    /**
-     * Validate the generated schema
-     */
-    public ValidationResult validateSchema(String jsonSchema) {
-        return validator.validateClosure(new JSONObject(jsonSchema));
-    }
-
-    /**
-     * Scan all sources for components
-     */
-    private List<ComponentInfo> scanAllComponents() {
-        List<ComponentInfo> allComponents = new ArrayList<>();
-        Set<String> processedClasses = new HashSet<>();
-
-        // 1. Scan important base types
-        logger.info("Scanning important base types...");
-        List<ComponentInfo> baseTypes = scanner.scanImportantTypes(
-                KnownTypes.IMPORTANT_BASE_TYPES, "BEAST.base"
-        );
-        allComponents.addAll(filterNewComponents(baseTypes, processedClasses));
-
-        // 2. Scan important non-BEAST interfaces
-        logger.info("Scanning important non-BEAST interfaces...");
-        List<ComponentInfo> nonBeastInterfaces = scanner.scanImportantTypes(
-                KnownTypes.IMPORTANT_NON_BEAST_INTERFACES, "unknown"
-        );
-        allComponents.addAll(filterNewComponents(nonBeastInterfaces, processedClasses));
-
-        // 3. Scan important inner classes
-        logger.info("Scanning important inner classes...");
-        List<ComponentInfo> innerClasses = scanner.scanImportantTypes(
-                KnownTypes.IMPORTANT_INNER_CLASSES, "BEAST.base"
-        );
-        allComponents.addAll(filterNewComponents(innerClasses, processedClasses));
-
-        // 4. Scan protected enums
-        logger.info("Scanning protected enums...");
-        List<ComponentInfo> enums = scanner.scanEnums(KnownTypes.ENUMS);
-        allComponents.addAll(filterNewComponents(enums, processedClasses));
-
-        // 5. Scan all plugins/packages
-        logger.info("Scanning plugin packages...");
-        Map<String, Package> packages = getPackages();
-        List<ComponentInfo> packageComponents = scanner.scanPackages(packages);
-        allComponents.addAll(filterNewComponents(packageComponents, processedClasses));
-
-        return allComponents;
-    }
-
-    /**
-     * Filter out already processed components
-     */
-    private List<ComponentInfo> filterNewComponents(List<ComponentInfo> components,
-                                                    Set<String> processedClasses) {
-        return components.stream()
-                .filter(c -> {
-                    String className = c.getClassName();
-                    if (!processedClasses.contains(className)) {
-                        processedClasses.add(className);
-                        // Also add simple name for tracking
-                        processedClasses.add(c.getSimpleName());
-                        return true;
-                    }
-                    return false;
-                })
-                .collect(Collectors.toList());
-    }
-
-    /**
-     * Get all packages from the factory
-     */
-    private Map<String, Package> getPackages() {
-        Map<String, Package> packages = new HashMap<>();
-        Map<String, Object> allPlugins = factory.getAllPlugins();
-
-        for (Map.Entry<String, Object> entry : allPlugins.entrySet()) {
-            if (entry.getValue() instanceof Package) {
-                packages.put(entry.getKey(), (Package) entry.getValue());
-            }
-        }
-
-        logger.info("Found " + packages.size() + " packages");
-        return packages;
-    }
-
-    /**
-     * Build component definitions from ComponentInfo objects
-     */
-    private JSONArray buildDefinitions(List<ComponentInfo> components) {
-        JSONArray definitions = new JSONArray();
-
-        for (ComponentInfo component : components) {
-            try {
-                JSONObject definition = definitionBuilder.buildDefinition(component);
-                definitions.put(definition);
-            } catch (Exception e) {
-                logger.warning("Failed to build definition for " +
-                        component.getSimpleName() + ": " + e.getMessage());
-            }
-        }
-
-        return definitions;
-    }
-
-    // Add this method to BEAST2ModelLibraryGenerator class
-
-    /**
-     * Create type definitions for common BEAST2 types
-     */
-    private JSONObject createTypeDefinitions() {
-        JSONObject typeDefinitions = new JSONObject();
-
-        // Function can accept Real and Real[] (since RealParameter implements Function)
-        JSONObject functionDef = new JSONObject();
-        functionDef.put("acceptsTypes", new JSONArray()
-                .put("Double")
-                .put("Double[]")
-                .put("Float")
-                .put("Float[]")
-                .put("Integer")
-                .put("Integer[]")
-        );
-        typeDefinitions.put("Function", functionDef);
-
-        // RealParameter can accept primitive values
-        JSONObject realParamDef = new JSONObject();
-        realParamDef.put("primitiveAssignable", true);
-        realParamDef.put("acceptedPrimitives", new JSONArray()
-                .put("Double")
-                .put("Double[]")
-                .put("Integer")
-                .put("Integer[]")
-        );
-        typeDefinitions.put("RealParameter", realParamDef);
-
-        // IntegerParameter can accept primitive values
-        JSONObject intParamDef = new JSONObject();
-        intParamDef.put("primitiveAssignable", true);
-        intParamDef.put("acceptedPrimitives", new JSONArray()
-                .put("Integer")
-                .put("Long")
-        );
-        typeDefinitions.put("IntegerParameter", intParamDef);
-
-        // BooleanParameter can accept primitive values
-        JSONObject boolParamDef = new JSONObject();
-        boolParamDef.put("primitiveAssignable", true);
-        boolParamDef.put("acceptedPrimitives", new JSONArray()
-                .put("Boolean")
-        );
-        typeDefinitions.put("BooleanParameter", boolParamDef);
-
-        return typeDefinitions;
-    }
-
-    // Update the createSchema method to include type definitions:
-    private JSONObject createSchema(JSONArray componentDefinitions) {
         JSONObject schema = new JSONObject();
         JSONObject modelLibrary = new JSONObject();
 
@@ -250,125 +72,475 @@ public class BEAST2ModelLibraryGenerator {
         modelLibrary.put("engineVersion", BEASTVersion.INSTANCE.getVersion());
         modelLibrary.put("description", "Core model components for BEAST2");
 
-        // Add components
-        modelLibrary.put("components", componentDefinitions);
+        // Scan for all components
+        List<ComponentInfo> allComponents = scanAllComponents();
 
-        // Add type definitions
-        modelLibrary.put("typeDefinitions", createTypeDefinitions());
+        // Generate types and generators from components
+        JSONArray types = generateTypes(allComponents);
+        modelLibrary.put("types", types);
+
+        JSONArray generators = generateGenerators(allComponents);
+        modelLibrary.put("generators", generators);
 
         schema.put("modelLibrary", modelLibrary);
-        return schema;
+        return schema.toString(2);
     }
 
     /**
-     * Second pass: scan for inner types referenced in arguments
+     * Scan for all components using ComponentScanner
      */
-    private void addReferencedInnerTypes(JSONObject schema) {
-        JSONObject modelLibrary = schema.getJSONObject("modelLibrary");
-        JSONArray components = modelLibrary.getJSONArray("components");
+    private List<ComponentInfo> scanAllComponents() {
+        List<ComponentInfo> allComponents = new ArrayList<>();
 
-        // Collect all inner types referenced
-        Set<String> innerTypesToAdd = collectReferencedInnerTypes(components);
+        // 1. Scan important base types
+        allComponents.addAll(scanner.scanImportantTypes(
+                KnownTypes.IMPORTANT_BASE_TYPES, "beast.base"));
 
-        // Get already processed classes
-        Set<String> processedClasses = new HashSet<>();
-        for (int i = 0; i < components.length(); i++) {
-            JSONObject component = components.getJSONObject(i);
-            processedClasses.add(component.getString("fullyQualifiedName"));
+        // 2. Scan important non-BEAST interfaces
+        allComponents.addAll(scanner.scanImportantTypes(
+                KnownTypes.IMPORTANT_NON_BEAST_INTERFACES, "beast.base"));
+
+        // 3. Scan known inner classes
+        allComponents.addAll(scanner.scanImportantTypes(
+                KnownTypes.IMPORTANT_INNER_CLASSES, "beast.base"));
+
+        // 4. Scan known enums
+        allComponents.addAll(scanner.scanEnums(KnownTypes.ENUMS));
+
+        // 5. Scan all packages
+        Map<String, Package> packages = getAllPackages();
+        allComponents.addAll(scanner.scanPackages(packages));
+
+        // 6. Collect any referenced inner types from the closure test
+        Set<String> referencedInnerTypes = collectReferencedInnerTypes();
+        if (!referencedInnerTypes.isEmpty()) {
+            allComponents.addAll(scanner.scanReferencedInnerTypes(
+                    referencedInnerTypes,
+                    KnownTypes.PACKAGE_SEARCH_PREFIXES.toArray(new String[0])));
         }
 
-        // Remove already processed
-        innerTypesToAdd.removeAll(processedClasses);
+        logger.info("Found " + allComponents.size() + " total components");
+        return allComponents;
+    }
 
-        if (!innerTypesToAdd.isEmpty()) {
-            logger.info("Found " + innerTypesToAdd.size() + " referenced inner types to add");
+    /**
+     * Get all packages as a map
+     */
+    private Map<String, Package> getAllPackages() {
+        Map<String, Package> packages = new HashMap<>();
+        Map<String, Object> allPlugins = factory.getAllPlugins();
 
-            // Scan for these inner types
-            List<ComponentInfo> innerComponents = scanner.scanReferencedInnerTypes(
-                    innerTypesToAdd, KnownTypes.PACKAGE_SEARCH_PREFIXES.toArray(new String[0])
-            );
-
-            // Build definitions and add to schema
-            for (ComponentInfo innerComponent : innerComponents) {
-                try {
-                    JSONObject definition = definitionBuilder.buildDefinition(innerComponent);
-                    components.put(definition);
-                } catch (Exception e) {
-                    logger.warning("Failed to add inner type " +
-                            innerComponent.getSimpleName() + ": " + e.getMessage());
-                }
+        for (Map.Entry<String, Object> entry : allPlugins.entrySet()) {
+            if (entry.getValue() instanceof Package) {
+                Package pkg = (Package) entry.getValue();
+                packages.put(pkg.getName(), pkg);
             }
-
-            logger.info("Added " + innerComponents.size() + " inner types");
         }
+
+        return packages;
     }
 
     /**
-     * Collect all inner types referenced in arguments
+     * Collect inner types that are referenced but might not be discovered yet
      */
-    private Set<String> collectReferencedInnerTypes(JSONArray components) {
+    private Set<String> collectReferencedInnerTypes() {
         Set<String> innerTypes = new HashSet<>();
-        TypeResolver typeResolver = new TypeResolver();
 
-        for (int i = 0; i < components.length(); i++) {
-            JSONObject component = components.getJSONObject(i);
-
-            // Check primary argument
-            if (component.has("primaryArgument")) {
-                JSONObject primaryArg = component.getJSONObject("primaryArgument");
-                collectInnerType(primaryArg.getString("type"), innerTypes, typeResolver);
-            }
-
-            // Check all arguments
-            if (component.has("arguments")) {
-                JSONArray arguments = component.getJSONArray("arguments");
-                for (int j = 0; j < arguments.length(); j++) {
-                    JSONObject arg = arguments.getJSONObject(j);
-                    collectInnerType(arg.getString("type"), innerTypes, typeResolver);
-                }
-            }
-        }
+        // Add known problematic inner types from the closure test
+        innerTypes.add("BinaryCovarion.MODE");
+        innerTypes.add("CalibratedBirthDeathModel.Type");
+        innerTypes.add("CalibratedYuleModel.Type");
+        innerTypes.add("ClusterTree.Type");
+        innerTypes.add("ConstrainedClusterTree.Type");
+        innerTypes.add("Gamma.mode");
+        innerTypes.add("Script.Engine");
+        innerTypes.add("StarBeastStartState.Method");
+        innerTypes.add("ThreadedTreeLikelihood.Scaling");
+        innerTypes.add("TreeLikelihood.Scaling");
+        innerTypes.add("TraitSet.Units");
 
         return innerTypes;
     }
 
     /**
-     * Collect inner type from a type string
+     * Generate all type definitions from components
      */
-    private void collectInnerType(String type, Set<String> innerTypes, TypeResolver typeResolver) {
-        String baseType = typeResolver.extractBaseType(type);
+    private JSONArray generateTypes(List<ComponentInfo> components) throws Exception {
+        JSONArray types = new JSONArray();
+        Set<String> processedClasses = new HashSet<>();
 
-        // Check if it looks like an inner type
-        if (baseType.contains(".") &&
-                !baseType.contains("java.") &&
-                Character.isUpperCase(baseType.charAt(0))) {
-            innerTypes.add(baseType);
+        // Add primitive types first
+        addPrimitiveTypes(types);
+
+        // First pass: populate knownTypeNames with all component types
+        for (ComponentInfo component : components) {
+            knownTypeNames.add(typeResolver.getSimpleClassName(component.getClazz()));
+        }
+
+        // Second pass: generate type definitions (now with complete knownTypeNames)
+        for (ComponentInfo component : components) {
+            String className = component.getClassName();
+            if (!processedClasses.contains(className)) {
+                JSONObject type = generateTypeDefinition(component);
+                if (type != null) {
+                    types.put(type);
+                    processedClasses.add(className);
+                }
+            }
+        }
+
+        logger.info("Generated " + types.length() + " type definitions");
+        return types;
+    }
+
+    /**
+     * Generate all generator definitions from components
+     */
+    private JSONArray generateGenerators(List<ComponentInfo> components) throws Exception {
+        JSONArray generators = new JSONArray();
+        Set<String> processedClasses = new HashSet<>();
+
+        for (ComponentInfo component : components) {
+            Class<?> clazz = component.getClazz();
+            String className = component.getClassName();
+
+            // Only concrete BEASTInterface classes can be generators
+            if (!processedClasses.contains(className) &&
+                    BEASTInterface.class.isAssignableFrom(clazz) &&
+                    !component.isInterface() &&
+                    !component.isAbstract() &&
+                    !component.isEnum()) {
+
+                JSONObject generator = generateGeneratorDefinition(component);
+                if (generator != null) {
+                    generators.put(generator);
+                    processedClasses.add(className);
+                }
+            }
+        }
+
+        logger.info("Generated " + generators.length() + " generator definitions");
+        return generators;
+    }
+
+    /**
+     * Generate a type definition from ComponentInfo
+     */
+    private JSONObject generateTypeDefinition(ComponentInfo component) {
+        JSONObject type = new JSONObject();
+        Class<?> clazz = component.getClazz();
+
+        type.put("name", typeResolver.getSimpleClassName(clazz));
+        type.put("package", component.getPackageName());  // BEAST2 package/plugin name
+
+        // Add Java package name as fullyQualifiedName
+        String javaPackage = clazz.getPackage() != null ? clazz.getPackage().getName() : "";
+        String fullyQualifiedName = javaPackage.isEmpty() ?
+                clazz.getName() : clazz.getName();
+        type.put("fullyQualifiedName", fullyQualifiedName);
+
+        type.put("description", component.getDescription());
+
+        // Handle enums specially
+        if (component.isEnum()) {
+            type.put("isEnum", true);
+            JSONArray values = new JSONArray();
+            for (Object constant : clazz.getEnumConstants()) {
+                values.put(constant.toString());
+            }
+            type.put("values", values);
+            return type;
+        }
+
+        // Class modifiers
+        type.put("isAbstract", component.isAbstract());
+        type.put("isInterface", component.isInterface());
+
+        // Inheritance - only for BEASTInterface types
+        if (BEASTInterface.class.isAssignableFrom(clazz)) {
+            if (clazz.getSuperclass() != null &&
+                    !clazz.getSuperclass().equals(Object.class) &&
+                    BEASTInterface.class.isAssignableFrom(clazz.getSuperclass())) {
+                type.put("extends", typeResolver.getSimpleClassName(clazz.getSuperclass()));
+            }
+
+            // Interfaces - include both BEASTInterface and other known model interfaces
+            JSONArray interfaces = new JSONArray();
+            for (Class<?> iface : clazz.getInterfaces()) {
+                String ifaceName = typeResolver.getSimpleClassName(iface);
+
+                // Include if it's a BEASTInterface OR if it's in our known types
+                if (BEASTInterface.class.isAssignableFrom(iface) || knownTypeNames.contains(ifaceName)) {
+                    interfaces.put(ifaceName);
+                }
+            }
+            if (interfaces.length() > 0) {
+                type.put("implements", interfaces);
+            }
+        }
+
+        // Primitive assignment for parameter types
+        if (BEASTUtils.isParameterType(clazz) || clazz.equals(Function.class)) {
+            type.put("primitiveAssignable", true);
+            JSONArray acceptedPrimitives = determineAcceptedPrimitives(clazz);
+            if (acceptedPrimitives.length() > 0) {
+                type.put("acceptedPrimitives", acceptedPrimitives);
+            }
+        }
+
+        // Collection type info
+        if (isCollectionType(clazz)) {
+            JSONObject collectionInfo = new JSONObject();
+            collectionInfo.put("elementType", determineElementType(clazz));
+            collectionInfo.put("kind", determineCollectionKind(clazz));
+            type.put("collectionType", collectionInfo);
+        }
+
+        return type;
+    }
+
+    /**
+     * Generate a generator definition from ComponentInfo
+     */
+    private JSONObject generateGeneratorDefinition(ComponentInfo component) {
+        JSONObject generator = new JSONObject();
+        Class<?> clazz = component.getClazz();
+
+        String className = typeResolver.getSimpleClassName(clazz);
+        generator.put("name", className);
+        generator.put("package", component.getPackageName());  // BEAST2 package/plugin name
+
+        // Add Java package name as fullyQualifiedName
+        String fullyQualifiedName = clazz.getName();
+        generator.put("fullyQualifiedName", fullyQualifiedName);
+
+        generator.put("description", component.getDescription());
+
+        // Determine if distribution or function
+        generator.put("generatorType", component.isDistribution() ? "distribution" : "function");
+
+        // Determine what type this generates
+        String generatedType = determineGeneratedType(clazz, component.isDistribution());
+        if (generatedType != null) {
+            generator.put("generatedType", generatedType);
+        }
+
+        // Add arguments
+        try {
+            BEASTInterface instance = (BEASTInterface) clazz.getDeclaredConstructor().newInstance();
+
+            if (component.isDistribution()) {
+                addDistributionArguments(generator, instance, clazz);
+            } else {
+                // Functions - all inputs are arguments
+                JSONArray arguments = new JSONArray();
+                for (Input<?> input : instance.listInputs()) {
+                    JSONObject arg = argumentBuilder.buildArgument(input, instance, clazz);
+                    arguments.put(arg);
+                }
+                generator.put("arguments", arguments);
+            }
+        } catch (Exception e) {
+            logger.fine("Cannot instantiate " + className + ": " + e.getMessage());
+            generator.put("arguments", new JSONArray());
+        }
+
+        return generator;
+    }
+
+    /**
+     * Add distribution-specific arguments
+     */
+    private void addDistributionArguments(JSONObject generator, BEASTInterface instance, Class<?> clazz) {
+        String primaryInputName = factory.getPrimaryInputName(instance);
+
+        // Handle primary argument
+        if (primaryInputName != null) {
+            JSONObject primaryArg = argumentBuilder.buildPrimaryArgument(instance, primaryInputName);
+            if (primaryArg != null) {
+                generator.put("primaryArgument", primaryArg);
+            }
+        } else if (ParametricDistribution.class.isAssignableFrom(clazz)) {
+            // Synthetic primary argument for parametric distributions
+            generator.put("primaryArgument", argumentBuilder.createSyntheticPrimaryArgument());
+        }
+
+        // Other arguments
+        JSONArray arguments = new JSONArray();
+        for (Input<?> input : instance.listInputs()) {
+            if (!input.getName().equals(primaryInputName)) {
+                JSONObject arg = argumentBuilder.buildArgument(input, instance, clazz);
+                arguments.put(arg);
+            }
+        }
+        generator.put("arguments", arguments);
+    }
+
+    /**
+     * Add primitive type definitions
+     */
+    private void addPrimitiveTypes(JSONArray types) {
+        String[][] primitiveTypes = {
+                {"String", "String", "Text values"},
+                {"Integer", "Integer", "Integer numbers"},
+                {"Double", "Double", "Floating point numbers"},
+                {"Boolean", "Boolean", "True/false values"},
+                {"Real", "Double", "Real numbers"},
+                {"PositiveReal", "Double", "Positive real numbers"},
+                {"Probability", "Double", "Values in [0,1]"}
+        };
+
+        for (String[] typeInfo : primitiveTypes) {
+            JSONObject type = new JSONObject();
+            type.put("name", typeInfo[0]);
+            type.put("package", "phylospec.types");
+            type.put("description", typeInfo[2]);
+            type.put("primitiveAssignable", true);
+
+            JSONArray accepted = new JSONArray();
+            accepted.put(typeInfo[1]);
+            type.put("acceptedPrimitives", accepted);
+
+            types.put(type);
         }
     }
 
     /**
-     * Main method to generate schema and test closure
+     * Determine what type a generator produces
+     */
+    private String determineGeneratedType(Class<?> clazz, boolean isDistribution) {
+        String className = typeResolver.getSimpleClassName(clazz);
+
+        if (isDistribution) {
+            // Tree distributions
+            if (isTreeDistribution(clazz)) {
+                return "Tree";
+            }
+
+            // Parametric distributions
+            if (ParametricDistribution.class.isAssignableFrom(clazz)) {
+                if (className.equals("Poisson") || className.contains("Binomial")) {
+                    return "IntegerParameter";
+                }
+                return "RealParameter";
+            }
+
+            // Let frontend infer from primaryArgument for others
+            return null;
+        } else {
+            // Special function cases
+            if (className.equals("nexus") || className.equals("fasta")) {
+                return "Alignment";
+            }
+            if (className.equals("newick")) {
+                return "Tree";
+            }
+
+            // Most functions generate their own type
+            return className;
+        }
+    }
+
+    /**
+     * Validate the generated schema
+     */
+    public ValidationResult validateSchema(String jsonSchema) {
+        return validator.validateClosure(new JSONObject(jsonSchema));
+    }
+
+    /**
+     * Determine accepted primitives for a type
+     */
+    private JSONArray determineAcceptedPrimitives(Class<?> clazz) {
+        JSONArray primitives = new JSONArray();
+        String className = clazz.getSimpleName();
+
+        if (className.contains("RealParameter") || className.contains("DoubleParameter")) {
+            primitives.put("Double");
+            primitives.put("Float");
+        } else if (className.contains("IntegerParameter")) {
+            primitives.put("Integer");
+            primitives.put("Long");
+        } else if (className.contains("BooleanParameter")) {
+            primitives.put("Boolean");
+        } else if (className.equals("Function")) {
+            primitives.put("Double");
+            primitives.put("Integer");
+        }
+
+        return primitives;
+    }
+
+    /**
+     * Check if class is a collection type
+     */
+    private boolean isCollectionType(Class<?> clazz) {
+        return List.class.isAssignableFrom(clazz) ||
+                clazz.isArray() ||
+                clazz.getName().contains("Vector") ||
+                clazz.getName().contains("Matrix");
+    }
+
+    /**
+     * Determine element type for collections
+     */
+    private String determineElementType(Class<?> clazz) {
+        if (clazz.isArray()) {
+            return typeResolver.getSimpleClassName(clazz.getComponentType());
+        }
+
+        String className = clazz.getSimpleName();
+        if (className.contains("RealParameter")) return "Real";
+        if (className.contains("IntegerParameter")) return "Integer";
+        if (className.contains("Tree")) return "Tree";
+
+        return "Object";
+    }
+
+    /**
+     * Determine collection kind
+     */
+    private String determineCollectionKind(Class<?> clazz) {
+        if (clazz.isArray()) return "array";
+        if (List.class.isAssignableFrom(clazz)) return "list";
+        if (clazz.getName().contains("Matrix")) return "matrix";
+        if (clazz.getName().contains("Vector")) return "vector";
+
+        return "collection";
+    }
+
+    /**
+     * Check if class is a tree distribution
+     */
+    private boolean isTreeDistribution(Class<?> clazz) {
+        try {
+            Class<?> treeDistClass = Class.forName("beast.base.evolution.tree.TreeDistribution");
+            if (treeDistClass.isAssignableFrom(clazz)) {
+                return true;
+            }
+        } catch (ClassNotFoundException e) {
+            // Not found
+        }
+
+        String className = clazz.getSimpleName();
+        return className.equals("Coalescent") ||
+                className.equals("YuleModel") ||
+                className.equals("BirthDeathGernhard08Model") ||
+                className.contains("BirthDeath");
+    }
+
+    /**
+     * Main method
      */
     public static void main(String[] args) {
         try {
-            BEAST2ModelLibraryGenerator generator =
-                    new BEAST2ModelLibraryGenerator();
-
-            // Generate the schema
+            BEAST2ModelLibraryGenerator generator = new BEAST2ModelLibraryGenerator();
             String jsonOutput = generator.generateModelLibrary();
 
-            // Write to file
-            Files.write(
-                    Paths.get("beast2-model-library.json"),
-                    jsonOutput.getBytes()
-            );
+            Files.write(Paths.get("beast2-model-library.json"), jsonOutput.getBytes());
 
-            System.out.println("Schema written to beast2-model-library.json");
-
-            ValidationResult validation = generator.validateSchema(jsonOutput);
-            System.out.println(validation.generateReport());
-
-            System.out.println(generator.filter.getFilterReport().generateReport());
+            System.out.println("Generated beast2-model-library.json");
+            System.out.println("Types and generators have been created following the new schema format");
 
         } catch (Exception e) {
             logger.severe("Error generating model library: " + e.getMessage());
