@@ -198,12 +198,61 @@ public class BEAST2ModelLibraryGenerator {
     }
 
     /**
+     * Add built-in functions that are part of the beast2lang parser
+     * These don't have corresponding BEASTInterface classes
+     */
+    private void addBuiltInFunctions(JSONArray generators) {
+        // Add built-in nexus function
+        JSONObject nexusFunction = new JSONObject();
+        nexusFunction.put("name", "nexus");
+        nexusFunction.put("package", "beast2lang.builtin");
+        nexusFunction.put("description", "Built-in function to load alignment from Nexus file");
+        nexusFunction.put("generatorType", "function");
+        nexusFunction.put("generatedType", "Alignment");
+
+        // Add I/O hints
+        JSONObject ioHints = new JSONObject();
+        ioHints.put("role", "dataInput");
+        JSONArray extensions = new JSONArray();
+        extensions.put(".nex");
+        extensions.put(".nexus");
+        extensions.put(".nxs");
+        ioHints.put("extensions", extensions);
+        ioHints.put("fileArgument", "file");
+        nexusFunction.put("ioHints", ioHints);
+
+        // Add arguments
+        JSONArray arguments = new JSONArray();
+
+        // File argument
+        JSONObject fileArg = new JSONObject();
+        fileArg.put("name", "file");
+        fileArg.put("type", "String");
+        fileArg.put("description", "Path to Nexus file");
+        fileArg.put("required", true);
+        arguments.put(fileArg);
+
+        nexusFunction.put("arguments", arguments);
+
+        generators.put(nexusFunction);
+
+        // Optionally add other built-in functions like fasta, newick, etc.
+        // addBuiltInFastaFunction(generators);
+        // addBuiltInNewickFunction(generators);
+    }
+
+    /**
      * Generate all generator definitions from components
+     * Modified to include built-in functions
      */
     private JSONArray generateGenerators(List<ComponentInfo> components) throws Exception {
         JSONArray generators = new JSONArray();
         Set<String> processedClasses = new HashSet<>();
 
+        // First, add built-in functions
+        addBuiltInFunctions(generators);
+
+        // Then process discovered components as before
         for (ComponentInfo component : components) {
             Class<?> clazz = component.getClazz();
             String className = component.getClassName();
@@ -328,6 +377,9 @@ public class BEAST2ModelLibraryGenerator {
         // Determine if distribution or function
         generator.put("generatorType", component.isDistribution() ? "distribution" : "function");
 
+        // Add ioHints for specific file-loading generators
+        addIOHintsIfApplicable(generator, clazz, className);
+
         // Try to create instance - if it fails, return minimal generator with no arguments
         BEASTInterface instance = null;
         try {
@@ -374,6 +426,52 @@ public class BEAST2ModelLibraryGenerator {
         }
 
         return generator;
+    }
+
+    /**
+     * Add I/O hints for file-loading generators
+     */
+    private void addIOHintsIfApplicable(JSONObject generator, Class<?> clazz, String className) {
+        String fullyQualifiedName = clazz.getName();
+
+        // Check for AlignmentFromNexus from feast package
+        if (fullyQualifiedName.equals("feast.fileio.AlignmentFromNexus") ||
+                (className.equals("AlignmentFromNexus") && clazz.getPackage() != null &&
+                        clazz.getPackage().getName().startsWith("feast"))) {
+
+            JSONObject ioHints = new JSONObject();
+            ioHints.put("role", "dataInput");
+            JSONArray extensions = new JSONArray();
+            extensions.put(".nex");
+            extensions.put(".nexus");
+            extensions.put(".nxs");
+            ioHints.put("extensions", extensions);
+            ioHints.put("fileArgument", "fileName");  // Adjust based on actual input name
+            generator.put("ioHints", ioHints);
+        }
+
+        // Check for AlignmentFromFasta from feast package
+        else if (fullyQualifiedName.equals("feast.fileio.AlignmentFromFasta") ||
+                (className.equals("AlignmentFromFasta") && clazz.getPackage() != null &&
+                        clazz.getPackage().getName().startsWith("feast"))) {
+
+            JSONObject ioHints = new JSONObject();
+            ioHints.put("role", "dataInput");
+            JSONArray extensions = new JSONArray();
+            extensions.put(".fasta");
+            extensions.put(".fas");
+            extensions.put(".fa");
+            extensions.put(".fna");
+            extensions.put(".ffn");
+            extensions.put(".faa");
+            extensions.put(".frn");
+            ioHints.put("extensions", extensions);
+            ioHints.put("fileArgument", "fileName");  // Adjust based on actual input name
+            generator.put("ioHints", ioHints);
+        }
+
+        // You can add more file I/O generators here as needed
+        // For example, tree readers, log writers, etc.
     }
 
     /**

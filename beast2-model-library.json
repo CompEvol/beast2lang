@@ -2834,13 +2834,12 @@
       },
       {
         "name": "StarBeastStartState.Method",
-        "package": "starbeast3.core",
-        "fullyQualifiedName": "starbeast3.core.StarBeastStartState$Method",
+        "package": "beast.base.evolution.speciation",
+        "fullyQualifiedName": "beast.base.evolution.speciation.StarBeastStartState$Method",
         "description": "Enum type for StarBeastStartState",
         "isEnum": true,
         "values": [
           "point-estimate",
-          "fixed",
           "random"
         ]
       },
@@ -2958,6 +2957,30 @@
     ],
     "generators": [
       {
+        "name": "nexus",
+        "package": "beast2lang.builtin",
+        "description": "Built-in function to load alignment from Nexus file",
+        "generatorType": "function",
+        "generatedType": "Alignment",
+        "ioHints": {
+          "role": "dataInput",
+          "extensions": [
+            ".nex",
+            ".nexus",
+            ".nxs"
+          ],
+          "fileArgument": "file"
+        },
+        "arguments": [
+          {
+            "name": "file",
+            "type": "String",
+            "description": "Path to Nexus file",
+            "required": true
+          }
+        ]
+      },
+      {
         "name": "TreeDistribution",
         "package": "beast.base.evolution.tree",
         "fullyQualifiedName": "beast.base.evolution.tree.TreeDistribution",
@@ -3068,6 +3091,19 @@
         "fullyQualifiedName": "feast.fileio.AlignmentFromFasta",
         "description": "Objects of this type are regular beast Alignments, but are populated using data read in from an external fasta file.  Sequence labels used as taxon labels.",
         "generatorType": "function",
+        "ioHints": {
+          "role": "dataInput",
+          "extensions": [
+            ".fasta",
+            ".fas",
+            ".fa",
+            ".fna",
+            ".ffn",
+            ".faa",
+            ".frn"
+          ],
+          "fileArgument": "fileName"
+        },
         "generatedType": "AlignmentFromFasta",
         "arguments": [
           {
@@ -3368,6 +3404,15 @@
         "fullyQualifiedName": "feast.fileio.AlignmentFromNexus",
         "description": "Objects of this type are regular beast Alignments, but are populated using data read in from an external NEXUS file.  Sequence labels used as taxon labels.",
         "generatorType": "function",
+        "ioHints": {
+          "role": "dataInput",
+          "extensions": [
+            ".nex",
+            ".nexus",
+            ".nxs"
+          ],
+          "fileArgument": "fileName"
+        },
         "generatedType": "AlignmentFromNexus",
         "arguments": [
           {
