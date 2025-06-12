@@ -1,5 +1,7 @@
 package org.beast2.modelLanguage.schema.core;
 
+import beast.base.core.Description;
+
 /**
  * Information about a component discovered during scanning
  */
@@ -32,18 +34,24 @@ public class ComponentInfo {
             return false;
         }
     }
-    
+
     private String generateDescription(Class<?> clazz) {
+        // First check for @Description annotation
+        if (clazz.isAnnotationPresent(Description.class)) {
+            Description desc = clazz.getAnnotation(Description.class);
+            return desc.value();
+        }
+
+        // Fallback to generated descriptions
         if (isEnum) {
-            return "Enum type for " + (clazz.getDeclaringClass() != null ? 
-                   clazz.getDeclaringClass().getSimpleName() : clazz.getSimpleName());
+            return "Enum type for " + (clazz.getDeclaringClass() != null ?
+                    clazz.getDeclaringClass().getSimpleName() : clazz.getSimpleName());
         } else if (clazz.isMemberClass()) {
             return "Inner type of " + clazz.getDeclaringClass().getSimpleName();
         } else {
             return "BEAST2 " + clazz.getSimpleName();
         }
     }
-    
     // Getters
     public Class<?> getClazz() { return clazz; }
     public String getPackageName() { return packageName; }

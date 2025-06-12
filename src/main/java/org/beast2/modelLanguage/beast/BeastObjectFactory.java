@@ -3,6 +3,7 @@ package org.beast2.modelLanguage.beast;
 import beast.base.core.BEASTInterface;
 import beast.base.core.Function;
 import beast.base.core.Input;
+import beast.base.evolution.likelihood.GenericTreeLikelihood;
 import beast.base.evolution.tree.coalescent.BayesianSkyline;
 import beast.base.inference.distribution.MarkovChainDistribution;
 import beast.base.inference.distribution.ParametricDistribution;
@@ -65,7 +66,7 @@ public class BeastObjectFactory implements ModelObjectFactory {
         DISTRIBUTION_CLASS_TO_ARGUMENT_INPUT.put(BayesianSkyline.class, "treeIntervals");
         DISTRIBUTION_CLASS_TO_ARGUMENT_INPUT.put(TreeDistribution.class, "tree");
         DISTRIBUTION_CLASS_TO_ARGUMENT_INPUT.put(MRCAPrior.class, "tree");
-        DISTRIBUTION_CLASS_TO_ARGUMENT_INPUT.put(TreeLikelihood.class, "data");
+        DISTRIBUTION_CLASS_TO_ARGUMENT_INPUT.put(GenericTreeLikelihood.class, "data");
         DISTRIBUTION_CLASS_TO_ARGUMENT_INPUT.put(MarkovChainDistribution.class, "parameter");
     }
 

@@ -52,7 +52,9 @@ public class BEASTUtils {
      * Build a map of input names to Input objects for a BEAST object
      */
     public static Map<String, Input<?>> buildInputMap(Object object, Class<?> clazz) {
-        Map<String, Input<?>> inputMap = new HashMap<>();
+
+        //Keep in declaration order by suing a LinkedHashMap
+        Map<String, Input<?>> inputMap = new LinkedHashMap<>();
 
         for (Field field : clazz.getFields()) {
             if (Input.class.isAssignableFrom(field.getType())) {

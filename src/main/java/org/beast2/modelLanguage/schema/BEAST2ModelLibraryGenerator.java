@@ -5,6 +5,9 @@ import beast.base.core.Function;
 import beast.base.core.Input;
 import beast.base.inference.Distribution;
 import beast.base.inference.distribution.ParametricDistribution;
+import beast.base.evolution.tree.TreeDistribution;
+import beast.base.inference.distribution.Poisson;
+import beast.base.util.Binomial;
 import beast.pkgmgmt.BEASTVersion;
 import beast.pkgmgmt.Package;
 import org.beast2.modelLanguage.beast.BeastObjectFactory;
@@ -21,6 +24,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.lang.reflect.Modifier;
+import java.lang.reflect.Type;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
@@ -211,10 +215,15 @@ public class BEAST2ModelLibraryGenerator {
                     !component.isAbstract() &&
                     !component.isEnum()) {
 
-                JSONObject generator = generateGeneratorDefinition(component);
-                if (generator != null) {
-                    generators.put(generator);
-                    processedClasses.add(className);
+                try {
+                    JSONObject generator = generateGeneratorDefinition(component);
+                    if (generator != null) {
+                        generators.put(generator);
+                        processedClasses.add(className);
+                    }
+                } catch (Exception e) {
+                    logger.warning("Failed to generate definition for " + className + ": " + e.getMessage());
+                    // Continue with next component
                 }
             }
         }
@@ -319,60 +328,128 @@ public class BEAST2ModelLibraryGenerator {
         // Determine if distribution or function
         generator.put("generatorType", component.isDistribution() ? "distribution" : "function");
 
-        // Determine what type this generates
-        String generatedType = determineGeneratedType(clazz, component.isDistribution());
-        if (generatedType != null) {
-            generator.put("generatedType", generatedType);
+        // Try to create instance - if it fails, return minimal generator with no arguments
+        BEASTInterface instance = null;
+        try {
+            instance = (BEASTInterface) clazz.getDeclaredConstructor().newInstance();
+        } catch (Exception e) {
+            logger.info("Cannot instantiate " + className + " (no no-arg constructor): " + e.getMessage());
+
+            // Return generator with empty arguments
+            generator.put("arguments", new JSONArray());
+
+            // Still try to determine generatedType for known cases
+            String generatedType = determineGeneratedType(clazz, component.isDistribution(), null);
+            if (generatedType != null) {
+                generator.put("generatedType", generatedType);
+            }
+
+            return generator;
         }
 
-        // Add arguments
-        try {
-            BEASTInterface instance = (BEASTInterface) clazz.getDeclaredConstructor().newInstance();
+        Map<String, Input<?>> inputMap = BEASTUtils.buildInputMap(instance, clazz);
 
-            if (component.isDistribution()) {
-                addDistributionArguments(generator, instance, clazz);
-            } else {
-                // Functions - all inputs are arguments
-                JSONArray arguments = new JSONArray();
-                for (Input<?> input : instance.listInputs()) {
-                    JSONObject arg = argumentBuilder.buildArgument(input, instance, clazz);
-                    arguments.put(arg);
-                }
-                generator.put("arguments", arguments);
+        if (component.isDistribution()) {
+            // Determine generated type with instance available
+            String generatedType = determineGeneratedType(clazz, component.isDistribution(), instance);
+            if (generatedType != null) {
+                generator.put("generatedType", generatedType);
             }
-        } catch (Exception e) {
-            logger.fine("Cannot instantiate " + className + ": " + e.getMessage());
-            generator.put("arguments", new JSONArray());
+
+            addDistributionArguments(generator, instance, inputMap, clazz);
+        } else {
+            // Functions - determine generated type
+            String generatedType = determineGeneratedType(clazz, false, null);
+            if (generatedType != null) {
+                generator.put("generatedType", generatedType);
+            }
+
+            // All inputs are arguments
+            JSONArray arguments = new JSONArray();
+            for (Input<?> input : inputMap.values()) {
+                JSONObject arg = argumentBuilder.buildArgument(input, instance, clazz);
+                arguments.put(arg);
+            }
+            generator.put("arguments", arguments);
         }
 
         return generator;
     }
 
     /**
-     * Add distribution-specific arguments
+     * Determine what type a generator produces
      */
-    private void addDistributionArguments(JSONObject generator, BEASTInterface instance, Class<?> clazz) {
+    private String determineGeneratedType(Class<?> clazz, boolean isDistribution, BEASTInterface instance) {
+        String className = typeResolver.getSimpleClassName(clazz);
+
+        if (isDistribution) {
+            // Tree distributions
+            if (isTreeDistribution(clazz)) {
+                return "Tree";
+            }
+
+            // Parametric distributions
+            if (ParametricDistribution.class.isAssignableFrom(clazz)) {
+                if (Poisson.class.isAssignableFrom(clazz) || Binomial.class.isAssignableFrom(clazz)) {
+                    return "IntegerParameter";
+                }
+                return "RealParameter";
+            }
+
+            // For other distributions, determine from primary input if we have an instance
+            if (instance != null) {
+                String primaryInputName = factory.getPrimaryInputName(instance);
+                if (primaryInputName != null) {
+                    Input<?> primaryInput = instance.getInput(primaryInputName);
+                    if (primaryInput != null) {
+                        // Use BEASTUtils to get the proper type, handling generics
+                        Type inputType = BEASTUtils.getInputExpectedType(primaryInput, instance, primaryInputName);
+                        if (inputType != null) {
+                            return typeResolver.resolveType(inputType);
+                        } else {
+                            logger.warning("Could not determine type for primary input '" + primaryInputName + "' of " + className);
+                        }
+                    }
+                }
+            }
+
+            // No generatedType if we can't determine it properly
+            return null;
+        } else {
+            // Special function cases
+            if (className.equals("nexus") || className.equals("fasta")) {
+                return "Alignment";
+            }
+            if (className.equals("newick")) {
+                return "Tree";
+            }
+
+            // Most functions generate their own type
+            return className;
+        }
+    }
+
+    /**
+     * Add distribution arguments (excluding primary argument)
+     */
+    private void addDistributionArguments(JSONObject generator, BEASTInterface instance, Map<String, Input<?>> inputMap, Class<?> clazz) {
         String primaryInputName = factory.getPrimaryInputName(instance);
 
-        // Handle primary argument
-        if (primaryInputName != null) {
-            JSONObject primaryArg = argumentBuilder.buildPrimaryArgument(instance, primaryInputName);
-            if (primaryArg != null) {
-                generator.put("primaryArgument", primaryArg);
+        // All inputs except primary argument are arguments for distributions
+        JSONArray arguments = new JSONArray();
+        for (Map.Entry<String, Input<?>> entry : inputMap.entrySet()) {
+            String inputName = entry.getKey();
+            Input<?> input = entry.getValue();
+
+            // Skip the primary argument if it exists
+            if (primaryInputName != null && inputName.equals(primaryInputName)) {
+                continue;
             }
-        } else if (ParametricDistribution.class.isAssignableFrom(clazz)) {
-            // Synthetic primary argument for parametric distributions
-            generator.put("primaryArgument", argumentBuilder.createSyntheticPrimaryArgument());
+
+            JSONObject arg = argumentBuilder.buildArgument(input, instance, clazz);
+            arguments.put(arg);
         }
 
-        // Other arguments
-        JSONArray arguments = new JSONArray();
-        for (Input<?> input : instance.listInputs()) {
-            if (!input.getName().equals(primaryInputName)) {
-                JSONObject arg = argumentBuilder.buildArgument(input, instance, clazz);
-                arguments.put(arg);
-            }
-        }
         generator.put("arguments", arguments);
     }
 
@@ -399,42 +476,6 @@ public class BEAST2ModelLibraryGenerator {
             type.put("acceptedPrimitives", accepted);
 
             types.put(type);
-        }
-    }
-
-    /**
-     * Determine what type a generator produces
-     */
-    private String determineGeneratedType(Class<?> clazz, boolean isDistribution) {
-        String className = typeResolver.getSimpleClassName(clazz);
-
-        if (isDistribution) {
-            // Tree distributions
-            if (isTreeDistribution(clazz)) {
-                return "Tree";
-            }
-
-            // Parametric distributions
-            if (ParametricDistribution.class.isAssignableFrom(clazz)) {
-                if (className.equals("Poisson") || className.contains("Binomial")) {
-                    return "IntegerParameter";
-                }
-                return "RealParameter";
-            }
-
-            // Let frontend infer from primaryArgument for others
-            return null;
-        } else {
-            // Special function cases
-            if (className.equals("nexus") || className.equals("fasta")) {
-                return "Alignment";
-            }
-            if (className.equals("newick")) {
-                return "Tree";
-            }
-
-            // Most functions generate their own type
-            return className;
         }
     }
 
@@ -510,20 +551,8 @@ public class BEAST2ModelLibraryGenerator {
      * Check if class is a tree distribution
      */
     private boolean isTreeDistribution(Class<?> clazz) {
-        try {
-            Class<?> treeDistClass = Class.forName("beast.base.evolution.tree.TreeDistribution");
-            if (treeDistClass.isAssignableFrom(clazz)) {
-                return true;
-            }
-        } catch (ClassNotFoundException e) {
-            // Not found
-        }
-
-        String className = clazz.getSimpleName();
-        return className.equals("Coalescent") ||
-                className.equals("YuleModel") ||
-                className.equals("BirthDeathGernhard08Model") ||
-                className.contains("BirthDeath");
+        // Use direct class check instead of Class.forName
+        return TreeDistribution.class.isAssignableFrom(clazz);
     }
 
     /**
