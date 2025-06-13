@@ -2958,7 +2958,6 @@
     "generators": [
       {
         "name": "nexus",
-        "package": "beast2lang.builtin",
         "description": "Built-in function to load alignment from Nexus file",
         "generatorType": "function",
         "generatedType": "Alignment",
@@ -3022,7 +3021,8 @@
             "type": "Boolean",
             "description": "Set to false to disable caching of function values. (This can be useful when using ExpCalculator exclusively for logging.) Default true.",
             "required": false,
-            "default": "true"
+            "default": "true",
+            "constraint": "boolean"
           }
         ]
       },
@@ -3051,7 +3051,8 @@
             "type": "Boolean",
             "description": "True if expression represents log(P), false if it represents P. Default is false.",
             "required": false,
-            "default": "false"
+            "default": "false",
+            "constraint": "boolean"
           }
         ]
       },
@@ -3074,14 +3075,16 @@
             "type": "Boolean",
             "description": "True if expression represents log(P), false if it represents P. Default is false.",
             "required": false,
-            "default": "false"
+            "default": "false",
+            "constraint": "boolean"
           },
           {
             "name": "offset",
             "type": "Double",
             "description": "offset of origin (defaults to 0)",
             "required": false,
-            "default": "0.0"
+            "default": "0.0",
+            "constraint": "non-negative"
           }
         ]
       },
@@ -3134,7 +3137,8 @@
             "name": "includeOnly",
             "type": "TaxonSet",
             "description": "Only include the taxa listed in this taxon set.",
-            "required": false
+            "required": false,
+            "constraint": "boolean"
           },
           {
             "name": "sequence",
@@ -3168,7 +3172,8 @@
             "name": "userDataType",
             "type": "DataType.Base",
             "description": "non-standard, user specified data type, if specified 'dataType' is ignored",
-            "required": false
+            "required": false,
+            "constraint": "boolean"
           },
           {
             "name": "strip",
@@ -3181,7 +3186,8 @@
             "name": "weights",
             "type": "String",
             "description": "comma separated list of weights, one for each site in the sequences. If not specified, each site has weight 1",
-            "required": false
+            "required": false,
+            "constraint": "positive"
           },
           {
             "name": "ascertained",
@@ -3195,42 +3201,48 @@
             "type": "Integer",
             "description": "first site to condition on, default 0",
             "required": false,
-            "default": "0"
+            "default": "0",
+            "constraint": "boolean"
           },
           {
             "name": "excludeto",
             "type": "Integer",
             "description": "last site to condition on (but excluding this site), default 0",
             "required": false,
-            "default": "0"
+            "default": "0",
+            "constraint": "boolean"
           },
           {
             "name": "excludeevery",
             "type": "Integer",
             "description": "interval between sites to condition on (default 1)",
             "required": false,
-            "default": "1"
+            "default": "1",
+            "constraint": "boolean"
           },
           {
             "name": "includefrom",
             "type": "Integer",
             "description": "first site to condition on, default 0",
             "required": false,
-            "default": "0"
+            "default": "0",
+            "constraint": "boolean"
           },
           {
             "name": "includeto",
             "type": "Integer",
             "description": "last site to condition on, default 0",
             "required": false,
-            "default": "0"
+            "default": "0",
+            "constraint": "boolean"
           },
           {
             "name": "includeevery",
             "type": "Integer",
             "description": "interval between sites to condition on (default 1)",
             "required": false,
-            "default": "1"
+            "default": "1",
+            "constraint": "boolean"
           },
           {
             "name": "*",
@@ -3284,7 +3296,8 @@
             "name": "includeOnly",
             "type": "TaxonSet",
             "description": "Only include the taxa listed in this taxon set.",
-            "required": false
+            "required": false,
+            "constraint": "boolean"
           },
           {
             "name": "sequence",
@@ -3318,7 +3331,8 @@
             "name": "userDataType",
             "type": "DataType.Base",
             "description": "non-standard, user specified data type, if specified 'dataType' is ignored",
-            "required": false
+            "required": false,
+            "constraint": "boolean"
           },
           {
             "name": "strip",
@@ -3331,7 +3345,8 @@
             "name": "weights",
             "type": "String",
             "description": "comma separated list of weights, one for each site in the sequences. If not specified, each site has weight 1",
-            "required": false
+            "required": false,
+            "constraint": "positive"
           },
           {
             "name": "ascertained",
@@ -3345,42 +3360,48 @@
             "type": "Integer",
             "description": "first site to condition on, default 0",
             "required": false,
-            "default": "0"
+            "default": "0",
+            "constraint": "boolean"
           },
           {
             "name": "excludeto",
             "type": "Integer",
             "description": "last site to condition on (but excluding this site), default 0",
             "required": false,
-            "default": "0"
+            "default": "0",
+            "constraint": "boolean"
           },
           {
             "name": "excludeevery",
             "type": "Integer",
             "description": "interval between sites to condition on (default 1)",
             "required": false,
-            "default": "1"
+            "default": "1",
+            "constraint": "boolean"
           },
           {
             "name": "includefrom",
             "type": "Integer",
             "description": "first site to condition on, default 0",
             "required": false,
-            "default": "0"
+            "default": "0",
+            "constraint": "boolean"
           },
           {
             "name": "includeto",
             "type": "Integer",
             "description": "last site to condition on, default 0",
             "required": false,
-            "default": "0"
+            "default": "0",
+            "constraint": "boolean"
           },
           {
             "name": "includeevery",
             "type": "Integer",
             "description": "interval between sites to condition on (default 1)",
             "required": false,
-            "default": "1"
+            "default": "1",
+            "constraint": "boolean"
           },
           {
             "name": "*",
@@ -3443,7 +3464,8 @@
             "name": "includeOnly",
             "type": "TaxonSet",
             "description": "Only include the taxa listed in this taxon set.",
-            "required": false
+            "required": false,
+            "constraint": "boolean"
           },
           {
             "name": "sequence",
@@ -3477,7 +3499,8 @@
             "name": "userDataType",
             "type": "DataType.Base",
             "description": "non-standard, user specified data type, if specified 'dataType' is ignored",
-            "required": false
+            "required": false,
+            "constraint": "boolean"
           },
           {
             "name": "strip",
@@ -3490,7 +3513,8 @@
             "name": "weights",
             "type": "String",
             "description": "comma separated list of weights, one for each site in the sequences. If not specified, each site has weight 1",
-            "required": false
+            "required": false,
+            "constraint": "positive"
           },
           {
             "name": "ascertained",
@@ -3504,42 +3528,48 @@
             "type": "Integer",
             "description": "first site to condition on, default 0",
             "required": false,
-            "default": "0"
+            "default": "0",
+            "constraint": "boolean"
           },
           {
             "name": "excludeto",
             "type": "Integer",
             "description": "last site to condition on (but excluding this site), default 0",
             "required": false,
-            "default": "0"
+            "default": "0",
+            "constraint": "boolean"
           },
           {
             "name": "excludeevery",
             "type": "Integer",
             "description": "interval between sites to condition on (default 1)",
             "required": false,
-            "default": "1"
+            "default": "1",
+            "constraint": "boolean"
           },
           {
             "name": "includefrom",
             "type": "Integer",
             "description": "first site to condition on, default 0",
             "required": false,
-            "default": "0"
+            "default": "0",
+            "constraint": "boolean"
           },
           {
             "name": "includeto",
             "type": "Integer",
             "description": "last site to condition on, default 0",
             "required": false,
-            "default": "0"
+            "default": "0",
+            "constraint": "boolean"
           },
           {
             "name": "includeevery",
             "type": "Integer",
             "description": "interval between sites to condition on (default 1)",
             "required": false,
-            "default": "1"
+            "default": "1",
+            "constraint": "boolean"
           },
           {
             "name": "*",
@@ -4083,7 +4113,8 @@
             "type": "Boolean",
             "description": "Is the newick tree labelled (alternatively contains node numbers)? Default=false.",
             "required": false,
-            "default": "false"
+            "default": "false",
+            "constraint": "boolean"
           },
           {
             "name": "taxa",
@@ -4102,7 +4133,8 @@
             "type": "Integer",
             "description": "offset if numbers are used for taxa (offset=the lowest taxa number) default=1",
             "required": false,
-            "default": "1"
+            "default": "1",
+            "constraint": "non-negative"
           },
           {
             "name": "threshold",
@@ -4123,7 +4155,8 @@
             "type": "Boolean",
             "description": "flag to indicate if tipHeights shall be adjusted when date traits missing. Default=true.",
             "required": false,
-            "default": "true"
+            "default": "true",
+            "constraint": "positive"
           },
           {
             "name": "scale",
@@ -4171,7 +4204,8 @@
             "type": "Boolean",
             "description": "if true (default), then tree node heights are adjusted to avoid non-positive branch lengths. If you want to maintain zero branch lengths then you must set this to false.",
             "required": false,
-            "default": "true"
+            "default": "true",
+            "constraint": "positive"
           },
           {
             "name": "estimate",
@@ -4208,7 +4242,8 @@
             "type": "Boolean",
             "description": "Is the newick tree labelled (alternatively contains node numbers)? Default=false.",
             "required": false,
-            "default": "false"
+            "default": "false",
+            "constraint": "boolean"
           },
           {
             "name": "taxa",
@@ -4227,7 +4262,8 @@
             "type": "Integer",
             "description": "offset if numbers are used for taxa (offset=the lowest taxa number) default=1",
             "required": false,
-            "default": "1"
+            "default": "1",
+            "constraint": "non-negative"
           },
           {
             "name": "threshold",
@@ -4248,7 +4284,8 @@
             "type": "Boolean",
             "description": "flag to indicate if tipHeights shall be adjusted when date traits missing. Default=true.",
             "required": false,
-            "default": "true"
+            "default": "true",
+            "constraint": "positive"
           },
           {
             "name": "scale",
@@ -4296,7 +4333,8 @@
             "type": "Boolean",
             "description": "if true (default), then tree node heights are adjusted to avoid non-positive branch lengths. If you want to maintain zero branch lengths then you must set this to false.",
             "required": false,
-            "default": "true"
+            "default": "true",
+            "constraint": "positive"
           },
           {
             "name": "estimate",
@@ -4421,7 +4459,8 @@
             "name": "length",
             "type": "Integer",
             "description": "Length of sequence",
-            "required": true
+            "required": true,
+            "constraint": "positive"
           }
         ]
       },
@@ -4823,7 +4862,8 @@
             "type": "Boolean",
             "description": "True if expression represents log(P), false if it represents P. Default is false.",
             "required": false,
-            "default": "false"
+            "default": "false",
+            "constraint": "boolean"
           },
           {
             "name": "arg",
@@ -4859,7 +4899,8 @@
             "name": "offset",
             "type": "Function",
             "description": "Time offset to use.",
-            "required": true
+            "required": true,
+            "constraint": "non-negative"
           }
         ]
       },
@@ -4909,7 +4950,8 @@
             "name": "userDataType",
             "type": "DataType.Base",
             "description": "non-standard, user specified data type, if specified 'dataType' is ignored",
-            "required": false
+            "required": false,
+            "constraint": "boolean"
           },
           {
             "name": "strip",
@@ -4922,7 +4964,8 @@
             "name": "weights",
             "type": "String",
             "description": "comma separated list of weights, one for each site in the sequences. If not specified, each site has weight 1",
-            "required": false
+            "required": false,
+            "constraint": "positive"
           },
           {
             "name": "ascertained",
@@ -4936,42 +4979,48 @@
             "type": "Integer",
             "description": "first site to condition on, default 0",
             "required": false,
-            "default": "0"
+            "default": "0",
+            "constraint": "boolean"
           },
           {
             "name": "excludeto",
             "type": "Integer",
             "description": "last site to condition on (but excluding this site), default 0",
             "required": false,
-            "default": "0"
+            "default": "0",
+            "constraint": "boolean"
           },
           {
             "name": "excludeevery",
             "type": "Integer",
             "description": "interval between sites to condition on (default 1)",
             "required": false,
-            "default": "1"
+            "default": "1",
+            "constraint": "boolean"
           },
           {
             "name": "includefrom",
             "type": "Integer",
             "description": "first site to condition on, default 0",
             "required": false,
-            "default": "0"
+            "default": "0",
+            "constraint": "boolean"
           },
           {
             "name": "includeto",
             "type": "Integer",
             "description": "last site to condition on, default 0",
             "required": false,
-            "default": "0"
+            "default": "0",
+            "constraint": "boolean"
           },
           {
             "name": "includeevery",
             "type": "Integer",
             "description": "interval between sites to condition on (default 1)",
             "required": false,
-            "default": "1"
+            "default": "1",
+            "constraint": "boolean"
           },
           {
             "name": "*",
@@ -5013,7 +5062,8 @@
             "name": "sequenceLength",
             "type": "Integer",
             "description": "Length of sequence to simulate.",
-            "required": true
+            "required": true,
+            "constraint": "positive"
           },
           {
             "name": "outputFileName",
@@ -5065,7 +5115,8 @@
             "name": "userDataType",
             "type": "DataType.Base",
             "description": "non-standard, user specified data type, if specified 'dataType' is ignored",
-            "required": false
+            "required": false,
+            "constraint": "boolean"
           },
           {
             "name": "strip",
@@ -5078,7 +5129,8 @@
             "name": "weights",
             "type": "String",
             "description": "comma separated list of weights, one for each site in the sequences. If not specified, each site has weight 1",
-            "required": false
+            "required": false,
+            "constraint": "positive"
           },
           {
             "name": "ascertained",
@@ -5092,42 +5144,48 @@
             "type": "Integer",
             "description": "first site to condition on, default 0",
             "required": false,
-            "default": "0"
+            "default": "0",
+            "constraint": "boolean"
           },
           {
             "name": "excludeto",
             "type": "Integer",
             "description": "last site to condition on (but excluding this site), default 0",
             "required": false,
-            "default": "0"
+            "default": "0",
+            "constraint": "boolean"
           },
           {
             "name": "excludeevery",
             "type": "Integer",
             "description": "interval between sites to condition on (default 1)",
             "required": false,
-            "default": "1"
+            "default": "1",
+            "constraint": "boolean"
           },
           {
             "name": "includefrom",
             "type": "Integer",
             "description": "first site to condition on, default 0",
             "required": false,
-            "default": "0"
+            "default": "0",
+            "constraint": "boolean"
           },
           {
             "name": "includeto",
             "type": "Integer",
             "description": "last site to condition on, default 0",
             "required": false,
-            "default": "0"
+            "default": "0",
+            "constraint": "boolean"
           },
           {
             "name": "includeevery",
             "type": "Integer",
             "description": "interval between sites to condition on (default 1)",
             "required": false,
-            "default": "1"
+            "default": "1",
+            "constraint": "boolean"
           },
           {
             "name": "*",
@@ -5164,7 +5222,8 @@
             "type": "Double",
             "description": "offset of origin (defaults to 0)",
             "required": false,
-            "default": "0.0"
+            "default": "0.0",
+            "constraint": "non-negative"
           }
         ]
       },
@@ -5208,7 +5267,8 @@
             "type": "Double",
             "description": "offset of origin (defaults to 0)",
             "required": false,
-            "default": "0.0"
+            "default": "0.0",
+            "constraint": "non-negative"
           }
         ]
       },
@@ -5243,7 +5303,8 @@
             "name": "samplingProportion",
             "type": "RealParameter",
             "description": "The probability of sampling prior to death. Sampling rate\/(sampling rate + death rate)",
-            "required": true
+            "required": true,
+            "constraint": "0-1"
           }
         ]
       },
@@ -5302,7 +5363,7 @@
             "type": "RealParameter",
             "description": "The probability that an individual is removed from the process after the sampling",
             "required": true,
-            "constraint": "probability"
+            "constraint": "0-1"
           },
           {
             "name": "rho",
@@ -5375,8 +5436,7 @@
             "name": "deathRate",
             "type": "RealParameter",
             "description": "Death rate",
-            "required": false,
-            "constraint": "positive"
+            "required": false
           },
           {
             "name": "samplingRate",
@@ -5402,14 +5462,15 @@
             "name": "samplingProportion",
             "type": "RealParameter",
             "description": "The probability of sampling prior to death. Sampling rate\/(sampling rate + death rate)",
-            "required": false
+            "required": false,
+            "constraint": "0-1"
           },
           {
             "name": "removalProbability",
             "type": "RealParameter",
             "description": "The probability that an individual is removed from the process after the sampling",
             "required": true,
-            "constraint": "probability"
+            "constraint": "0-1"
           },
           {
             "name": "rho",
@@ -5465,8 +5526,7 @@
             "name": "deathRate",
             "type": "RealParameter",
             "description": "Death rate",
-            "required": true,
-            "constraint": "positive"
+            "required": true
           },
           {
             "name": "samplingRate",
@@ -5508,8 +5568,7 @@
             "name": "deathRate",
             "type": "Function",
             "description": "Death rate",
-            "required": false,
-            "constraint": "positive"
+            "required": false
           },
           {
             "name": "samplingRate",
@@ -5541,14 +5600,15 @@
             "name": "samplingProportion",
             "type": "RealParameter",
             "description": "The probability of sampling prior to death. Sampling rate\/(sampling rate + death rate)",
-            "required": false
+            "required": false,
+            "constraint": "0-1"
           },
           {
             "name": "removalProbability",
             "type": "RealParameter",
             "description": "The probability that an individual is removed from the process after the sampling",
             "required": true,
-            "constraint": "probability"
+            "constraint": "0-1"
           },
           {
             "name": "rho",
@@ -5661,7 +5721,8 @@
             "type": "Boolean",
             "description": "Use parent of clade instead of clade. Cannot be used with tipsonly, or on the root.",
             "required": false,
-            "default": "false"
+            "default": "false",
+            "constraint": "boolean"
           }
         ]
       },
@@ -5746,7 +5807,8 @@
             "type": "Double",
             "description": "Starting offset to present, default 0",
             "required": false,
-            "default": "0.0"
+            "default": "0.0",
+            "constraint": "non-negative"
           }
         ]
       },
@@ -5789,7 +5851,8 @@
             "type": "Double",
             "description": "offset of origin (defaults to 0)",
             "required": false,
-            "default": "0.0"
+            "default": "0.0",
+            "constraint": "non-negative"
           }
         ]
       },
@@ -5834,7 +5897,8 @@
             "type": "Double",
             "description": "offset of origin (defaults to 0)",
             "required": false,
-            "default": "0.0"
+            "default": "0.0",
+            "constraint": "non-negative"
           }
         ]
       },
@@ -5877,7 +5941,8 @@
             "type": "Boolean",
             "description": "Use parent of clade instead of clade. Cannot be used with tipsonly, or on the root.",
             "required": false,
-            "default": "false"
+            "default": "false",
+            "constraint": "boolean"
           }
         ]
       },
@@ -5926,7 +5991,8 @@
             "type": "Boolean",
             "description": "Use parent of clade instead of clade. Cannot be used with tipsonly, or on the root.",
             "required": false,
-            "default": "false"
+            "default": "false",
+            "constraint": "boolean"
           }
         ]
       },
@@ -5955,7 +6021,8 @@
             "name": "distance",
             "type": "Distance",
             "description": "method for calculating distance between two sequences (default Jukes Cantor)",
-            "required": false
+            "required": false,
+            "constraint": "positive"
           },
           {
             "name": "initial",
@@ -5988,7 +6055,8 @@
             "type": "Boolean",
             "description": "if true (default), then tree node heights are adjusted to avoid non-positive branch lengths. If you want to maintain zero branch lengths then you must set this to false.",
             "required": false,
-            "default": "true"
+            "default": "true",
+            "constraint": "positive"
           },
           {
             "name": "estimate",
@@ -6012,7 +6080,8 @@
             "type": "Boolean",
             "description": "Is the newick tree labelled? Default=false.",
             "required": false,
-            "default": "false"
+            "default": "false",
+            "constraint": "boolean"
           },
           {
             "name": "taxa",
@@ -6031,7 +6100,8 @@
             "type": "Integer",
             "description": "offset if numbers are used for taxa (offset=the lowest taxa number) default=1",
             "required": false,
-            "default": "1"
+            "default": "1",
+            "constraint": "non-negative"
           },
           {
             "name": "threshold",
@@ -6086,7 +6156,8 @@
             "type": "Boolean",
             "description": "if true (default), then tree node heights are adjusted to avoid non-positive branch lengths. If you want to maintain zero branch lengths then you must set this to false.",
             "required": false,
-            "default": "true"
+            "default": "true",
+            "constraint": "positive"
           },
           {
             "name": "estimate",
@@ -6147,7 +6218,8 @@
             "type": "Boolean",
             "description": "calculated the distributions in parallel using threads (default false)",
             "required": false,
-            "default": "false"
+            "default": "false",
+            "constraint": "boolean"
           },
           {
             "name": "threads",
@@ -6487,7 +6559,8 @@
             "name": "userDataType",
             "type": "DataType.Base",
             "description": "non-standard, user specified data type, if specified 'dataType' is ignored",
-            "required": false
+            "required": false,
+            "constraint": "boolean"
           },
           {
             "name": "strip",
@@ -6500,7 +6573,8 @@
             "name": "weights",
             "type": "String",
             "description": "comma separated list of weights, one for each site in the sequences. If not specified, each site has weight 1",
-            "required": false
+            "required": false,
+            "constraint": "positive"
           },
           {
             "name": "ascertained",
@@ -6514,42 +6588,48 @@
             "type": "Integer",
             "description": "first site to condition on, default 0",
             "required": false,
-            "default": "0"
+            "default": "0",
+            "constraint": "boolean"
           },
           {
             "name": "excludeto",
             "type": "Integer",
             "description": "last site to condition on (but excluding this site), default 0",
             "required": false,
-            "default": "0"
+            "default": "0",
+            "constraint": "boolean"
           },
           {
             "name": "excludeevery",
             "type": "Integer",
             "description": "interval between sites to condition on (default 1)",
             "required": false,
-            "default": "1"
+            "default": "1",
+            "constraint": "boolean"
           },
           {
             "name": "includefrom",
             "type": "Integer",
             "description": "first site to condition on, default 0",
             "required": false,
-            "default": "0"
+            "default": "0",
+            "constraint": "boolean"
           },
           {
             "name": "includeto",
             "type": "Integer",
             "description": "last site to condition on, default 0",
             "required": false,
-            "default": "0"
+            "default": "0",
+            "constraint": "boolean"
           },
           {
             "name": "includeevery",
             "type": "Integer",
             "description": "interval between sites to condition on (default 1)",
             "required": false,
-            "default": "1"
+            "default": "1",
+            "constraint": "boolean"
           },
           {
             "name": "*",
@@ -6634,7 +6714,8 @@
             "type": "Boolean",
             "description": "flag to indicate leafs that sites containing ambigue states should be handled instead of ignored (the default)",
             "required": false,
-            "default": "false"
+            "default": "false",
+            "constraint": "boolean"
           }
         ]
       },
@@ -6697,14 +6778,16 @@
             "type": "Boolean",
             "description": "flag to indicate that sites containing ambiguous states should be handled instead of ignored (the default)",
             "required": false,
-            "default": "false"
+            "default": "false",
+            "constraint": "boolean"
           },
           {
             "name": "useTipLikelihoods",
             "type": "Boolean",
             "description": "flag to indicate that partial likelihoods are provided at the tips",
             "required": false,
-            "default": "false"
+            "default": "false",
+            "constraint": "boolean"
           },
           {
             "name": "implementation",
@@ -6724,7 +6807,8 @@
             "name": "rootFrequencies",
             "type": "Frequencies",
             "description": "prior state frequencies at root, optional",
-            "required": false
+            "required": false,
+            "constraint": "simplex"
           },
           {
             "name": "tree",
@@ -6835,7 +6919,8 @@
             "name": "frequencies",
             "type": "Frequencies",
             "description": "substitution model equilibrium state frequencies",
-            "required": false
+            "required": false,
+            "constraint": "simplex"
           }
         ]
       },
@@ -6864,7 +6949,8 @@
             "name": "frequencies",
             "type": "Frequencies",
             "description": "substitution model equilibrium state frequencies",
-            "required": true
+            "required": true,
+            "constraint": "simplex"
           }
         ]
       },
@@ -6907,7 +6993,8 @@
             "name": "frequencies",
             "type": "Frequencies",
             "description": "substitution model equilibrium state frequencies",
-            "required": true
+            "required": true,
+            "constraint": "simplex"
           }
         ]
       },
@@ -6942,7 +7029,8 @@
             "name": "frequencies",
             "type": "Frequencies",
             "description": "substitution model equilibrium state frequencies",
-            "required": true
+            "required": true,
+            "constraint": "simplex"
           }
         ]
       },
@@ -7070,7 +7158,8 @@
             "type": "Boolean",
             "description": "if true (default), then tree node heights are adjusted to avoid non-positive branch lengths. If you want to maintain zero branch lengths then you must set this to false.",
             "required": false,
-            "default": "true"
+            "default": "true",
+            "constraint": "positive"
           },
           {
             "name": "estimate",
@@ -7107,12 +7196,13 @@
             "type": "Double",
             "description": "lower bound on lengths used for creating branches",
             "required": false,
-            "default": "1.0E-10"
+            "default": "1.0E-10",
+            "constraint": "positive"
           },
           {
             "name": "clusterType",
             "type": "ConstrainedClusterTree.Type",
-            "description": "type of clustering algorithm used for generating initial beast.tree. Should be one of [Lbeastlabs.evolution.tree.ConstrainedClusterTree$Type;@6970140a (default average)",
+            "description": "type of clustering algorithm used for generating initial beast.tree. Should be one of [Lbeastlabs.evolution.tree.ConstrainedClusterTree$Type;@407cf41 (default average)",
             "required": false,
             "default": "average"
           },
@@ -7126,7 +7216,8 @@
             "name": "distance",
             "type": "Distance",
             "description": "method for calculating distance between two sequences (default Jukes Cantor)",
-            "required": false
+            "required": false,
+            "constraint": "positive"
           },
           {
             "name": "clock.rate",
@@ -7167,7 +7258,8 @@
             "type": "Boolean",
             "description": "if true (default), then tree node heights are adjusted to avoid non-positive branch lengths. If you want to maintain zero branch lengths then you must set this to false.",
             "required": false,
-            "default": "true"
+            "default": "true",
+            "constraint": "positive"
           },
           {
             "name": "estimate",
@@ -7215,7 +7307,8 @@
             "name": "rootHeight",
             "type": "Double",
             "description": "If specified the tree will be scaled to match the root height, if constraints allow this",
-            "required": false
+            "required": false,
+            "constraint": "positive"
           },
           {
             "name": "initial",
@@ -7248,7 +7341,8 @@
             "type": "Boolean",
             "description": "if true (default), then tree node heights are adjusted to avoid non-positive branch lengths. If you want to maintain zero branch lengths then you must set this to false.",
             "required": false,
-            "default": "true"
+            "default": "true",
+            "constraint": "positive"
           },
           {
             "name": "estimate",
@@ -7380,7 +7474,8 @@
             "type": "Boolean",
             "description": "if true (default), then tree node heights are adjusted to avoid non-positive branch lengths. If you want to maintain zero branch lengths then you must set this to false.",
             "required": false,
-            "default": "true"
+            "default": "true",
+            "constraint": "positive"
           },
           {
             "name": "estimate",
@@ -7469,7 +7564,8 @@
             "name": "rootHeight",
             "type": "Double",
             "description": "If specified the tree will be scaled to match the root height, if constraints allow this",
-            "required": false
+            "required": false,
+            "constraint": "positive"
           },
           {
             "name": "branchMean",
@@ -7489,7 +7585,8 @@
             "name": "weights",
             "type": "DistanceProvider",
             "description": "if provided, used to inform sampling distribution such that nodes that are closer have a higher chance of forming a clade",
-            "required": false
+            "required": false,
+            "constraint": "positive"
           },
           {
             "name": "initial",
@@ -7522,7 +7619,8 @@
             "type": "Boolean",
             "description": "if true (default), then tree node heights are adjusted to avoid non-positive branch lengths. If you want to maintain zero branch lengths then you must set this to false.",
             "required": false,
-            "default": "true"
+            "default": "true",
+            "constraint": "positive"
           },
           {
             "name": "estimate",
@@ -7578,7 +7676,8 @@
             "type": "Boolean",
             "description": "if true (default), then tree node heights are adjusted to avoid non-positive branch lengths. If you want to maintain zero branch lengths then you must set this to false.",
             "required": false,
-            "default": "true"
+            "default": "true",
+            "constraint": "positive"
           },
           {
             "name": "estimate",
@@ -7614,7 +7713,8 @@
             "name": "rootHeight",
             "type": "Double",
             "description": "If specified the tree will be scaled to match the root height, if constraints allow this",
-            "required": false
+            "required": false,
+            "constraint": "positive"
           },
           {
             "name": "branchMean",
@@ -7634,7 +7734,8 @@
             "name": "weights",
             "type": "DistanceProvider",
             "description": "if provided, used to inform sampling distribution such that nodes that are closer have a higher chance of forming a clade",
-            "required": false
+            "required": false,
+            "constraint": "positive"
           },
           {
             "name": "initial",
@@ -7667,7 +7768,8 @@
             "type": "Boolean",
             "description": "if true (default), then tree node heights are adjusted to avoid non-positive branch lengths. If you want to maintain zero branch lengths then you must set this to false.",
             "required": false,
-            "default": "true"
+            "default": "true",
+            "constraint": "positive"
           },
           {
             "name": "estimate",
@@ -7813,7 +7915,8 @@
             "type": "Double",
             "description": "offset of origin (defaults to 0)",
             "required": false,
-            "default": "0.0"
+            "default": "0.0",
+            "constraint": "non-negative"
           }
         ]
       },
@@ -7835,14 +7938,16 @@
             "name": "weights",
             "type": "RealParameter",
             "description": "weights on the distributions, should sum to 1 if specified",
-            "required": false
+            "required": false,
+            "constraint": "positive"
           },
           {
             "name": "useLogSpace",
             "type": "Boolean",
             "description": "if false (default) use sum_i w_i P_i, if true use sum_i w_i log(P_i). Note if useLogSpace=true, the resulting distribution is not normalised (unless one of the weights is 1), while if useLogSpace=false, the resulting distribution is normalised iff all mixture components are normalised.",
             "required": false,
-            "default": "false"
+            "default": "false",
+            "constraint": "boolean"
           }
         ]
       },
@@ -7920,7 +8025,8 @@
             "type": "Boolean",
             "description": "Use parent of clade instead of clade. Cannot be used with tipsonly, or on the root.",
             "required": false,
-            "default": "false"
+            "default": "false",
+            "constraint": "boolean"
           }
         ]
       },
@@ -7948,7 +8054,8 @@
             "type": "Boolean",
             "description": "flag to indicate tree is a binary tree instead of a polytopy (faster)",
             "required": false,
-            "default": "true"
+            "default": "true",
+            "constraint": "boolean"
           },
           {
             "name": "robust",
@@ -7990,7 +8097,8 @@
             "type": "Boolean",
             "description": "flag to indicate tree is a binary tree instead of a polytopy (faster)",
             "required": false,
-            "default": "true"
+            "default": "true",
+            "constraint": "boolean"
           },
           {
             "name": "robust",
@@ -8020,7 +8128,8 @@
             "type": "Double",
             "description": "offset of origin (defaults to 0)",
             "required": false,
-            "default": "0.0"
+            "default": "0.0",
+            "constraint": "non-negative"
           }
         ]
       },
@@ -8057,7 +8166,8 @@
             "type": "Double",
             "description": "offset of origin (defaults to 0)",
             "required": false,
-            "default": "0.0"
+            "default": "0.0",
+            "constraint": "non-negative"
           }
         ]
       },
@@ -8067,6 +8177,11 @@
         "fullyQualifiedName": "beastlabs.math.distributions.WeightedDirichlet",
         "description": "Weighted Dirichlet distribution that scales dimensions by weight",
         "generatorType": "distribution",
+        "satisfiesConstraints": [
+          "simplex",
+          "non-negative",
+          "bounded"
+        ],
         "generatedType": "RealParameter",
         "arguments": [
           {
@@ -8079,14 +8194,16 @@
             "name": "weights",
             "type": "IntegerParameter",
             "description": "weights of the scaled Dirichlet distribution",
-            "required": true
+            "required": true,
+            "constraint": "positive"
           },
           {
             "name": "offset",
             "type": "Double",
             "description": "offset of origin (defaults to 0)",
             "required": false,
-            "default": "0.0"
+            "default": "0.0",
+            "constraint": "non-negative"
           }
         ]
       },
@@ -8123,7 +8240,7 @@
             "type": "IntegerParameter",
             "description": "parameter for x y z",
             "required": true,
-            "constraint": "positive-integer"
+            "constraint": "positive"
           },
           {
             "name": "list",
@@ -8382,7 +8499,8 @@
             "name": "weights",
             "type": "Double[]",
             "description": "weights of individual items",
-            "required": false
+            "required": false,
+            "constraint": "positive"
           },
           {
             "name": "f",
@@ -8539,14 +8657,14 @@
             "type": "Function",
             "description": "population size parameter associated with tree nodes",
             "required": true,
-            "constraint": "positive-integer"
+            "constraint": "positive"
           },
           {
             "name": "popSizeTop",
             "type": "Function",
             "description": "population size parameter associated with top of tree branches, only used for non-constant *beast analysis",
             "required": false,
-            "constraint": "positive-integer"
+            "constraint": "positive"
           },
           {
             "name": "speciesTreePrior",
@@ -8635,7 +8753,8 @@
             "type": "List<RealParameter>",
             "description": "Species tree origin branch length",
             "required": false,
-            "default": "[]"
+            "default": "[]",
+            "constraint": "positive"
           },
           {
             "name": "birthRate",
@@ -8661,7 +8780,8 @@
             "name": "rootHeight",
             "type": "Function",
             "description": "Initial root height (default at substitution length)",
-            "required": false
+            "required": false,
+            "constraint": "positive"
           },
           {
             "name": "speciesTreeRates",
@@ -8714,7 +8834,8 @@
             "type": "Boolean",
             "description": "if true (default), then tree node heights are adjusted to avoid non-positive branch lengths. If you want to maintain zero branch lengths then you must set this to false.",
             "required": false,
-            "default": "true"
+            "default": "true",
+            "constraint": "positive"
           },
           {
             "name": "estimate",
@@ -8988,7 +9109,7 @@
             "type": "RealParameter",
             "description": "Constant per-branch population sizes.",
             "required": true,
-            "constraint": "positive-integer"
+            "constraint": "positive"
           }
         ]
       },
@@ -9071,14 +9192,14 @@
             "type": "RealParameter",
             "description": "population size parameter for populations at the bottom of a branch. For linear population function, this is the same at the top of the branch.",
             "required": true,
-            "constraint": "positive-integer"
+            "constraint": "positive"
           },
           {
             "name": "topPopSize",
             "type": "RealParameter",
             "description": "population size parameter at the top of a branch. Ignored for constant population function, but required for linear population function.",
             "required": false,
-            "constraint": "positive-integer"
+            "constraint": "positive"
           },
           {
             "name": "gammaParameter",
@@ -9168,7 +9289,8 @@
             "type": "Boolean",
             "description": "if true (default), then tree node heights are adjusted to avoid non-positive branch lengths. If you want to maintain zero branch lengths then you must set this to false.",
             "required": false,
-            "default": "true"
+            "default": "true",
+            "constraint": "positive"
           },
           {
             "name": "estimate",
@@ -9236,7 +9358,8 @@
             "type": "Boolean",
             "description": "if true (default), then tree node heights are adjusted to avoid non-positive branch lengths. If you want to maintain zero branch lengths then you must set this to false.",
             "required": false,
-            "default": "true"
+            "default": "true",
+            "constraint": "positive"
           },
           {
             "name": "estimate",
@@ -9333,26 +9456,33 @@
         "fullyQualifiedName": "starbeast3.math.distributions.InverseGamma",
         "description": "Inverse Gamma distribution, used as prior.    for x>0  f(x; alpha, beta) = \frac{beta^alpha}{Gamma(alpha)} (1\/x)^{alpha + 1}exp(-beta\/x) If the input x is a multidimensional parameter, each of the dimensions is considered as a separate independent component.",
         "generatorType": "distribution",
+        "satisfiesConstraints": [
+          "positive",
+          "non-negative"
+        ],
         "generatedType": "RealParameter",
         "arguments": [
           {
             "name": "alpha",
             "type": "RealParameter",
             "description": "shape parameter, defaults to 2",
-            "required": false
+            "required": false,
+            "constraint": "positive"
           },
           {
             "name": "beta",
             "type": "RealParameter",
             "description": "scale parameter, defaults to 2",
-            "required": false
+            "required": false,
+            "constraint": "positive"
           },
           {
             "name": "offset",
             "type": "Double",
             "description": "offset of origin (defaults to 0)",
             "required": false,
-            "default": "0.0"
+            "default": "0.0",
+            "constraint": "non-negative"
           }
         ]
       },
@@ -9395,7 +9525,8 @@
             "type": "Boolean",
             "description": "Use parent of clade instead of clade. Cannot be used with tipsonly, or on the root.",
             "required": false,
-            "default": "false"
+            "default": "false",
+            "constraint": "boolean"
           }
         ]
       },
@@ -9447,7 +9578,8 @@
             "type": "Boolean",
             "description": "if true (default), then tree node heights are adjusted to avoid non-positive branch lengths. If you want to maintain zero branch lengths then you must set this to false.",
             "required": false,
-            "default": "true"
+            "default": "true",
+            "constraint": "positive"
           },
           {
             "name": "estimate",
@@ -9497,7 +9629,8 @@
             "type": "Boolean",
             "description": "if true (default), then tree node heights are adjusted to avoid non-positive branch lengths. If you want to maintain zero branch lengths then you must set this to false.",
             "required": false,
-            "default": "true"
+            "default": "true",
+            "constraint": "positive"
           },
           {
             "name": "estimate",
@@ -9589,7 +9722,8 @@
             "name": "userDataType",
             "type": "DataType.Base",
             "description": "non-standard, user specified data type, if specified 'dataType' is ignored",
-            "required": false
+            "required": false,
+            "constraint": "boolean"
           },
           {
             "name": "strip",
@@ -9602,7 +9736,8 @@
             "name": "weights",
             "type": "String",
             "description": "comma separated list of weights, one for each site in the sequences. If not specified, each site has weight 1",
-            "required": false
+            "required": false,
+            "constraint": "positive"
           },
           {
             "name": "ascertained",
@@ -9616,42 +9751,48 @@
             "type": "Integer",
             "description": "first site to condition on, default 0",
             "required": false,
-            "default": "0"
+            "default": "0",
+            "constraint": "boolean"
           },
           {
             "name": "excludeto",
             "type": "Integer",
             "description": "last site to condition on (but excluding this site), default 0",
             "required": false,
-            "default": "0"
+            "default": "0",
+            "constraint": "boolean"
           },
           {
             "name": "excludeevery",
             "type": "Integer",
             "description": "interval between sites to condition on (default 1)",
             "required": false,
-            "default": "1"
+            "default": "1",
+            "constraint": "boolean"
           },
           {
             "name": "includefrom",
             "type": "Integer",
             "description": "first site to condition on, default 0",
             "required": false,
-            "default": "0"
+            "default": "0",
+            "constraint": "boolean"
           },
           {
             "name": "includeto",
             "type": "Integer",
             "description": "last site to condition on, default 0",
             "required": false,
-            "default": "0"
+            "default": "0",
+            "constraint": "boolean"
           },
           {
             "name": "includeevery",
             "type": "Integer",
             "description": "interval between sites to condition on (default 1)",
             "required": false,
-            "default": "1"
+            "default": "1",
+            "constraint": "boolean"
           },
           {
             "name": "*",
@@ -9709,7 +9850,8 @@
             "name": "userDataType",
             "type": "DataType.Base",
             "description": "non-standard, user specified data type, if specified 'dataType' is ignored",
-            "required": false
+            "required": false,
+            "constraint": "boolean"
           },
           {
             "name": "strip",
@@ -9722,7 +9864,8 @@
             "name": "weights",
             "type": "String",
             "description": "comma separated list of weights, one for each site in the sequences. If not specified, each site has weight 1",
-            "required": false
+            "required": false,
+            "constraint": "positive"
           },
           {
             "name": "ascertained",
@@ -9736,42 +9879,48 @@
             "type": "Integer",
             "description": "first site to condition on, default 0",
             "required": false,
-            "default": "0"
+            "default": "0",
+            "constraint": "boolean"
           },
           {
             "name": "excludeto",
             "type": "Integer",
             "description": "last site to condition on (but excluding this site), default 0",
             "required": false,
-            "default": "0"
+            "default": "0",
+            "constraint": "boolean"
           },
           {
             "name": "excludeevery",
             "type": "Integer",
             "description": "interval between sites to condition on (default 1)",
             "required": false,
-            "default": "1"
+            "default": "1",
+            "constraint": "boolean"
           },
           {
             "name": "includefrom",
             "type": "Integer",
             "description": "first site to condition on, default 0",
             "required": false,
-            "default": "0"
+            "default": "0",
+            "constraint": "boolean"
           },
           {
             "name": "includeto",
             "type": "Integer",
             "description": "last site to condition on, default 0",
             "required": false,
-            "default": "0"
+            "default": "0",
+            "constraint": "boolean"
           },
           {
             "name": "includeevery",
             "type": "Integer",
             "description": "interval between sites to condition on (default 1)",
             "required": false,
-            "default": "1"
+            "default": "1",
+            "constraint": "boolean"
           },
           {
             "name": "*",
@@ -9813,7 +9962,8 @@
             "name": "constantSiteWeights",
             "type": "IntegerParameter",
             "description": "if specified, constant sites will be added with weights specified by the input. The dimension and order of weights must match the datatype. For example for nucleotide data, a 4 dimensional parameter with weights for A, C, G and T respectively need to be specified.",
-            "required": false
+            "required": false,
+            "constraint": "positive"
           },
           {
             "name": "sequence",
@@ -9847,7 +9997,8 @@
             "name": "userDataType",
             "type": "DataType.Base",
             "description": "non-standard, user specified data type, if specified 'dataType' is ignored",
-            "required": false
+            "required": false,
+            "constraint": "boolean"
           },
           {
             "name": "strip",
@@ -9860,7 +10011,8 @@
             "name": "weights",
             "type": "String",
             "description": "comma separated list of weights, one for each site in the sequences. If not specified, each site has weight 1",
-            "required": false
+            "required": false,
+            "constraint": "positive"
           },
           {
             "name": "ascertained",
@@ -9874,42 +10026,48 @@
             "type": "Integer",
             "description": "first site to condition on, default 0",
             "required": false,
-            "default": "0"
+            "default": "0",
+            "constraint": "boolean"
           },
           {
             "name": "excludeto",
             "type": "Integer",
             "description": "last site to condition on (but excluding this site), default 0",
             "required": false,
-            "default": "0"
+            "default": "0",
+            "constraint": "boolean"
           },
           {
             "name": "excludeevery",
             "type": "Integer",
             "description": "interval between sites to condition on (default 1)",
             "required": false,
-            "default": "1"
+            "default": "1",
+            "constraint": "boolean"
           },
           {
             "name": "includefrom",
             "type": "Integer",
             "description": "first site to condition on, default 0",
             "required": false,
-            "default": "0"
+            "default": "0",
+            "constraint": "boolean"
           },
           {
             "name": "includeto",
             "type": "Integer",
             "description": "last site to condition on, default 0",
             "required": false,
-            "default": "0"
+            "default": "0",
+            "constraint": "boolean"
           },
           {
             "name": "includeevery",
             "type": "Integer",
             "description": "interval between sites to condition on (default 1)",
             "required": false,
-            "default": "1"
+            "default": "1",
+            "constraint": "boolean"
           },
           {
             "name": "*",
@@ -10041,7 +10199,8 @@
             "type": "Boolean",
             "description": "if true, then the root can take on an arbitrary rate, otherwise the root branch has rate 1.0.",
             "required": false,
-            "default": "false"
+            "default": "false",
+            "constraint": "boolean"
           },
           {
             "name": "clock.rate",
@@ -10227,7 +10386,8 @@
             "type": "Integer",
             "description": "length of code, if negative a variable length code is assumed, default 1",
             "required": false,
-            "default": "1"
+            "default": "1",
+            "constraint": "positive"
           },
           {
             "name": "codeMap",
@@ -10307,14 +10467,16 @@
             "type": "Boolean",
             "description": "flag to indicate that sites containing ambiguous states should be handled instead of ignored (the default)",
             "required": false,
-            "default": "false"
+            "default": "false",
+            "constraint": "boolean"
           },
           {
             "name": "useTipLikelihoods",
             "type": "Boolean",
             "description": "flag to indicate that partial likelihoods are provided at the tips",
             "required": false,
-            "default": "false"
+            "default": "false",
+            "constraint": "boolean"
           },
           {
             "name": "implementation",
@@ -10334,7 +10496,8 @@
             "name": "rootFrequencies",
             "type": "Frequencies",
             "description": "prior state frequencies at root, optional",
-            "required": false
+            "required": false,
+            "constraint": "simplex"
           },
           {
             "name": "tree",
@@ -10399,7 +10562,8 @@
             "type": "Boolean",
             "description": "flag to indicate leafs that sites containing ambiguous states should be handled instead of ignored (the default)",
             "required": false,
-            "default": "false"
+            "default": "false",
+            "constraint": "boolean"
           },
           {
             "name": "threads",
@@ -10412,7 +10576,8 @@
             "name": "proportions",
             "type": "String",
             "description": "specifies proportions of patterns used per thread as space delimited string. This is useful when using a mixture of BEAGLE devices that run at different speeds, e.g GPU and CPU. The string is duplicated if there are more threads than proportions specified. For example, '1 2' as well as '33 66' with 2 threads specifies that the first thread gets a third of the patterns and the second two thirds. With 3 threads, it is interpreted as '1 2 1' = 25%, 50%, 25% and with 7 threads it is '1 2 1 2 1 2 1' = 10% 20% 10% 20% 10% 20% 10%. If not specified, all threads get the same proportion of patterns.",
-            "required": false
+            "required": false,
+            "constraint": "0-1"
           },
           {
             "name": "scaling",
@@ -10425,7 +10590,8 @@
             "name": "rootFrequencies",
             "type": "Frequencies",
             "description": "prior state frequencies at root, optional",
-            "required": false
+            "required": false,
+            "constraint": "simplex"
           },
           {
             "name": "tree",
@@ -10461,14 +10627,16 @@
             "type": "Boolean",
             "description": "flag to indicate that sites containing ambiguous states should be handled instead of ignored (the default)",
             "required": false,
-            "default": "false"
+            "default": "false",
+            "constraint": "boolean"
           },
           {
             "name": "useTipLikelihoods",
             "type": "Boolean",
             "description": "flag to indicate that partial likelihoods are provided at the tips",
             "required": false,
-            "default": "false"
+            "default": "false",
+            "constraint": "boolean"
           },
           {
             "name": "implementation",
@@ -10488,7 +10656,8 @@
             "name": "rootFrequencies",
             "type": "Frequencies",
             "description": "prior state frequencies at root, optional",
-            "required": false
+            "required": false,
+            "constraint": "simplex"
           },
           {
             "name": "tree",
@@ -10581,13 +10750,15 @@
             "name": "shape",
             "type": "RealParameter",
             "description": "shape parameter of gamma distribution. Ignored if gammaCategoryCount 1 or less",
-            "required": false
+            "required": false,
+            "constraint": "positive"
           },
           {
             "name": "proportionInvariant",
             "type": "RealParameter",
             "description": "proportion of sites that is invariant: should be between 0 (default) and 1",
-            "required": false
+            "required": false,
+            "constraint": "0-1"
           },
           {
             "name": "substModel",
@@ -10616,15 +10787,14 @@
             "name": "relativeDeathRate",
             "type": "RealParameter",
             "description": "relative death rate parameter, mu\/lambda in birth death model (turnover parameter)",
-            "required": true,
-            "constraint": "positive"
+            "required": true
           },
           {
             "name": "sampleProbability",
             "type": "RealParameter",
             "description": "sample probability, rho in birth\/death model",
             "required": false,
-            "constraint": "probability"
+            "constraint": "0-1"
           },
           {
             "name": "birthDiffRate",
@@ -10637,7 +10807,8 @@
             "name": "originHeight",
             "type": "RealParameter",
             "description": "the height of the point of origin of the process",
-            "required": false
+            "required": false,
+            "constraint": "positive"
           },
           {
             "name": "conditionalOnRoot",
@@ -10673,15 +10844,14 @@
             "name": "relativeDeathRate",
             "type": "RealParameter",
             "description": "relative death rate parameter, mu\/lambda in birth death model",
-            "required": false,
-            "constraint": "positive"
+            "required": false
           },
           {
             "name": "sampleProbability",
             "type": "RealParameter",
             "description": "sample probability, rho in birth\/death model",
             "required": false,
-            "constraint": "probability"
+            "constraint": "0-1"
           },
           {
             "name": "calibrations",
@@ -10757,7 +10927,8 @@
             "type": "Boolean",
             "description": "if true (default), then tree node heights are adjusted to avoid non-positive branch lengths. If you want to maintain zero branch lengths then you must set this to false.",
             "required": false,
-            "default": "true"
+            "default": "true",
+            "constraint": "positive"
           },
           {
             "name": "estimate",
@@ -10918,7 +11089,8 @@
             "name": "rootHeight",
             "type": "Double",
             "description": "If specified the tree will be scaled to match the root height, if constraints allow this",
-            "required": false
+            "required": false,
+            "constraint": "positive"
           },
           {
             "name": "initial",
@@ -10951,7 +11123,8 @@
             "type": "Boolean",
             "description": "if true (default), then tree node heights are adjusted to avoid non-positive branch lengths. If you want to maintain zero branch lengths then you must set this to false.",
             "required": false,
-            "default": "true"
+            "default": "true",
+            "constraint": "positive"
           },
           {
             "name": "estimate",
@@ -10981,14 +11154,14 @@
             "type": "Function",
             "description": "population size parameter associated with tree nodes",
             "required": true,
-            "constraint": "positive-integer"
+            "constraint": "positive"
           },
           {
             "name": "popSizeTop",
             "type": "Function",
             "description": "population size parameter associated with top of tree branches, only used for non-constant *beast analysis",
             "required": false,
-            "constraint": "positive-integer"
+            "constraint": "positive"
           },
           {
             "name": "speciesTreePrior",
@@ -11031,14 +11204,14 @@
             "type": "RealParameter",
             "description": "population size parameter for populations at the bottom of a branch. For constant population function, this is the same at the top of the branch.",
             "required": true,
-            "constraint": "positive-integer"
+            "constraint": "positive"
           },
           {
             "name": "topPopSize",
             "type": "RealParameter",
             "description": "population size parameter at the top of a branch. Ignored for constant population function, but required for linear population function.",
             "required": false,
-            "constraint": "positive-integer"
+            "constraint": "positive"
           },
           {
             "name": "taxonset",
@@ -11080,14 +11253,14 @@
             "type": "RealParameter",
             "description": "population size parameter for populations at the bottom of a branch. For constant population function, this is the same at the top of the branch.",
             "required": true,
-            "constraint": "positive-integer"
+            "constraint": "positive"
           },
           {
             "name": "topPopSize",
             "type": "RealParameter",
             "description": "population size parameter at the top of a branch. Ignored for constant population function, but required for linear population function.",
             "required": false,
-            "constraint": "positive-integer"
+            "constraint": "positive"
           },
           {
             "name": "taxonset",
@@ -11195,7 +11368,8 @@
             "type": "Boolean",
             "description": "if true (default), then tree node heights are adjusted to avoid non-positive branch lengths. If you want to maintain zero branch lengths then you must set this to false.",
             "required": false,
-            "default": "true"
+            "default": "true",
+            "constraint": "positive"
           },
           {
             "name": "estimate",
@@ -11242,7 +11416,8 @@
             "name": "originHeight",
             "type": "RealParameter",
             "description": "the height of the point of origin of the process",
-            "required": false
+            "required": false,
+            "constraint": "positive"
           },
           {
             "name": "conditionalOnRoot",
@@ -11284,13 +11459,15 @@
             "name": "vfrequencies",
             "type": "RealParameter",
             "description": "the frequencies of the visible states",
-            "required": true
+            "required": true,
+            "constraint": "simplex"
           },
           {
             "name": "hfrequencies",
             "type": "RealParameter",
             "description": "the frequencies of the hidden rates",
-            "required": false
+            "required": false,
+            "constraint": "simplex"
           },
           {
             "name": "mode",
@@ -11317,7 +11494,8 @@
             "name": "frequencies",
             "type": "Frequencies",
             "description": "substitution model equilibrium state frequencies",
-            "required": false
+            "required": false,
+            "constraint": "simplex"
           }
         ]
       },
@@ -11347,7 +11525,8 @@
             "name": "frequencies",
             "type": "Frequencies",
             "description": "substitution model equilibrium state frequencies",
-            "required": false
+            "required": false,
+            "constraint": "simplex"
           }
         ]
       },
@@ -11377,7 +11556,8 @@
             "name": "frequencies",
             "type": "Frequencies",
             "description": "substitution model equilibrium state frequencies",
-            "required": true
+            "required": true,
+            "constraint": "simplex"
           }
         ]
       },
@@ -11407,7 +11587,8 @@
             "name": "frequencies",
             "type": "Frequencies",
             "description": "substitution model equilibrium state frequencies",
-            "required": false
+            "required": false,
+            "constraint": "simplex"
           }
         ]
       },
@@ -11437,7 +11618,8 @@
             "name": "frequencies",
             "type": "Frequencies",
             "description": "substitution model equilibrium state frequencies",
-            "required": false
+            "required": false,
+            "constraint": "simplex"
           }
         ]
       },
@@ -11518,7 +11700,8 @@
             "name": "frequencies",
             "type": "Frequencies",
             "description": "substitution model equilibrium state frequencies",
-            "required": true
+            "required": true,
+            "constraint": "simplex"
           }
         ]
       },
@@ -11590,7 +11773,8 @@
             "name": "frequencies",
             "type": "Frequencies",
             "description": "substitution model equilibrium state frequencies",
-            "required": true
+            "required": true,
+            "constraint": "simplex"
           }
         ]
       },
@@ -11606,13 +11790,15 @@
             "name": "kappa",
             "type": "Function",
             "description": "kappa parameter in HKY model",
-            "required": true
+            "required": true,
+            "constraint": "positive"
           },
           {
             "name": "frequencies",
             "type": "Frequencies",
             "description": "substitution model equilibrium state frequencies",
-            "required": true
+            "required": true,
+            "constraint": "simplex"
           }
         ]
       },
@@ -11642,7 +11828,8 @@
             "name": "frequencies",
             "type": "Frequencies",
             "description": "substitution model equilibrium state frequencies",
-            "required": false
+            "required": false,
+            "constraint": "simplex"
           }
         ]
       },
@@ -11658,7 +11845,8 @@
             "name": "frequencies",
             "type": "Frequencies",
             "description": "substitution model equilibrium state frequencies",
-            "required": false
+            "required": false,
+            "constraint": "simplex"
           }
         ]
       },
@@ -11688,7 +11876,8 @@
             "name": "frequencies",
             "type": "Frequencies",
             "description": "substitution model equilibrium state frequencies",
-            "required": false
+            "required": false,
+            "constraint": "simplex"
           }
         ]
       },
@@ -11705,7 +11894,7 @@
             "type": "RealParameter",
             "description": "rate of death, used to calculate death probability",
             "required": true,
-            "constraint": "probability"
+            "constraint": "0-1"
           },
           {
             "name": "substmodel",
@@ -11717,7 +11906,8 @@
             "name": "frequencies",
             "type": "Frequencies",
             "description": "substitution model equilibrium state frequencies",
-            "required": true
+            "required": true,
+            "constraint": "simplex"
           }
         ]
       },
@@ -11789,7 +11979,8 @@
             "name": "frequencies",
             "type": "Frequencies",
             "description": "substitution model equilibrium state frequencies",
-            "required": true
+            "required": true,
+            "constraint": "simplex"
           }
         ]
       },
@@ -11847,7 +12038,8 @@
             "name": "frequencies",
             "type": "Frequencies",
             "description": "substitution model equilibrium state frequencies",
-            "required": true
+            "required": true,
+            "constraint": "simplex"
           }
         ]
       },
@@ -11863,19 +12055,22 @@
             "name": "kappa1",
             "type": "RealParameter",
             "description": "rate of A<->G transitions",
-            "required": true
+            "required": true,
+            "constraint": "positive"
           },
           {
             "name": "kappa2",
             "type": "RealParameter",
             "description": "rate of C<->T transitions",
-            "required": true
+            "required": true,
+            "constraint": "positive"
           },
           {
             "name": "frequencies",
             "type": "Frequencies",
             "description": "substitution model equilibrium state frequencies",
-            "required": true
+            "required": true,
+            "constraint": "simplex"
           }
         ]
       },
@@ -11940,7 +12135,8 @@
             "name": "frequencies",
             "type": "Frequencies",
             "description": "substitution model equilibrium state frequencies",
-            "required": true
+            "required": true,
+            "constraint": "simplex"
           }
         ]
       },
@@ -11970,7 +12166,8 @@
             "name": "frequencies",
             "type": "Frequencies",
             "description": "substitution model equilibrium state frequencies",
-            "required": false
+            "required": false,
+            "constraint": "simplex"
           }
         ]
       },
@@ -12000,7 +12197,8 @@
             "type": "Boolean",
             "description": "true if quantities in the argument should only be summed for non-zero branch lengths.",
             "required": false,
-            "default": "false"
+            "default": "false",
+            "constraint": "positive"
           }
         ]
       },
@@ -12029,7 +12227,8 @@
             "name": "distance",
             "type": "Distance",
             "description": "method for calculating distance between two sequences (default Jukes Cantor)",
-            "required": false
+            "required": false,
+            "constraint": "positive"
           },
           {
             "name": "clock.rate",
@@ -12070,7 +12269,8 @@
             "type": "Boolean",
             "description": "if true (default), then tree node heights are adjusted to avoid non-positive branch lengths. If you want to maintain zero branch lengths then you must set this to false.",
             "required": false,
-            "default": "true"
+            "default": "true",
+            "constraint": "positive"
           },
           {
             "name": "estimate",
@@ -12094,7 +12294,7 @@
             "type": "Function",
             "description": "present-day population size. If time units are set to Units.EXPECTED_SUBSTITUTIONS thenthe N0 parameter will be interpreted as N0 * mu. Also note that if you are dealing with a diploid population N0 will be out by a factor of 2.",
             "required": true,
-            "constraint": "positive-integer"
+            "constraint": "positive"
           },
           {
             "name": "groupSizes",
@@ -12146,7 +12346,7 @@
             "type": "RealParameter",
             "description": "population value at each point.",
             "required": true,
-            "constraint": "positive-integer"
+            "constraint": "positive"
           },
           {
             "name": "populationIndicators",
@@ -12173,7 +12373,8 @@
             "type": "Boolean",
             "description": "When true, the demographic X axis points are in the middle of the coalescent intervals. By default they are at the beginning.",
             "required": false,
-            "default": "false"
+            "default": "false",
+            "constraint": "boolean"
           }
         ]
       },
@@ -12190,7 +12391,7 @@
             "type": "Function",
             "description": "constant (effective) population size value.",
             "required": true,
-            "constraint": "positive-integer"
+            "constraint": "positive"
           }
         ]
       },
@@ -12207,14 +12408,14 @@
             "type": "Function",
             "description": "present-day population size (defaults to 1.0). ",
             "required": false,
-            "constraint": "positive-integer"
+            "constraint": "positive"
           },
           {
             "name": "growthRate",
             "type": "Function",
             "description": "Growth rate is the exponent of the exponential growth. A value of zero represents a constant population size, negative values represent decline towards the present, positive numbers represents exponential growth towards the present.",
             "required": false,
-            "constraint": "positive"
+            "constraint": "real"
           }
         ]
       },
@@ -12249,7 +12450,8 @@
             "name": "rootHeight",
             "type": "Double",
             "description": "If specified the tree will be scaled to match the root height, if constraints allow this",
-            "required": false
+            "required": false,
+            "constraint": "positive"
           },
           {
             "name": "initial",
@@ -12282,7 +12484,8 @@
             "type": "Boolean",
             "description": "if true (default), then tree node heights are adjusted to avoid non-positive branch lengths. If you want to maintain zero branch lengths then you must set this to false.",
             "required": false,
-            "default": "true"
+            "default": "true",
+            "constraint": "positive"
           },
           {
             "name": "estimate",
@@ -12354,7 +12557,8 @@
             "type": "Boolean",
             "description": "Use parent of clade instead of clade. Cannot be used with tipsonly, or on the root.",
             "required": false,
-            "default": "false"
+            "default": "false",
+            "constraint": "boolean"
           }
         ]
       },
@@ -12447,7 +12651,8 @@
             "type": "Boolean",
             "description": "if true (default), then tree node heights are adjusted to avoid non-positive branch lengths. If you want to maintain zero branch lengths then you must set this to false.",
             "required": false,
-            "default": "true"
+            "default": "true",
+            "constraint": "positive"
           },
           {
             "name": "estimate",
@@ -12487,7 +12692,8 @@
             "type": "Boolean",
             "description": "Is the newick tree labelled (alternatively contains node numbers)? Default=false.",
             "required": false,
-            "default": "false"
+            "default": "false",
+            "constraint": "boolean"
           },
           {
             "name": "taxa",
@@ -12506,7 +12712,8 @@
             "type": "Integer",
             "description": "offset if numbers are used for taxa (offset=the lowest taxa number) default=1",
             "required": false,
-            "default": "1"
+            "default": "1",
+            "constraint": "non-negative"
           },
           {
             "name": "threshold",
@@ -12527,7 +12734,8 @@
             "type": "Boolean",
             "description": "flag to indicate if tipHeights shall be adjusted when date traits missing. Default=true.",
             "required": false,
-            "default": "true"
+            "default": "true",
+            "constraint": "positive"
           },
           {
             "name": "scale",
@@ -12575,7 +12783,8 @@
             "type": "Boolean",
             "description": "if true (default), then tree node heights are adjusted to avoid non-positive branch lengths. If you want to maintain zero branch lengths then you must set this to false.",
             "required": false,
-            "default": "true"
+            "default": "true",
+            "constraint": "positive"
           },
           {
             "name": "estimate",
@@ -12605,7 +12814,8 @@
             "type": "Boolean",
             "description": "calculated the distributions in parallel using threads (default false)",
             "required": false,
-            "default": "false"
+            "default": "false",
+            "constraint": "boolean"
           },
           {
             "name": "threads",
@@ -12629,6 +12839,11 @@
         "fullyQualifiedName": "beast.base.inference.distribution.Beta",
         "description": "Beta distribution, used as prior.  p(x;alpha,beta) = \frac{x^{alpha-1}(1-x)^{beta-1}} {B(alpha,beta)} where B() is the beta function. If the input x is a multidimensional parameter, each of the dimensions is considered as a separate independent component.",
         "generatorType": "distribution",
+        "satisfiesConstraints": [
+          "0-1",
+          "non-negative",
+          "bounded"
+        ],
         "generatedType": "RealParameter",
         "arguments": [
           {
@@ -12636,21 +12851,24 @@
             "type": "Function",
             "description": "first shape parameter, defaults to 1",
             "required": false,
-            "recommended": true
+            "recommended": true,
+            "constraint": "positive"
           },
           {
             "name": "beta",
             "type": "Function",
             "description": "the other shape parameter, defaults to 1",
             "required": false,
-            "recommended": true
+            "recommended": true,
+            "constraint": "positive"
           },
           {
             "name": "offset",
             "type": "Double",
             "description": "offset of origin (defaults to 0)",
             "required": false,
-            "default": "0.0"
+            "default": "0.0",
+            "constraint": "non-negative"
           }
         ]
       },
@@ -12660,6 +12878,10 @@
         "fullyQualifiedName": "beast.base.inference.distribution.ChiSquare",
         "description": "Chi square distribution, f(x; k) = \\frac{1}{2^{k\/2}Gamma(k\/2)} x^{k\/2-1} e^{-x\/2} If the input x is a multidimensional parameter, each of the dimensions is considered as a separate independent component.",
         "generatorType": "distribution",
+        "satisfiesConstraints": [
+          "positive",
+          "non-negative"
+        ],
         "generatedType": "RealParameter",
         "arguments": [
           {
@@ -12673,7 +12895,8 @@
             "type": "Double",
             "description": "offset of origin (defaults to 0)",
             "required": false,
-            "default": "0.0"
+            "default": "0.0",
+            "constraint": "non-negative"
           }
         ]
       },
@@ -12683,20 +12906,27 @@
         "fullyQualifiedName": "beast.base.inference.distribution.Dirichlet",
         "description": "Dirichlet distribution.  p(x_1,...,x_n;alpha_1,...,alpha_n) = 1\/B(alpha) prod_{i=1}^K x_i^{alpha_i - 1} where B() is the beta function B(alpha) = prod_{i=1}^K Gamma(alpha_i)\/ Gamma(sum_{i=1}^K alpha_i}. ",
         "generatorType": "distribution",
+        "satisfiesConstraints": [
+          "simplex",
+          "non-negative",
+          "bounded"
+        ],
         "generatedType": "RealParameter",
         "arguments": [
           {
             "name": "alpha",
             "type": "Function",
             "description": "coefficients of the Dirichlet distribution",
-            "required": true
+            "required": true,
+            "constraint": "positive"
           },
           {
             "name": "offset",
             "type": "Double",
             "description": "offset of origin (defaults to 0)",
             "required": false,
-            "default": "0.0"
+            "default": "0.0",
+            "constraint": "non-negative"
           }
         ]
       },
@@ -12706,6 +12936,10 @@
         "fullyQualifiedName": "beast.base.inference.distribution.Exponential",
         "description": "Exponential distribution.  f(x;\\lambda) = 1\/\\lambda e^{-x\/\\lambda}, if x >= 0 If the input x is a multidimensional parameter, each of the dimensions is considered as a separate independent component.",
         "generatorType": "distribution",
+        "satisfiesConstraints": [
+          "positive",
+          "non-negative"
+        ],
         "generatedType": "RealParameter",
         "arguments": [
           {
@@ -12713,14 +12947,16 @@
             "type": "Function",
             "description": "mean parameter, defaults to 1",
             "required": false,
-            "recommended": true
+            "recommended": true,
+            "constraint": "positive"
           },
           {
             "name": "offset",
             "type": "Double",
             "description": "offset of origin (defaults to 0)",
             "required": false,
-            "default": "0.0"
+            "default": "0.0",
+            "constraint": "non-negative"
           }
         ]
       },
@@ -12730,6 +12966,10 @@
         "fullyQualifiedName": "beast.base.inference.distribution.Gamma",
         "description": "Gamma distribution. for x>0  g(x;alpha,beta) = 1\/Gamma(alpha) beta^alpha} x^{alpha - 1} e^{-\frac{x}{beta}}If the input x is a multidimensional parameter, each of the dimensions is considered as a separate independent component.",
         "generatorType": "distribution",
+        "satisfiesConstraints": [
+          "positive",
+          "non-negative"
+        ],
         "generatedType": "RealParameter",
         "arguments": [
           {
@@ -12737,14 +12977,16 @@
             "type": "Function",
             "description": "shape parameter, defaults to 2",
             "required": false,
-            "recommended": true
+            "recommended": true,
+            "constraint": "positive"
           },
           {
             "name": "beta",
             "type": "Function",
             "description": "second parameter depends on mode, defaults to 2.For mode=ShapeScale beta is interpreted as scale. For mode=ShapeRate beta is interpreted as rate. For mode=ShapeMean beta is interpreted as mean.For mode=OneParameter beta is ignored.",
             "required": false,
-            "recommended": true
+            "recommended": true,
+            "constraint": "positive"
           },
           {
             "name": "mode",
@@ -12758,7 +13000,8 @@
             "type": "Double",
             "description": "offset of origin (defaults to 0)",
             "required": false,
-            "default": "0.0"
+            "default": "0.0",
+            "constraint": "non-negative"
           }
         ]
       },
@@ -12768,26 +13011,33 @@
         "fullyQualifiedName": "beast.base.inference.distribution.InverseGamma",
         "description": "Inverse Gamma distribution, used as prior.    for x>0  f(x; alpha, beta) = \frac{beta^alpha}{Gamma(alpha)} (1\/x)^{alpha + 1}exp(-beta\/x) If the input x is a multidimensional parameter, each of the dimensions is considered as a separate independent component.",
         "generatorType": "distribution",
+        "satisfiesConstraints": [
+          "positive",
+          "non-negative"
+        ],
         "generatedType": "RealParameter",
         "arguments": [
           {
             "name": "alpha",
             "type": "Function",
             "description": "shape parameter, defaults to 2",
-            "required": false
+            "required": false,
+            "constraint": "positive"
           },
           {
             "name": "beta",
             "type": "Function",
             "description": "scale parameter, defaults to 2",
-            "required": false
+            "required": false,
+            "constraint": "positive"
           },
           {
             "name": "offset",
             "type": "Double",
             "description": "offset of origin (defaults to 0)",
             "required": false,
-            "default": "0.0"
+            "default": "0.0",
+            "constraint": "non-negative"
           }
         ]
       },
@@ -12817,7 +13067,8 @@
             "type": "Double",
             "description": "offset of origin (defaults to 0)",
             "required": false,
-            "default": "0.0"
+            "default": "0.0",
+            "constraint": "non-negative"
           }
         ]
       },
@@ -12827,6 +13078,10 @@
         "fullyQualifiedName": "beast.base.inference.distribution.LogNormalDistributionModel",
         "description": "A log-normal distribution with mean and variance parameters.",
         "generatorType": "distribution",
+        "satisfiesConstraints": [
+          "positive",
+          "non-negative"
+        ],
         "generatedType": "RealParameter",
         "arguments": [
           {
@@ -12841,7 +13096,8 @@
             "type": "Function",
             "description": "S parameter of lognormal distribution. Equal to the standard deviation of the log-transformed distribution.",
             "required": false,
-            "recommended": true
+            "recommended": true,
+            "constraint": "positive"
           },
           {
             "name": "meanInRealSpace",
@@ -12855,7 +13111,8 @@
             "type": "Double",
             "description": "offset of origin (defaults to 0)",
             "required": false,
-            "default": "0.0"
+            "default": "0.0",
+            "constraint": "non-negative"
           }
         ]
       },
@@ -12886,7 +13143,8 @@
             "type": "Boolean",
             "description": "use logarithm of parameter values (default false)",
             "required": false,
-            "default": "false"
+            "default": "false",
+            "constraint": "boolean"
           },
           {
             "name": "shape",
@@ -12906,7 +13164,8 @@
             "type": "Boolean",
             "description": "use Log Normal distribution instead of Gamma (default false)",
             "required": false,
-            "default": "false"
+            "default": "false",
+            "constraint": "boolean"
           }
         ]
       },
@@ -12943,7 +13202,8 @@
             "type": "Double",
             "description": "offset of origin (defaults to 0)",
             "required": false,
-            "default": "0.0"
+            "default": "0.0",
+            "constraint": "non-negative"
           }
         ]
       },
@@ -12960,7 +13220,8 @@
             "type": "Double",
             "description": "offset of origin (defaults to 0)",
             "required": false,
-            "default": "0.0"
+            "default": "0.0",
+            "constraint": "non-negative"
           }
         ]
       },
@@ -12970,6 +13231,10 @@
         "fullyQualifiedName": "beast.base.inference.distribution.Poisson",
         "description": "Poisson distribution, used as prior  f(k; lambda)=\\frac{lambda^k e^{-lambda}}{k!}  If the input x is a multidimensional parameter, each of the dimensions is considered as a separate independent component.",
         "generatorType": "distribution",
+        "satisfiesConstraints": [
+          "non-negative",
+          "integer"
+        ],
         "generatedType": "IntegerParameter",
         "arguments": [
           {
@@ -12983,7 +13248,8 @@
             "type": "Double",
             "description": "offset of origin (defaults to 0)",
             "required": false,
-            "default": "0.0"
+            "default": "0.0",
+            "constraint": "non-negative"
           }
         ]
       },
@@ -13009,6 +13275,9 @@
         "fullyQualifiedName": "beast.base.inference.distribution.Uniform",
         "description": "Uniform distribution over a given interval (including lower and upper values)",
         "generatorType": "distribution",
+        "satisfiesConstraints": [
+          "bounded"
+        ],
         "generatedType": "RealParameter",
         "arguments": [
           {
@@ -13032,7 +13301,8 @@
             "type": "Double",
             "description": "offset of origin (defaults to 0)",
             "required": false,
-            "default": "0.0"
+            "default": "0.0",
+            "constraint": "non-negative"
           }
         ]
       },

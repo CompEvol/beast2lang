@@ -205,7 +205,6 @@ public class BEAST2ModelLibraryGenerator {
         // Add built-in nexus function
         JSONObject nexusFunction = new JSONObject();
         nexusFunction.put("name", "nexus");
-        nexusFunction.put("package", "beast2lang.builtin");
         nexusFunction.put("description", "Built-in function to load alignment from Nexus file");
         nexusFunction.put("generatorType", "function");
         nexusFunction.put("generatedType", "Alignment");
@@ -380,6 +379,11 @@ public class BEAST2ModelLibraryGenerator {
         // Add ioHints for specific file-loading generators
         addIOHintsIfApplicable(generator, clazz, className);
 
+        // Add constraint satisfaction information for distributions
+        if (component.isDistribution()) {
+            addConstraintSatisfactionIfApplicable(generator, clazz, className);
+        }
+
         // Try to create instance - if it fails, return minimal generator with no arguments
         BEASTInterface instance = null;
         try {
@@ -472,6 +476,101 @@ public class BEAST2ModelLibraryGenerator {
 
         // You can add more file I/O generators here as needed
         // For example, tree readers, log writers, etc.
+    }
+
+    /**
+     * Add constraint satisfaction metadata for distributions
+     */
+    private void addConstraintSatisfactionIfApplicable(JSONObject generator, Class<?> clazz, String className) {
+        JSONArray satisfiesConstraints = new JSONArray();
+        String fullyQualifiedName = clazz.getName();
+
+        // Known distributions that always produce positive values
+        Set<String> positiveDistributions = Set.of(
+                "LogNormalDistributionModel",
+                "Gamma",
+                "InverseGamma",
+                "Exponential",
+                "ChiSquare",
+                "Weibull",
+                "Rayleigh"
+        );
+
+        // Known distributions that produce values in [0,1]
+        Set<String> zeroOneDistributions = Set.of(
+                "Beta",
+                "KuczkaBeta"
+        );
+
+        // Known distributions that produce non-negative values
+        Set<String> nonNegativeDistributions = Set.of(
+                "Poisson",
+                "NegativeBinomial",
+                "ZeroInflatedDistribution"
+        );
+
+        // Known integer distributions
+        Set<String> integerDistributions = Set.of(
+                "Poisson",
+                "Binomial",
+                "NegativeBinomial",
+                "DiscreteUniformDistribution",
+                "ZeroInflatedDistribution"
+        );
+
+        // Known distributions that produce simplex values (sum to 1)
+        Set<String> simplexDistributions = Set.of(
+                "Dirichlet",
+                "WeightedDirichlet"
+        );
+
+        // Check class name and add appropriate constraints
+        if (positiveDistributions.contains(className)) {
+            satisfiesConstraints.put("positive");
+            satisfiesConstraints.put("non-negative");
+        } else if (zeroOneDistributions.contains(className)) {
+            satisfiesConstraints.put("0-1");
+            satisfiesConstraints.put("non-negative");
+            satisfiesConstraints.put("bounded");
+        } else if (nonNegativeDistributions.contains(className)) {
+            satisfiesConstraints.put("non-negative");
+        } else if (simplexDistributions.contains(className)) {
+            satisfiesConstraints.put("simplex");
+            satisfiesConstraints.put("non-negative");
+            satisfiesConstraints.put("bounded");
+        }
+
+        if (integerDistributions.contains(className)) {
+            satisfiesConstraints.put("integer");
+        }
+
+        // Special cases that need more careful handling
+        if (className.equals("Uniform") || className.equals("UniformDistribution")) {
+            // Uniform can satisfy different constraints depending on bounds
+            // For now, just mark it as bounded
+            satisfiesConstraints.put("bounded");
+        }
+
+        if (className.equals("Normal") || className.equals("NormalDistributionModel")) {
+            // Normal distribution is unbounded
+            // Don't add any constraints
+        }
+
+        if (className.equals("Laplace") || className.equals("LaplaceDistribution")) {
+            // Laplace distribution is unbounded
+            // Don't add any constraints
+        }
+
+        // Truncated distributions might satisfy constraints based on their bounds
+        if (className.contains("Truncated")) {
+            // Could potentially analyze the truncation bounds
+            satisfiesConstraints.put("bounded");
+        }
+
+        // Only add the satisfiesConstraints field if we have constraints to report
+        if (satisfiesConstraints.length() > 0) {
+            generator.put("satisfiesConstraints", satisfiesConstraints);
+        }
     }
 
     /**
