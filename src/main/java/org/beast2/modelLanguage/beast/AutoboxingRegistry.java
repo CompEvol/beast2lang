@@ -8,7 +8,10 @@ import beast.base.inference.parameter.RealParameter;
 import org.beast2.modelLanguage.builder.ObjectRegistry;
 
 import java.lang.reflect.*;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
 import java.util.logging.Logger;
 
 /**
@@ -629,9 +632,11 @@ public class AutoboxingRegistry {
 
             try {
                 Class<?> integerParamClass = Class.forName("beast.base.inference.parameter.IntegerParameter");
+                Class<?> functionClass = Class.forName("beast.base.core.Function");
 
-                // Return true if target is IntegerParameter
-                return integerParamClass.isAssignableFrom(targetClass);
+                // Return true if target is IntegerParameter or Function
+                return integerParamClass.isAssignableFrom(targetClass) ||
+                        functionClass.isAssignableFrom(targetClass);
             } catch (ClassNotFoundException e) {
                 return false;
             }
