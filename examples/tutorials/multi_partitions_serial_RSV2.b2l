@@ -31,16 +31,14 @@ HKY hky3 = HKY(kappa=kappa3, frequencies=freqs3);
 
 // TODO the average relative rates starting values must be 1.
 // Fix mean of 3 relative rates to 1
-RealParameter r_1 ~ RealParameter(value=1.0);
-RealParameter r_2 ~ RealParameter(value=1.0);
-RealParameter r_3 ~ RealParameter(value=1.0);
-Function r = Concatenate(arg=[r_1, r_2, r_3]);
-//TODO if r exists, then the type may not be required here
-Function r ~ WeightedDirichlet(alpha=[1.0, 1.0, 1.0], weights=[209, 210, 210]);
+RealParameter r ~ WeightedDirichlet(alpha=[1.0, 1.0, 1.0], weights=[209, 210, 210]);
+Function r_1 = Slice(arg=r, index=0);
+Function r_2 = Slice(arg=r, index=1);
+Function r_3 = Slice(arg=r, index=2);
 
-SiteModel siteModel1 = SiteModel(substModel=hky1, mutationRate=r_1);
-SiteModel siteModel2 = SiteModel(substModel=hky2, mutationRate=r_2);
-SiteModel siteModel3 = SiteModel(substModel=hky3, mutationRate=r_3);
+SiteModelGI siteModel1 = SiteModelGI(substModel=hky1, mutationRate=r_1);
+SiteModelGI siteModel2 = SiteModelGI(substModel=hky2, mutationRate=r_2);
+SiteModelGI siteModel3 = SiteModelGI(substModel=hky3, mutationRate=r_3);
 
 // link tree
 RealParameter theta ~ LogNormalDistributionModel(M=3, S=2);
