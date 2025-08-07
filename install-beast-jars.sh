@@ -6,13 +6,15 @@
 
 set -e
 
+BEAST_VERSION="2.7.8"
+
 # Determine BEAST2 location
 if [ -z "$1" ]; then
     # Try to find BEAST2 in common locations
-    if [ -d "/Applications/BEAST 2.7.7" ]; then
-        BEAST_PATH="/Applications/BEAST 2.7.7"
-    elif [ -d "$HOME/Applications/BEAST 2.7.7" ]; then
-        BEAST_PATH="$HOME/Applications/BEAST 2.7.7"
+    if [ -d "/Applications/BEAST $BEAST_VERSION" ]; then
+        BEAST_PATH="/Applications/BEAST $BEAST_VERSION"
+    elif [ -d "$HOME/Applications/BEAST $BEAST_VERSION" ]; then
+        BEAST_PATH="$HOME/Applications/BEAST $BEAST_VERSION"
     elif [ -d "/usr/local/share/beast" ]; then
         BEAST_PATH="/usr/local/share/beast"
     else
@@ -58,7 +60,7 @@ mvn install:install-file \
   -Dfile="$BEAST_BASE_JAR" \
   -DgroupId=beast2 \
   -DartifactId=beast-base \
-  -Dversion=2.7.7 \
+  -Dversion="$BEAST_VERSION" \
   -Dpackaging=jar
 
 # Install BEAST.app.jar
@@ -67,7 +69,7 @@ mvn install:install-file \
   -Dfile="$BEAST_APP_JAR" \
   -DgroupId=beast2 \
   -DartifactId=beast-app \
-  -Dversion=2.7.7 \
+  -Dversion="$BEAST_VERSION" \
   -Dpackaging=jar
 
 # Install launcher.jar
@@ -76,7 +78,26 @@ mvn install:install-file \
   -Dfile="$BEAST_LAUNCHER_JAR" \
   -DgroupId=beast2 \
   -DartifactId=beast-launcher \
-  -Dversion=2.7.7 \
+  -Dversion="$BEAST_VERSION" \
+  -Dpackaging=jar
+
+### add BEASTLabs from local lib path
+
+BEAST2_MAC_PATH="$HOME/Library/Application Support/BEAST/2.7"
+
+BEAST_Labs_VERSION="2.0.3"
+BEAST_Labs_JAR="$BEAST2_MAC_PATH/BEASTLabs/lib/BEASTlabs.v$BEAST_Labs_VERSION.jar"
+if [ ! -f "$BEAST_Labs_JAR" ]; then
+    echo "Error: BEASTlabs.jar not found at $BEAST_Labs_JAR"
+    exit 1
+fi
+# Install BEASTLabs.jar
+echo "Installing BEASTLabs.jar to local Maven repository..."
+mvn install:install-file \
+  -Dfile="$BEAST_Labs_JAR" \
+  -DgroupId=beast2 \
+  -DartifactId=beast-labs \
+  -Dversion="$BEAST_Labs_VERSION" \
   -Dpackaging=jar
 
 echo "All BEAST2 dependencies installed successfully!"

@@ -63,6 +63,8 @@ cd ..
 ./install-beast-jars.sh
 ```
 
+<a href="./dependencies.png"><img src="dependencies.png" width="400" ></a>
+
 4. Build with Maven:
 ```bash
 mvn clean package

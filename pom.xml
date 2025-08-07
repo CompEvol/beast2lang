@@ -14,6 +14,7 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <antlr4.version>4.12.0</antlr4.version>
+        <beast2.version>2.7.8</beast2.version>
         <maven.compiler.release>17</maven.compiler.release>
     </properties>
 
@@ -51,17 +52,22 @@
         <dependency>
             <groupId>beast2</groupId>
             <artifactId>beast-base</artifactId>
-            <version>2.7.7</version>
+            <version>${beast2.version}</version>
         </dependency>
         <dependency>
             <groupId>beast2</groupId>
             <artifactId>beast-app</artifactId>
-            <version>2.7.7</version>
+            <version>${beast2.version}</version>
         </dependency>
         <dependency>
             <groupId>beast2</groupId>
             <artifactId>beast-launcher</artifactId>
-            <version>2.7.7</version>
+            <version>${beast2.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>beast2</groupId>
+            <artifactId>beast-labs</artifactId>
+            <version>2.0.3</version>
         </dependency>
         <dependency>
             <groupId>beast.app</groupId>
