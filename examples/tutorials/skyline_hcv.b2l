@@ -4,7 +4,7 @@ requires BEASTLabs;
 
 
 @data
-Alignment alignment_data = AlignmentFromNexus(fileName="hcv.nexus");
+Alignment hcv = AlignmentFromNexus(fileName="hcv.nexus");
 
 // subst models
 RealParameter rates ~ Dirichlet(conc=[1.0, 2.0, 1.0, 1.0, 2.0, 1.0]);
@@ -17,15 +17,17 @@ RealParameter popSizes ~ MarkovChainDistribution(dimension=4, keys="1 2 3 4");
 Function theta1 = Slice(arg=popSizes, index=0);
 Function theta1 ~ LogNormalDistributionModel(M=9, S=2);
 
-// numGroups = 4; w = taxa.length()-1;
+// numGroups = 4; w = taxa.length()-1; NTAX=63
 //TODO no RandomComposition yet
-IntegerParameter groupSizes ~ RandomComposition(k=numGroups, n=w);
+// Samples a random k-tuple of positive integers that sum to n.
+IntegerParameter groupSizes ~ RandomCompositionPositive(k=4, n=62);
 
 Tree tree ~ BayesianSkyline(popSizes=popSizes, groupSizes=groupSizes);
 
+// TODO parse 7.9E-4
 // fix to 0.00079 s/s/y
-StrictClockModel strictClock = StrictClockModel(clock.rate=7.9E-4);
+StrictClockModel strictClock = StrictClockModel(clock.rate=0.00079);
 
-@observed(data=alignment)
+@observed(data=hcv)
 Alignment alignment ~ TreeLikelihood(siteModel=gtr, tree=tree, branchRateModel=strictClock);
 
