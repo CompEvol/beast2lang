@@ -403,10 +403,10 @@ public class Beast2AnalysisBuilder {
             }
         }
 
-        // TODO what about prior and likelihood ? TreeLikelihoods ?
+        // work out prior, likelihood and TreeLikelihoods
         int index = 0;
         fileLogItems.add(index, posterior); // Always log the posterior
-        List<Distribution> distributions = posterior.pDistributions.get();
+        List<Distribution> distributions = posterior.pDistributions.get(); // default is empty list, so safe to null
         Optional<Distribution> likelihood = distributions.stream()
                 .filter(d -> "likelihood".equals(d.getID()))
                 .findFirst();
