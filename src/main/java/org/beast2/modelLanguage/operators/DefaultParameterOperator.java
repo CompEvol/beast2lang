@@ -1,8 +1,12 @@
 package org.beast2.modelLanguage.operators;
 
+import beast.base.core.BEASTInterface;
+import beast.base.core.Function;
 import beast.base.evolution.operator.kernel.BactrianScaleOperator;
 import beast.base.inference.Operator;
 import beast.base.inference.StateNode;
+import beast.base.inference.distribution.ParametricDistribution;
+import beast.base.inference.distribution.Prior;
 import beast.base.inference.operator.BitFlipOperator;
 import beast.base.inference.operator.IntRandomWalkOperator;
 import beast.base.inference.operator.kernel.BactrianDeltaExchangeOperator;
@@ -11,9 +15,11 @@ import beast.base.inference.parameter.BooleanParameter;
 import beast.base.inference.parameter.IntegerParameter;
 import beast.base.inference.parameter.Parameter;
 import beast.base.inference.parameter.RealParameter;
+import beastlabs.math.distributions.WeightedDirichlet;
 import org.beast2.modelLanguage.beast.Beast2AnalysisBuilder;
 
 import java.util.List;
+import java.util.Set;
 
 import static org.beast2.modelLanguage.beast.BEASTObjectID.*;
 import static org.beast2.modelLanguage.operators.MCMCOperator.getOperatorWeight;
@@ -24,7 +30,7 @@ import static org.beast2.modelLanguage.operators.MCMCOperator.getOperatorWeight;
  * @author Walter Xie
  * @author Alexei Drommand
  */
-public class DefaultParameterOperator implements MCMCOperator<Parameter> {
+public class DefaultParameterOperator implements MCMCOperator<StateNode> {
 
     private final Beast2AnalysisBuilder builder;
 
@@ -42,30 +48,30 @@ public class DefaultParameterOperator implements MCMCOperator<Parameter> {
      * create and add {@link Operator} for {@link Parameter}.
      */
     @Override
-    public void addOperators(Parameter param) {
-        if (skipOperator.contains(param)) return;
+    public void addOperators(StateNode stateNode) {
+        if (skipOperator.contains(stateNode)) return;
 
-        String paramID = param.getID();
+        String paramID = stateNode.getID();
         // Skip if we've already created operators for this parameter
         if (!builder.hasOperators(paramID + "Operator")) {
             Operator operator = null;
             try {
-                if (param.getDimension() > 1) {
+                if (stateNode.getDimension() > 1) {
                     // TODO DeltaExchange should be added only if the distribution is a Dirichlet
                     // Use Delta Exchange operator for multidimensional parameters
-                    operator = getDeltaExchangeOperator(param);
+                    operator = getDeltaExchangeOperator(stateNode);
 
-                } else if (param instanceof BooleanParameter booleanParam) {
+                } else if (stateNode instanceof BooleanParameter booleanParam) {
                     operator = getBitFlipOperator(booleanParam);
 
-                } else if (param instanceof IntegerParameter intParam) {
+                } else if (stateNode instanceof IntegerParameter intParam) {
 //                    if (intParam.getLower() < 0)
                     operator = getIntRandomWalkOperator(intParam);
 //                    else
 //                        operator = getScaleOperator(intParam);
 //TODO Integer ScaleOperator ?
 
-                } else if (param instanceof RealParameter realParam) {
+                } else if (stateNode instanceof RealParameter realParam) {
                     if (realParam.getLower() < 0)
                         // any distribution with support in negative values, e.g. Normal, Laplace.
                         operator = getRandomWalkOperator(realParam);
@@ -121,13 +127,33 @@ public class DefaultParameterOperator implements MCMCOperator<Parameter> {
         return operator;
     }
 
-    protected Operator getDeltaExchangeOperator(Parameter param) {
+    protected Operator getDeltaExchangeOperator(StateNode stateNode) {
         BactrianDeltaExchangeOperator deltaOperator = new BactrianDeltaExchangeOperator();
-        deltaOperator.initByName(INPUT_PARAMETER, param,
-                INPUT_WEIGHT, getOperatorWeight(param.getDimension() - 1),
-                "delta", 1.0 / param.getDimension());
-        deltaOperator.setID(param.getID() + ".deltaExchange");
-        builder.fine("Added BactrianDeltaExchangeOperator for " + param.getID());
+        deltaOperator.setInputValue(INPUT_PARAMETER, stateNode);
+        deltaOperator.setInputValue("delta", 1.0 / stateNode.getDimension());
+        deltaOperator.setInputValue(INPUT_WEIGHT, getOperatorWeight(stateNode.getDimension() - 1) );
+        // handle WeightedDirichlet with weight vector
+        Set<BEASTInterface> outputs = stateNode.getOutputs();
+        for (BEASTInterface output : outputs) {
+            if (output instanceof Prior prior) {
+                ParametricDistribution x = prior.distInput.get();
+                if (x instanceof WeightedDirichlet weightedDirichlet) { // in BEASTLabs
+                    // replace INPUT_PARAMETER to List<RealParameter>
+//                    List<Slice> slices = outputs;
+
+// <weights id="L" spec="parameter.IntegerParameter" dimension="3" estimate="false">209 210 210</weights>
+                    Function wL = weightedDirichlet.weightsInput.get();
+                    if ( !(wL instanceof IntegerParameter) )
+                        throw new IllegalArgumentException("WeightedDirichlet weights parameter must be an integer parameter !");
+                    deltaOperator.setInputValue("weightvector", wL);
+
+                    break;
+                }
+            }
+        }
+        deltaOperator.initAndValidate();
+        deltaOperator.setID(stateNode.getID() + ".deltaExchange");
+        builder.fine("Added BactrianDeltaExchangeOperator for " + stateNode.getID());
         return deltaOperator;
     }
 

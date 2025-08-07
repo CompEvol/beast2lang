@@ -438,7 +438,8 @@ public class AutoboxingRegistry {
         @Override
         public Object autobox(Object value, Type targetType, ObjectRegistry objectRegistry) {
             Class<?> targetClass = TypeUtils.getRawType(targetType);
-            return BEASTUtils.createParameterForType(value, targetClass);
+            // constants, so set estimate to false
+            return BEASTUtils.createConstantParameter(value, targetClass);
         }
 
         private boolean isParameterType(Class<?> type) {
@@ -609,6 +610,10 @@ public class AutoboxingRegistry {
             RealParameter realParameter = new RealParameter(doubleArray);
             logger.info("  Dimension of realParameter is: " + realParameter.getDimension());
 
+            // constants, so set estimate to false
+            realParameter.setInputValue("estimate", false);
+            realParameter.initAndValidate();
+
             return realParameter;
         }
     }
@@ -650,6 +655,9 @@ public class AutoboxingRegistry {
 
             // Create IntegerParameter directly (assuming it has a constructor like RealParameter)
             IntegerParameter integerParameter = new IntegerParameter(integerArray);
+            // constants, so set estimate to false
+            integerParameter.setInputValue("estimate", false);
+            integerParameter.initAndValidate();
 
             logger.info("  Dimension of integerParameter is: " + integerParameter.getDimension());
 

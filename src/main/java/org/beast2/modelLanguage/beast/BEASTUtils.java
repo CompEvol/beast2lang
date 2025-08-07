@@ -2,18 +2,25 @@ package org.beast2.modelLanguage.beast;
 
 import beast.base.core.BEASTInterface;
 import beast.base.core.Input;
+import beast.base.inference.StateNode;
 import beast.base.inference.parameter.BooleanParameter;
 import beast.base.inference.parameter.IntegerParameter;
-import beast.base.inference.parameter.RealParameter;
 import beast.base.inference.parameter.Parameter;
+import beast.base.inference.parameter.RealParameter;
 import org.beast2.modelLanguage.builder.ObjectRegistry;
 import org.beast2.modelLanguage.builder.handlers.ExpressionResolver;
 import org.beast2.modelLanguage.model.Argument;
 import org.beast2.modelLanguage.model.Expression;
 import org.beast2.modelLanguage.model.FunctionCall;
 
-import java.lang.reflect.*;
-import java.util.*;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.logging.Logger;
 
 /**
@@ -334,6 +341,20 @@ public class BEASTUtils {
             return createRealParameter(0.0);
         }
     }
+
+    /**
+     * Create the most appropriate Parameter type based on an expected type
+     * By default, estimate is true. But the inputs of prior dist are mostly constants.
+     */
+    public static Parameter<?> createConstantParameter(Object value, Type expectedType) {
+        Parameter<?> parameter = createParameterForType(value, expectedType);
+        if (parameter instanceof StateNode stateNode) {
+            stateNode.setInputValue("estimate", false);
+            stateNode.initAndValidate();
+        }
+        return parameter;
+    }
+
 
     /**
      * Placeholder methods that will need implementations from ExpressionResolver

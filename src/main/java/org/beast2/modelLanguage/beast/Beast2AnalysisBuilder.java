@@ -445,7 +445,9 @@ public class Beast2AnalysisBuilder {
         return loggers;
     }
 
-
+    public Beast2ModelBuilder getModelBuilder() {
+        return modelBuilder;
+    }
 
     public boolean hasOperators(String key) {
         return operatorCache.containsKey(key);
@@ -538,13 +540,11 @@ public class Beast2AnalysisBuilder {
         for (StateNode stateNode : stateNodes) {
             try {
                 if (stateNode instanceof Tree tree) {
-                    // directly add to operatorCache
+                    // check if it is Tree first
                     treeOpFactory.addOperators(tree);
                 } else if (stateNode instanceof Parameter) {
-                    Parameter param = (Parameter) stateNode;
-                    // directly add to operatorCache
-                    paramOpFactory.addOperators(param);
-
+                    // if it is also Parameter
+                    paramOpFactory.addOperators(stateNode);
                 } else {
                     logger.warning("Unhandled stateNode in setupOperators " + stateNode.getID());
                 }
