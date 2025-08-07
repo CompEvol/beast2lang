@@ -404,7 +404,34 @@ public class Beast2AnalysisBuilder {
         }
 
         // TODO what about prior and likelihood ? TreeLikelihoods ?
-        fileLogItems.add(0, posterior); // Always log the posterior
+        int index = 0;
+        fileLogItems.add(index, posterior); // Always log the posterior
+        List<Distribution> distributions = posterior.pDistributions.get();
+        Optional<Distribution> likelihood = distributions.stream()
+                .filter(d -> "likelihood".equals(d.getID()))
+                .findFirst();
+        Optional<Distribution> prior = distributions.stream()
+                .filter(d -> "prior".equals(d.getID()))
+                .findFirst();
+        if (likelihood.isPresent()) {
+            index++;
+            fileLogItems.add(index, likelihood.get());
+        }
+        if (prior.isPresent()) {
+            index++;
+            fileLogItems.add(index, prior.get());
+        }
+        // Tree Likelihoods
+        if (likelihood.isPresent() && likelihood.get() instanceof CompoundDistribution llDist) {
+            List<GenericTreeLikelihood> treeLikelihoods = llDist.pDistributions.get().stream()
+                    .filter(d -> d instanceof GenericTreeLikelihood)
+                    .map(d -> (GenericTreeLikelihood) d)
+                    .toList();
+            for (GenericTreeLikelihood treeLikelihood : treeLikelihoods) {
+                index++;
+                fileLogItems.add(index, treeLikelihood);
+            }
+        }
 
         fileLogger.initByName(
                 INPUT_FILE_NAME, traceFileName,
