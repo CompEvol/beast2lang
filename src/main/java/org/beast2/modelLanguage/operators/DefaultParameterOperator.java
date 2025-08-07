@@ -138,9 +138,6 @@ public class DefaultParameterOperator implements MCMCOperator<StateNode> {
             if (output instanceof Prior prior) {
                 ParametricDistribution x = prior.distInput.get();
                 if (x instanceof WeightedDirichlet weightedDirichlet) { // in BEASTLabs
-                    // replace INPUT_PARAMETER to List<RealParameter>
-//                    List<Slice> slices = outputs;
-
 // <weights id="L" spec="parameter.IntegerParameter" dimension="3" estimate="false">209 210 210</weights>
                     Function wL = weightedDirichlet.weightsInput.get();
                     if ( !(wL instanceof IntegerParameter) )
