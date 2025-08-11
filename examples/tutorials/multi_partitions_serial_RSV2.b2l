@@ -6,11 +6,11 @@ requires BEASTLabs;
 // use feast
 Alignment alignment_data = AlignmentFromNexus(fileName="RSV2.nex");
 @data
-Alignment codon1 = FilteredAlignment(data=alignment_data, filter="3-629\3");
+Alignment RSV2_codon1 = FilteredAlignment(data=alignment_data, filter="3-629\3");
 @data
-Alignment codon2 = FilteredAlignment(data=alignment_data, filter="1-629\3");
+Alignment RSV2_codon2 = FilteredAlignment(data=alignment_data, filter="1-629\3");
 @data
-Alignment codon3 = FilteredAlignment(data=alignment_data, filter="2-629\3");
+Alignment RSV2_codon3 = FilteredAlignment(data=alignment_data, filter="2-629\3");
 
 // the earliest AUSA2s61=41.0
 TraitSet traitSet = TraitSetFromTaxonSet(delimiter="s", everythingAfterLast="true",
@@ -48,9 +48,9 @@ Tree tree ~ Coalescent(populationModel=popFunc, taxonset=alignment_data, trait=t
 RealParameter clockRate ~ LogNormalDistributionModel(M=-5, S=1.25);
 StrictClockModel clockModel = StrictClockModel(clock.rate=clockRate);
 
-@observed(data=codon1)
+@observed(data=RSV2_codon1)
 Alignment codon1 ~ TreeLikelihood(siteModel=siteModel1, tree=tree, branchRateModel=clockModel);
-@observed(data=codon2)
+@observed(data=RSV2_codon2)
 Alignment codon2 ~ TreeLikelihood(siteModel=siteModel2, tree=tree, branchRateModel=clockModel);
-@observed(data=codon3)
+@observed(data=RSV2_codon3)
 Alignment codon3 ~ TreeLikelihood(siteModel=siteModel3, tree=tree, branchRateModel=clockModel);
