@@ -1,0 +1,14 @@
+<package name='beast2lang' version='0.0.1'>
+	<depends on='BEAST.base' atleast='2.7.8'/>
+	<depends on='BEAST.app' atleast='2.7.8'/>
+	<depends on='BEASTLabs' atleast='2.0.3'/>
+
+	<packageapp description="Interactive Methods Section Generator"
+				class="beastfx.app.methodsection.XML2HTMLPaneFX"
+	/>
+
+	<packageapp description="Log File Analyser"
+				class="beastfx.app.tools.LogAnalyser"
+	/>
+
+</package>
