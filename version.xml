@@ -3,12 +3,8 @@
 	<depends on='BEAST.app' atleast='2.7.8'/>
 	<depends on='BEASTLabs' atleast='2.0.3'/>
 
-	<packageapp description="Interactive Methods Section Generator"
-				class="beastfx.app.methodsection.XML2HTMLPaneFX"
-	/>
-
-	<packageapp description="Log File Analyser"
-				class="beastfx.app.tools.LogAnalyser"
+	<packageapp description="Run a Beast2 model after conversion"
+				class="org.beast2.modelLanguage.Beast2LangRun"
 	/>
 
 </package>
