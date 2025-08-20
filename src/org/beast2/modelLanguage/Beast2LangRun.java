@@ -26,7 +26,8 @@ public class Beast2LangRun extends beast.base.inference.Runnable {
 
     private static final Logger logger = Logger.getLogger(Beast2LangRun.class.getName());
 
-    public Input<File> inputFileInput = new Input<>("file", "Input Beast2Lang file", Input.Validate.REQUIRED);
+    public Input<File> inputFileInput = new Input<>("file", "Input Beast2Lang file",
+            new File("[[*.b2l]]"));
     public Input<File> outputFileInput = new Input<>("output", "Output Beast2 XML file",
             new File("model.xml"), Input.Validate.OPTIONAL);
     public Input<Long> chainLengthInput = new Input<>("chainLength", "MCMC chain length", 10000000L);
@@ -75,6 +76,7 @@ public class Beast2LangRun extends beast.base.inference.Runnable {
 
     @Override
     public void run() {
+        this.initAndValidate();
 
         // Set debug level if requested
         if (debug) {
