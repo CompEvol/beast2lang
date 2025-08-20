@@ -1,0 +1,207 @@
+<!-- Build BEAST2Lang -->
+<project basedir="." default="build_jar_all_BEAST2Lang" name="build_BEAST2Lang">
+
+	<!-- Use Zulu to compile -->
+	<!--  run beast2, BeastFX, BESATLabs build.xml first -->
+	<!--  and then "ant package" -->
+
+	<!-- set global properties for this build -->
+	<property name="srcb2l" location="../beast2lang/src" />
+	<property name="buildb2l" location="../beast2lang/build" />
+	<property name="libb2l" location="../beast2lang/lib" />
+	<property name="release_dir" value="release" />
+	<property name="distb2l" location="${buildb2l}/dist" />
+	<property name="beast2path" location="../beast2" />
+	<property name="BeastFXpath" location="../BeastFX" />
+	<property name="BEASTLabsPath" location="../BEASTLabs" />
+<!--	<property name="srcBeast2" location="${beast2path}/test" />-->
+<!--	<property name="beast2classpath" location="${beast2path}/build" />-->
+	<property name="Add_on_dir" value="${release_dir}/add-on" />
+
+	<!-- BEAST 2 currently uses Java 17 -->
+	<property name="sourceVersion" value="17"/>
+	<property name="targetVersion" value="17"/>
+
+
+	<property name="version" value="0.0.1" />
+
+    <import file="${beast2path}/build.xml" />
+	<import file="${BeastFXpath}/build.xml" />
+	<import file="${BEASTLabsPath}/build.xml" />
+	<property name="report" value="${buildb2l}/junitreport"/>
+
+	<path id="classpath">
+        <pathelement path="${buildb2l}"/>
+		<fileset dir="${libb2l}" includes="json-20231013.jar"/>
+		<fileset dir="${BEASTLabsPath}/lib" includes="nashorn-core-15.3.jar"/>
+		<fileset dir="${beast2path}/lib/junit" includes="junit-*.jar"/>
+		<fileset dir="${beast2path}/lib" includes="*.jar"/>
+		<fileset dir="${beast2path}/lib" includes="colt.jar"/>
+        <pathelement path="${beast2classpath}"/>
+        <pathelement path="${BeastFXpath}/build"/>
+		<pathelement path="${BEASTLabsPath}/build"/>
+	</path>
+
+	<!-- start -->
+	<target name="initBEAST2Lang">
+		<echo message="${ant.project.name}: ${ant.file}" />
+        <available file="./version.xml" property="versionAvailable"/>
+        <fail unless="versionAvailable">
+              ** Required file version.xml does not exist. **
+        </fail>
+
+        <!-- Read package name and version from xml file -->
+        <xmlproperty file="./version.xml" prefix="fromVersionFile" />
+        <property name="projName" value="${fromVersionFile.package(name)}" />
+        <property name="projVersion" value="${fromVersionFile.package(version)}" />
+        <property name="BEAST2LangVersion" value="${fromVersionFile.package(version)}" />
+    </target>
+
+
+	<target name="cleanBEAST2Lang">
+    	<delete dir="${buildb2l}" />
+	</target>
+
+	<!-- clean previous build, and then compile Java source code, and Juint test -->
+	<target name="build_all_BEAST2Lang" depends="cleanBEAST2Lang,compile-allBEAST2Lang,junitBEAST2Lang"
+        description="Clean and Build all run-time stuff">
+	</target>
+
+	<!-- clean previous build, compile Java source code, and Junit test, and make the beast.jar and beauti.jar -->
+	<target name="build_jar_all_BEAST2Lang" depends="cleanBEAST2Lang,compile-allBEAST2Lang,junitBEAST2Lang,dist_all_BEAST2Lang"
+        description="Clean and Build all run-time stuff">
+	</target>
+
+
+	<!-- No JUnit Test, clean previous build, compile Java source code, and make the BEAST2Lang.jar and beauti.jar -->
+	<target name="build_jar_all_BEAST2Lang_NoJUnitTest" depends="cleanBEAST2Lang,compile-allBEAST2Lang,dist_all_BEAST2Lang"
+        description="Clean and Build all run-time stuff">
+	</target>
+
+	<!-- compile Java source code -->
+<!--
+	<target name="compile-allBEAST2Lang" depends="initBEAST2Lang,compile-all">
+-->	
+	<target name="compile-allBEAST2Lang" depends="initBEAST2Lang">
+	    <!-- Capture the path as a delimited property using the refid attribute -->
+	    <property name="myclasspath" refid="classpath"/>
+	    <!-- Emit the property to the ant console -->
+	    <echo message="Classpath = ${myclasspath}"/>
+
+		<mkdir dir="${buildb2l}" />
+
+        <!-- add this if Zulu JDK not installed executable="../../Downloads/zulu17.36.13-ca-fx-jdk17.0.4-macosx_x64/zulu-17.jdk/Contents/Home/bin/javac" -->
+		<!-- Compile the java code from ${srcb2l} into ${buildb2l} /bin -->
+		<javac srcdir="${srcb2l}" destdir="${buildb2l}" classpathref="classpath"
+			   target="${targetVersion}" source="${sourceVersion}"
+			   fork="true" includeantruntime="false"
+		       memoryinitialsize="256m"
+		       memorymaximumsize="1024m">
+			<include name="org/beast2/modelLanguage/**" />
+			<!-- compile JUnit test classes -->
+			<include name="test/org/beast2/modelLanguage/**" />
+		</javac>
+		<echo message="Successfully compiled." />
+	</target>
+
+	<!-- make the BEAST2Lang.hjar and TreeAnnotator.jar -->
+	<target name="dist_all_BEAST2Lang" depends="compile-allBEAST2Lang" description="create BEAST2Lang jar">
+		<!-- Create the distribution directory -->
+		<mkdir dir="${distb2l}" />
+
+		<!-- Put everything in ${buildb2l} into the beast.jar file -->
+		<jar jarfile="${distb2l}/BEAST2Lang.v${BEAST2LangVersion}.jar">
+			<manifest>
+				<attribute name="Built-By" value="${user.name}" />
+			</manifest>
+			<fileset dir="${buildb2l}">
+				<include name="org/beast2/**/*.class" />
+			</fileset>
+		</jar>
+	</target>
+
+	<!-- run beast.jar -->
+<!--	<target name="run_BEAST2Lang">-->
+<!--		<java jar="${distb2l}/BEAST2Lang.all.v${BEAST2LangVersion}.jar" fork="true" />-->
+<!--	</target>-->
+
+	
+	<!-- JUnit test -->
+	<target name="junitBEAST2Lang" depends="compile-allBEAST2Lang">
+		<mkdir dir="${report}" />
+		<junit printsummary="yes"> <!--showoutput='yes'-->
+			<classpath>
+				<path refid="classpath" />
+				<path location="${buildb2l}" />
+			</classpath>
+
+			<formatter type="xml" />
+
+			<batchtest fork="yes" todir="${report}">
+				<fileset dir="${srcBeast2}">
+                    <include name="test/org/beast2/**/*Test.java"/>
+				</fileset>
+			</batchtest>
+		</junit>
+		<echo message="JUnit test finished." />
+	</target>
+    
+    <target name="junitreport">
+		<junitreport todir="${report}">
+			<fileset dir="${report}" includes="*.xml"/>
+			<report format="frames" todir="${report}"/>
+		</junitreport>
+		<echo message="JUnit test report finished." />
+	</target>
+
+	<target name="addon" depends="package"/>
+	
+	<target name="package"
+	        depends="build_jar_all_BEAST2Lang_NoJUnitTest"
+	        description="release BEAST 2 add-on version of BEAST2Lang">
+        <property name="fullName" value="${projName}.v${projVersion}"/>
+
+		<delete dir="${Add_on_dir}" />
+		<!-- Create the release directory -->
+		<mkdir dir="${Add_on_dir}" />
+		<mkdir dir="${Add_on_dir}/lib" />
+		<mkdir dir="${Add_on_dir}/examples" />
+		<mkdir dir="${Add_on_dir}/fxtemplates" />
+
+		<copy todir="${Add_on_dir}">
+			<fileset file="version.xml"/>
+		</copy>
+		<copy todir="${Add_on_dir}/examples">
+			<!-- top-level examples -->
+			<fileset dir="examples">
+				<include name="example_model_hky.b2l" />
+				<include name="primates.nex" />
+			</fileset>
+
+			<!-- tutorial subdirectory -->
+			<fileset dir="examples/tutorials">
+				<include name="multi_partitions_serial_RSV2.b2l" />
+				<include name="RSV2.nex" />
+			</fileset>
+		</copy>
+
+		<copy todir="${Add_on_dir}/lib">
+			<fileset file="${distb2l}/BEAST2Lang.v${BEAST2LangVersion}.jar" />
+			<fileset dir="${libb2l}" includes="json-20231013.jar"/>
+		</copy>
+		<copy todir="${Add_on_dir}">
+			<fileset file="${distb2l}/BEAST2Lang.v${BEAST2LangVersion}.src.jar" />
+		</copy>
+<!--		<copy todir="${Add_on_dir}/fxtemplates">-->
+<!--			<fileset file="fxtemplates/Weibull.xml" />-->
+<!--			<fileset file="fxtemplates/extras.xml" />-->
+<!--		</copy>-->
+		<zip destfile="${distb2l}/${fullName}.zip">
+			<fileset dir="${Add_on_dir}">
+				<include name="**/*" />
+			</fileset>
+        </zip>
+		<echo message="Add-on BEAST2Lang version ${BEAST2LangVersion} release is finished." />
+	</target>
+
+</project>
