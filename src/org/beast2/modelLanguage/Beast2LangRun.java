@@ -3,6 +3,7 @@ package org.beast2.modelLanguage;
 import beast.base.core.Input;
 import beast.base.inference.MCMC;
 import beast.base.parser.XMLParser;
+import beastfx.app.util.OutFile;
 import org.beast2.modelLanguage.beast.Beast2AnalysisBuilder;
 import org.beast2.modelLanguage.beast.Beast2ModelBuilder;
 import org.beast2.modelLanguage.builder.Beast2LangParser;
@@ -28,8 +29,8 @@ public class Beast2LangRun extends beast.base.inference.Runnable {
 
     public Input<File> inputFileInput = new Input<>("file", "Input Beast2Lang file",
             new File("[[*.b2l]]"));
-    public Input<File> outputFileInput = new Input<>("output", "Output Beast2 XML file",
-            new File("model.xml"), Input.Validate.OPTIONAL);
+    public Input<OutFile> outputFileInput = new Input<>("output", "Output Beast2 XML file",
+            new OutFile("model.xml"));
     public Input<Long> chainLengthInput = new Input<>("chainLength", "MCMC chain length", 10000000L);
     public Input<Integer> logEveryInput = new Input<>("logEvery", "Logging interval", 1000);
     public Input<String> traceFileNameInput = new Input<>("traceFileName",
@@ -61,6 +62,8 @@ public class Beast2LangRun extends beast.base.inference.Runnable {
     @Override
     public void initAndValidate() {
         inputFile = inputFileInput.get();
+        if (inputFile.getName().contains("[[*.b2l]]"))
+            throw new IllegalArgumentException("Input file is required ! " + inputFile);
         outputFile = outputFileInput.get();
         chainLength = chainLengthInput.get();
         logEvery = logEveryInput.get();
@@ -76,7 +79,7 @@ public class Beast2LangRun extends beast.base.inference.Runnable {
 
     @Override
     public void run() {
-        this.initAndValidate();
+//        this.initAndValidate();
 
         // Set debug level if requested
         if (debug) {
@@ -184,10 +187,6 @@ public class Beast2LangRun extends beast.base.inference.Runnable {
         final String version = "v0.0.1";
         String title = "Run Beast2Lang " + version;
 
-        try {
-            new beastfx.app.tools.Application(new Beast2LangRun(), title, 600, 300, args);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        new beastfx.app.tools.Application(new Beast2LangRun(), title, args);
     }
 }
