@@ -7,4 +7,23 @@
 				class="org.beast2.modelLanguage.Beast2LangRun"
 	/>
 
+	<packageapp description="Validate a Beast2Lang file"
+				class="org.beast2.modelLanguage.Beast2LangValidate"
+	/>
+
+	<packageapp description="Convert Beast2Lang to LinguaPhylo (LPHY)"
+				class="org.beast2.modelLanguage.Beast2LangLPhy"
+	/>
+
+	<packageapp description="Convert between Beast2Lang and other formats"
+				class="org.beast2.modelLanguage.Beast2LangConvert"
+	/>
+
+	<packageapp description="Decompile BEAST2 XML to Beast2Lang"
+				class="org.beast2.modelLanguage.Beast2LangDecompile"
+	/>
+
+	<packageapp description="Generate BEAST2 engine library schema"
+				class="org.beast2.modelLanguage.Beast2LangSchema"
+	/>
 </package>

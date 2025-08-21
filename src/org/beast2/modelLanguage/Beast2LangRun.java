@@ -26,11 +26,11 @@ import java.io.StringWriter;
 @Description("Run a Beast2 model given definition language")
 public class Beast2LangRun extends beast.base.inference.Runnable {
     public static final String version = "v0.0.1";
-
+    public static final String FILE_INIT = "[[*.b2l]]";
 //    private static final Logger logger = Logger.getLogger(Beast2LangRun.class.getName());
 
     public Input<File> inputFileInput = new Input<>("file", "Input Beast2Lang file",
-            new File("[[*.b2l]]"));
+            new File("FILE_INIT"));
     public Input<OutFile> outputFileInput = new Input<>("output", "Output Beast2 XML file",
             new OutFile("model.xml"));
     public Input<Long> chainLengthInput = new Input<>("chainLength", "MCMC chain length", 10000000L);
@@ -64,7 +64,7 @@ public class Beast2LangRun extends beast.base.inference.Runnable {
     @Override
     public void initAndValidate() {
         inputFile = inputFileInput.get();
-        if (inputFile.getName().contains("[[*.b2l]]"))
+        if (inputFile.getName().contains("FILE_INIT"))
             throw new IllegalArgumentException("Input file is required ! " + inputFile);
         outputFile = outputFileInput.get();
         chainLength = chainLengthInput.get();

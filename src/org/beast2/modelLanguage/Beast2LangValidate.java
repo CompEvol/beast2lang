@@ -18,21 +18,20 @@ import java.io.FileInputStream;
 @Description("Validate a Beast2 model written in the definition language")
 public class Beast2LangValidate extends beast.base.inference.Runnable {
     public static final String version = "v0.0.1";
-
-//    private static final Logger logger = Logger.getLogger(Beast2LangRun.class.getName());
+    public static final String FILE_INIT = "[[*.b2l]]";
 
     public Input<File> inputFileInput = new Input<>("file", "Input Beast2Lang file",
-            new File("[[*.b2l]]"));
+            new File(FILE_INIT));
     public Input<Boolean> usePhyloSpecInput = new Input<>("usePhyloSpec",
             "Use PhyloSpec syntax", false);
 
-    protected File inputFile;
-    protected Boolean usePhyloSpec;
+    private File inputFile;
+    private Boolean usePhyloSpec;
 
     @Override
     public void initAndValidate() {
         inputFile = inputFileInput.get();
-        if (inputFile.getName().contains("[[*.b2l]]"))
+        if (inputFile.getName().contains(FILE_INIT))
             throw new IllegalArgumentException("Input file is required ! " + inputFile);
         usePhyloSpec = usePhyloSpecInput.get();
     }
