@@ -1,6 +1,8 @@
 package org.beast2.modelLanguage;
 
+import beast.base.core.Description;
 import beast.base.core.Input;
+import beast.base.core.Log;
 import beast.base.inference.MCMC;
 import beast.base.parser.XMLParser;
 import beastfx.app.util.OutFile;
@@ -16,16 +18,16 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
-/**
+/**TODO only work in command line
  * Main application class for Beast2Lang
  * Provides utilities for working with Beast2 model definition language
  */
+@Description("Run a Beast2 model given definition language")
 public class Beast2LangRun extends beast.base.inference.Runnable {
+    public static final String version = "v0.0.1";
 
-    private static final Logger logger = Logger.getLogger(Beast2LangRun.class.getName());
+//    private static final Logger logger = Logger.getLogger(Beast2LangRun.class.getName());
 
     public Input<File> inputFileInput = new Input<>("file", "Input Beast2Lang file",
             new File("[[*.b2l]]"));
@@ -79,15 +81,14 @@ public class Beast2LangRun extends beast.base.inference.Runnable {
 
     @Override
     public void run() {
-//        this.initAndValidate();
-
         // Set debug level if requested
         if (debug) {
-            Logger rootLogger = Logger.getLogger("");
-            rootLogger.setLevel(Level.FINE);
-            for (java.util.logging.Handler handler : rootLogger.getHandlers()) {
-                handler.setLevel(Level.FINE);
-            }
+//            Logger rootLogger = Logger.getLogger("");
+//            rootLogger.setLevel(Level.FINE);
+//            for (java.util.logging.Handler handler : rootLogger.getHandlers()) {
+//                handler.setLevel(Level.FINE);
+//            }
+            Log.setLevel(Log.Level.debug);
         }
 
         try {
@@ -135,7 +136,7 @@ public class Beast2LangRun extends beast.base.inference.Runnable {
                 System.out.println("Writing XML...");
 
                 // Generate XML
-                String xml = Beast2LangUtils.generateXML(mcmc, logger);
+                String xml = Beast2LangUtils.generateXML(mcmc);
                 // Write XML to output file
                 Beast2LangUtils.writeOutput(outputFile, xml);
 
@@ -178,13 +179,12 @@ public class Beast2LangRun extends beast.base.inference.Runnable {
                 StringWriter sw = new StringWriter();
                 PrintWriter pw = new PrintWriter(sw);
                 e.printStackTrace(pw);
-                logger.severe("Detailed error: " + sw.toString());
+                Log.err("Detailed error: " + sw.toString());
             }
         }
     }
 
     public static void main(String[] args) throws Exception {
-        final String version = "v0.0.1";
         String title = "Run Beast2Lang " + version;
 
         new beastfx.app.tools.Application(new Beast2LangRun(), title, args);

@@ -1,5 +1,6 @@
 package org.beast2.modelLanguage.beast;
 
+import beast.base.core.Log;
 import beast.base.evolution.alignment.TaxonSet;
 import beast.base.evolution.tree.MRCAPrior;
 import beast.base.inference.Distribution;
@@ -11,7 +12,6 @@ import org.beast2.modelLanguage.model.DistributionAssignment;
 import org.beast2.modelLanguage.model.FunctionCall;
 
 import java.util.*;
-import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 /**
@@ -19,7 +19,7 @@ import java.util.stream.Collectors;
  * This eliminates circular dependencies between the model builder and object factory.
  */
 public class BeastObjectRegistry implements ObjectRegistry {
-    private static final Logger logger = Logger.getLogger(BeastObjectRegistry.class.getName());
+//    private static final Logger logger = Logger.getLogger(BeastObjectRegistry.class.getName());
 
     // Main object storage
     private final Map<String, Object> objects = new HashMap<>();
@@ -47,15 +47,15 @@ public class BeastObjectRegistry implements ObjectRegistry {
         // Also register in specialized maps if applicable
         if (object instanceof StateNode) {
             stateNodes.put(id, (StateNode) object);
-            logger.fine("Registered StateNode: " + id);
+            Log.trace("Registered StateNode: " + id);
         }
 
         if (object instanceof Distribution) {
             distributions.put(id, (Distribution) object);
-            logger.fine("Registered Distribution: " + id);
+            Log.trace("Registered Distribution: " + id);
         }
 
-        logger.info("Registered object: " + id + " (" + object.getClass().getSimpleName() + ")");
+        Log.info("Registered object: " + id + " (" + object.getClass().getSimpleName() + ")");
     }
 
     /**
@@ -111,7 +111,7 @@ public class BeastObjectRegistry implements ObjectRegistry {
      */
     public void markAsRandomVariable(String varName) {
         randomVariables.add(varName);
-        logger.info("Marked as random variable: " + varName);
+        Log.info("Marked as random variable: " + varName);
     }
 
     /**
@@ -122,7 +122,7 @@ public class BeastObjectRegistry implements ObjectRegistry {
         if (dataRef != null) {
             observedDataReferences.put(varName, dataRef);
         }
-        logger.info("Marked as observed variable: " + varName +
+        Log.info("Marked as observed variable: " + varName +
                 (dataRef != null ? " with data reference: " + dataRef : ""));
     }
 
@@ -131,7 +131,7 @@ public class BeastObjectRegistry implements ObjectRegistry {
      */
     public void markAsDataAnnotated(String varName) {
         dataAnnotatedVariables.add(varName);
-        logger.info("Marked as data-annotated: " + varName);
+        Log.info("Marked as data-annotated: " + varName);
     }
 
     @Override
@@ -140,14 +140,14 @@ public class BeastObjectRegistry implements ObjectRegistry {
             // Get the taxon set for this calibration
             TaxonSet taxonSet = (TaxonSet) objects.get(calibration.getTaxonset());
             if (taxonSet == null) {
-                logger.warning("TaxonSet not found for calibration: " + calibration.getTaxonset());
+                Log.warning("TaxonSet not found for calibration: " + calibration.getTaxonset());
                 return;
             }
 
             // Get the tree for this calibration
             StateNode treeStateNode = stateNodes.get(treeVar);
             if (treeStateNode == null) {
-                logger.warning("Tree StateNode not found: " + treeVar);
+                Log.warning("Tree StateNode not found: " + treeVar);
                 return;
             }
 
@@ -174,19 +174,19 @@ public class BeastObjectRegistry implements ObjectRegistry {
 
                     // Set it on the MRCAPrior
                     mrcaPrior.setInputValue("distr", distObject);
-                    logger.info("Created and registered distribution: " + distId + " for calibration: " + calibration.getTaxonset());
+                    Log.info("Created and registered distribution: " + distId + " for calibration: " + calibration.getTaxonset());
                 } else {
-                    logger.warning("Failed to create distribution for calibration: " + calibration.getTaxonset());
+                    Log.warning("Failed to create distribution for calibration: " + calibration.getTaxonset());
                 }
             } else {
-                logger.info("Creating monophyletic-only constraint (no age distribution) for: " + calibration.getTaxonset());
+                Log.info("Creating monophyletic-only constraint (no age distribution) for: " + calibration.getTaxonset());
             }
 
             // Handle leaf constraints
             if (calibration.hasLeafConstraint()) {
                 // For leaf calibrations, we might need to set the "isMonophyletic" to false
                 // and handle it differently depending on BEAST2's MRCAPrior implementation
-                logger.info("Processing leaf calibration for taxonset: " + calibration.getTaxonset());
+                Log.info("Processing leaf calibration for taxonset: " + calibration.getTaxonset());
 
                 // Note: You may need to adjust this based on how BEAST2 handles tip dating
                 // Some versions might use different parameters or require special handling
@@ -204,14 +204,14 @@ public class BeastObjectRegistry implements ObjectRegistry {
             // Register the MRCAPrior in the registry
             register(mrcaPriorId, mrcaPrior);
 
-            logger.info("Created MRCAPrior: " + mrcaPriorId +
+            Log.info("Created MRCAPrior: " + mrcaPriorId +
                     " for taxonset: " + calibration.getTaxonset() +
                     " (monophyletic=" + calibration.isMonophyletic() +
                     ", hasDistribution=" + calibration.hasDistribution() +
                     ", leaf=" + calibration.isLeaf() + ")");
 
         } catch (Exception e) {
-            logger.severe("Error creating MRCAPrior for calibration: " + e.getMessage());
+            Log.err("Error creating MRCAPrior for calibration: " + e.getMessage());
             e.printStackTrace();
             throw new RuntimeException("Failed to create MRCAPrior for calibration", e);
         }
@@ -252,7 +252,7 @@ public class BeastObjectRegistry implements ObjectRegistry {
                 distObject = objects.get(distName);
 
                 if (distObject instanceof Distribution) {
-                    logger.info("Found distribution with modified name: " + distName);
+                    Log.info("Found distribution with modified name: " + distName);
                     return distObject;
                 }
             }
@@ -260,7 +260,7 @@ public class BeastObjectRegistry implements ObjectRegistry {
             return distObject;
 
         } catch (Exception e) {
-            logger.severe("Error creating distribution from function call: " + e.getMessage());
+            Log.err("Error creating distribution from function call: " + e.getMessage());
             e.printStackTrace();
             return null;
         }
@@ -326,7 +326,7 @@ public class BeastObjectRegistry implements ObjectRegistry {
         observedVariables.clear();
         dataAnnotatedVariables.clear();
         observedDataReferences.clear();
-        logger.info("Registry cleared");
+        Log.info("Registry cleared");
     }
 
     /**

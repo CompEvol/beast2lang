@@ -1,5 +1,6 @@
 package org.beast2.modelLanguage.builder.handlers;
 
+import beast.base.core.Log;
 import org.beast2.modelLanguage.beast.AutoboxingRegistry;
 import org.beast2.modelLanguage.builder.FactoryProvider;
 import org.beast2.modelLanguage.builder.ModelObjectFactory;
@@ -9,14 +10,13 @@ import org.beast2.modelLanguage.model.*;
 import java.lang.reflect.Type;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.logging.Logger;
 
 /**
  * Utility class for resolving Expression values to Java objects
  */
 public class ExpressionResolver {
 
-    private static final Logger logger = Logger.getLogger(ExpressionResolver.class.getName());
+//    private static final Logger logger = Logger.getLogger(ExpressionResolver.class.getName());
     private static final ModelObjectFactory factory = FactoryProvider.getFactory();
 
     /**
@@ -59,7 +59,7 @@ public class ExpressionResolver {
             AlignmentFunctionHandler handler = new AlignmentFunctionHandler();
             return handler.processFunction(alignmentFunction, objectRegistry);
         } catch (Exception e) {
-            logger.severe("Error processing alignment() function: " + e.getMessage());
+            Log.err("Error processing alignment() function: " + e.getMessage());
             throw new RuntimeException("Failed to process alignment() function", e);
         }
     }
@@ -76,7 +76,7 @@ public class ExpressionResolver {
      * Resolve an array literal to an array of objects
      */
     public static Object resolveArrayLiteral(ArrayLiteral arrayLiteral, ObjectRegistry objectRegistry) {
-        logger.info("Resolving array literal with " + arrayLiteral.getElements().size() + " elements");
+        Log.info("Resolving array literal with " + arrayLiteral.getElements().size() + " elements");
 
         // Get all elements
         java.util.List<Expression> elements = arrayLiteral.getElements();
@@ -92,7 +92,7 @@ public class ExpressionResolver {
 
         // Determine component type from values
         Class<?> componentType = determineComponentType(values);
-        logger.info("Determined component type: " + componentType.getName());
+        Log.info("Determined component type: " + componentType.getName());
 
         // Create and fill properly typed array
         Object typedArray = java.lang.reflect.Array.newInstance(componentType, values.length);
@@ -109,7 +109,7 @@ public class ExpressionResolver {
             java.lang.reflect.Array.set(typedArray, i, value);
         }
 
-        logger.info("Created array of type " + typedArray.getClass().getName());
+        Log.info("Created array of type " + typedArray.getClass().getName());
         return typedArray;
     }
 
@@ -206,12 +206,12 @@ public class ExpressionResolver {
                 factory.configureFromFunctionCall(nestedObject, funcCall, objectRegistry);
                 factory.initAndValidate(nestedObject);
             } else {
-                logger.warning("Created object is not a model object: " + className);
+                Log.warning("Created object is not a model object: " + className);
             }
 
             return nestedObject;
         } catch (Exception e) {
-            logger.warning("Failed to create nested object: " + e.getMessage());
+            Log.warning("Failed to create nested object: " + e.getMessage());
             return null;
         }
     }
@@ -224,7 +224,7 @@ public class ExpressionResolver {
             NexusFunctionHandler handler = new NexusFunctionHandler();
             return handler.processFunction(nexusFunction, objectRegistry);
         } catch (Exception e) {
-            logger.severe("Error processing nexus() function: " + e.getMessage());
+            Log.err("Error processing nexus() function: " + e.getMessage());
             throw new RuntimeException("Failed to process nexus() function", e);
         }
     }

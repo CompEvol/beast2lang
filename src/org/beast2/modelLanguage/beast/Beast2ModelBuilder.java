@@ -1,5 +1,6 @@
 package org.beast2.modelLanguage.beast;
 
+import beast.base.core.Log;
 import beast.base.inference.Distribution;
 import beast.base.inference.StateNode;
 import org.beast2.modelLanguage.builder.Beast2LangParser;
@@ -12,7 +13,6 @@ import java.io.InputStream;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.logging.Logger;
 
 /**
  * Main entry point for Beast2Lang model building operations.
@@ -20,7 +20,7 @@ import java.util.logging.Logger;
  */
 public class Beast2ModelBuilder {
 
-    private static final Logger logger = Logger.getLogger(Beast2ModelBuilder.class.getName());
+//    private static final Logger logger = Logger.getLogger(Beast2ModelBuilder.class.getName());
 
     private final Beast2LangParser parser;
     private final BeastObjectRegistry registry;
@@ -94,7 +94,7 @@ public class Beast2ModelBuilder {
      * @throws Exception if construction fails
      */
     public void buildModel(Beast2Model model) throws Exception {
-        logger.info("Building Beast2 model with annotation support...");
+        Log.info("Building Beast2 model with annotation support...");
 
         // Clear registry for a fresh start
         registry.clear();
@@ -106,7 +106,7 @@ public class Beast2ModelBuilder {
         objectFactory.buildFromModel(model);
 
         // Log registry statistics
-        logger.info(registry.getStatistics());
+        Log.info(registry.getStatistics());
     }
 
     /**
@@ -156,7 +156,7 @@ public class Beast2ModelBuilder {
                         if (innerStmt instanceof VariableDeclaration) {
                             String varName = ((VariableDeclaration) innerStmt).getVariableName();
                             registry.markAsDataAnnotated(varName);
-                            logger.info("Found @data annotation for variable: " + varName);
+                            Log.info("Found @data annotation for variable: " + varName);
                         }
                     }
                 }
@@ -174,7 +174,7 @@ public class Beast2ModelBuilder {
                     if ("observed".equals(annotation.getName())) {
                         // Validate that it's applied to a distribution assignment
                         if (!(innerStmt instanceof DistributionAssignment)) {
-                            logger.warning("@observed annotation can only be applied to distribution assignments");
+                            Log.warning("@observed annotation can only be applied to distribution assignments");
                             continue;
                         }
 
@@ -183,7 +183,7 @@ public class Beast2ModelBuilder {
 
                         // Validate that it has a data parameter
                         if (!annotation.hasParameter("data")) {
-                            logger.warning("@observed annotation requires a 'data' parameter");
+                            Log.warning("@observed annotation requires a 'data' parameter");
                             continue;
                         }
 
@@ -200,7 +200,7 @@ public class Beast2ModelBuilder {
 
                         // Store the reference in the registry
                         registry.markAsObservedVariable(varName, dataRef);
-                        logger.info("Found @observed annotation for variable: " + varName +
+                        Log.info("Found @observed annotation for variable: " + varName +
                                 " with data reference: " + dataRef);
                     }
                 }

@@ -2,6 +2,7 @@ package org.beast2.modelLanguage;
 
 import beast.base.core.BEASTInterface;
 import beast.base.core.Input;
+import beast.base.core.Log;
 import beast.base.parser.XMLProducer;
 import org.beast2.modelLanguage.model.Beast2Model;
 import org.beast2.modelLanguage.model.RequiresStatement;
@@ -16,7 +17,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.Collection;
 import java.util.Map;
-import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -223,7 +223,7 @@ public class Beast2LangUtils {
     /**
      * Generate XML from a BEAST2 object
      */
-    public static String generateXML(Object beastObject, Logger logger) {
+    public static String generateXML(Object beastObject) {
         if (beastObject == null) {
             throw new IllegalArgumentException("Cannot generate XML from null object");
         }
@@ -242,7 +242,7 @@ public class Beast2LangUtils {
                 throw new RuntimeException("Failed to generate XML");
             }
         } catch (Exception e) {
-            logger.severe("Error generating XML: " + e.getMessage());
+            Log.err("Error generating XML: " + e.getMessage());
             throw e;
         }
     }

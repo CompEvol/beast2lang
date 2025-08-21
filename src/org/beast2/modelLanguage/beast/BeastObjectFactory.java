@@ -3,6 +3,7 @@ package org.beast2.modelLanguage.beast;
 import beast.base.core.BEASTInterface;
 import beast.base.core.Function;
 import beast.base.core.Input;
+import beast.base.core.Log;
 import beast.base.evolution.likelihood.GenericTreeLikelihood;
 import beast.base.evolution.tree.MRCAPrior;
 import beast.base.evolution.tree.TreeDistribution;
@@ -30,7 +31,6 @@ import org.beast2.modelLanguage.model.FunctionCall;
 import java.io.File;
 import java.lang.reflect.Type;
 import java.util.*;
-import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 /**
@@ -45,7 +45,7 @@ import java.util.stream.Collectors;
  */
 public class BeastObjectFactory implements ModelObjectFactory {
 
-    private static final Logger logger = Logger.getLogger(BeastObjectFactory.class.getName());
+//    private static final Logger logger = Logger.getLogger(BeastObjectFactory.class.getName());
 
     /**
      * Cache for loaded classes to improve performance
@@ -191,7 +191,7 @@ public class BeastObjectFactory implements ModelObjectFactory {
                     Class<?> dataTypeClass = loadClass(dataType);
                     dataTypeObject = dataTypeClass.getDeclaredConstructor().newInstance();
                 } catch (Exception e) {
-                    logger.warning("Unknown data type: " + dataType + ", defaulting to nucleotide");
+                    Log.warning("Unknown data type: " + dataType + ", defaulting to nucleotide");
                     dataTypeObject = new beast.base.evolution.datatype.Nucleotide();
                 }
         }
@@ -205,7 +205,7 @@ public class BeastObjectFactory implements ModelObjectFactory {
         // Set the ID
         alignment.setID(alignmentId);
 
-        logger.info("Created alignment '" + alignmentId + "' with " + sequences.size() +
+        Log.info("Created alignment '" + alignmentId + "' with " + sequences.size() +
                 " sequences of type " + dataType);
 
         return alignment;
@@ -338,7 +338,7 @@ public class BeastObjectFactory implements ModelObjectFactory {
                 return BEASTUtils.getInputExpectedType(input, beastObj, inputName);
             }
         } catch (Exception e) {
-            logger.warning("Failed to get input type for '" + inputName + "': " + e.getMessage());
+            Log.warning("Failed to get input type for '" + inputName + "': " + e.getMessage());
         }
 
         return null;
@@ -415,7 +415,7 @@ public class BeastObjectFactory implements ModelObjectFactory {
         try {
             PackageManager.addAvailablePackages(packageMap);
         } catch (Exception e) {
-            logger.warning("Could not retrieve available packages: " + e.getMessage());
+            Log.warning("Could not retrieve available packages: " + e.getMessage());
         }
         return new TreeMap<>(packageMap);
     }
@@ -475,7 +475,7 @@ public class BeastObjectFactory implements ModelObjectFactory {
 
             return parametricDistribution.sample(1);
         } catch (Exception e) {
-            logger.warning("Failed to sample from distribution: " + e.getMessage());
+            Log.warning("Failed to sample from distribution: " + e.getMessage());
             return null;
         }
     }
@@ -556,7 +556,7 @@ public class BeastObjectFactory implements ModelObjectFactory {
             Input<?> input = inputMap.get(name);
 
             if (input == null) {
-                logger.warning("No input named '" + name + "' found");
+                Log.warning("No input named '" + name + "' found");
                 continue;
             }
 
@@ -568,7 +568,7 @@ public class BeastObjectFactory implements ModelObjectFactory {
             try {
                 BEASTUtils.setInputValue(input, argValue, beastObject);
             } catch (Exception e) {
-                logger.warning("Failed to set input '" + name + "': " + e.getMessage());
+                Log.warning("Failed to set input '" + name + "': " + e.getMessage());
             }
         }
     }

@@ -2,6 +2,7 @@ package org.beast2.modelLanguage.beast;
 
 import beast.base.core.BEASTInterface;
 import beast.base.core.Input;
+import beast.base.core.Log;
 import beast.base.evolution.alignment.Taxon;
 import beast.base.inference.parameter.IntegerParameter;
 import beast.base.inference.parameter.RealParameter;
@@ -12,14 +13,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
-import java.util.logging.Logger;
 
 /**
  * Registry of autoboxing rules for BEAST2Lang.
  * This allows automatic conversion between compatible types.
  */
 public class AutoboxingRegistry {
-    private static final Logger logger = Logger.getLogger(AutoboxingRegistry.class.getName());
+//    private static final Logger logger = Logger.getLogger(AutoboxingRegistry.class.getName());
 
     // Singleton instance
     private static AutoboxingRegistry instance;
@@ -107,13 +107,13 @@ public class AutoboxingRegistry {
                 try {
                     Object result = rule.autobox(value, targetType, objectRegistry);
                     if (result != null) {
-                        logger.info("Autoboxed " + value.getClass().getSimpleName() +
+                        Log.info("Autoboxed " + value.getClass().getSimpleName() +
                                 " to " + result.getClass().getSimpleName() +
                                 " using " + rule.getClass().getSimpleName());
                         return result;
                     }
                 } catch (Exception e) {
-                    logger.warning("Error during autoboxing with " + rule.getClass().getSimpleName() +
+                    Log.warning("Error during autoboxing with " + rule.getClass().getSimpleName() +
                             ": " + e.getMessage());
                 }
             }
@@ -176,7 +176,7 @@ public class AutoboxingRegistry {
                         }
                     }
                 } catch (Exception e) {
-                    logger.fine("Error examining fields: " + e.getMessage());
+                    Log.trace("Error examining fields: " + e.getMessage());
                 }
 
                 // Move up to superclass
@@ -231,13 +231,13 @@ public class AutoboxingRegistry {
          * Check if a type represents a Collection
          */
         public static boolean isCollection(Type type) {
-            Logger logger = Logger.getLogger(TypeUtils.class.getName());
-            logger.info("TypeUtils.isCollection: Checking if " + type + " is a Collection");
+//            Logger logger = Logger.getLogger(TypeUtils.class.getName());
+            Log.info("TypeUtils.isCollection: Checking if " + type + " is a Collection");
 
             Class<?> rawType = getRawType(type);
             boolean result = rawType != null && Collection.class.isAssignableFrom(rawType);
 
-            logger.info("TypeUtils.isCollection: Raw type is " +
+            Log.info("TypeUtils.isCollection: Raw type is " +
                     (rawType != null ? rawType.getName() : "null") +
                     ", result: " + result);
 
@@ -281,28 +281,28 @@ public class AutoboxingRegistry {
         public boolean canAutobox(Object value, Type targetType) {
             // Check if value is an array
             if (value == null || !value.getClass().isArray()) {
-                logger.fine("Not an array: " + (value != null ? value.getClass().getName() : "null"));
+                Log.trace("Not an array: " + (value != null ? value.getClass().getName() : "null"));
                 return false;
             }
 
             // Check if target is a Collection
             if (!TypeUtils.isCollection(targetType)) {
-                logger.fine("Target is not a Collection: " + targetType);
+                Log.trace("Target is not a Collection: " + targetType);
                 return false;
             }
 
-            logger.info("ArrayToListAutoboxingRule checking: array of " +
+            Log.info("ArrayToListAutoboxingRule checking: array of " +
                     value.getClass().getComponentType().getName() +
                     " to " + targetType);
 
             // Get element type of the collection
             Type targetElementType = TypeUtils.getCollectionElementType(targetType);
             if (targetElementType == null) {
-                logger.fine("Could not determine collection element type for " + targetType);
+                Log.trace("Could not determine collection element type for " + targetType);
                 return false;
             }
 
-            logger.info("Collection element type: " + targetElementType);
+            Log.info("Collection element type: " + targetElementType);
 
             // Get element type of the array
             Class<?> arrayElementType = value.getClass().getComponentType();
@@ -312,7 +312,7 @@ public class AutoboxingRegistry {
 
             // Return true if array elements can be directly assigned to the list
             if (targetElementClass != null && targetElementClass.isAssignableFrom(arrayElementType)) {
-                logger.info("Direct assignment possible: " + arrayElementType.getName() +
+                Log.info("Direct assignment possible: " + arrayElementType.getName() +
                         " to " + targetElementClass.getName());
                 return true;
             }
@@ -321,14 +321,14 @@ public class AutoboxingRegistry {
             if (Array.getLength(value) > 0) {
                 for (AutoboxingRule rule : getInstance().rules) {
                     if (rule != this && rule.canAutobox(Array.get(value, 0), targetElementType)) {
-                        logger.info("Element autoboxing possible with rule: " +
+                        Log.info("Element autoboxing possible with rule: " +
                                 rule.getClass().getSimpleName());
                         return true;
                     }
                 }
             }
 
-            logger.fine("Cannot autobox array to collection");
+            Log.trace("Cannot autobox array to collection");
             return false;
         }
 
@@ -606,9 +606,9 @@ public class AutoboxingRegistry {
         public Object autobox(Object value, Type targetType, ObjectRegistry objectRegistry) throws Exception {
             Double[] doubleArray = (Double[]) value;
 
-            logger.info("Constructed real parameter from double array: " + Arrays.toString(doubleArray));
+            Log.info("Constructed real parameter from double array: " + Arrays.toString(doubleArray));
             RealParameter realParameter = new RealParameter(doubleArray);
-            logger.info("  Dimension of realParameter is: " + realParameter.getDimension());
+            Log.info("  Dimension of realParameter is: " + realParameter.getDimension());
 
             // constants, so set estimate to false
             realParameter.setInputValue("estimate", false);
@@ -651,7 +651,7 @@ public class AutoboxingRegistry {
         public Object autobox(Object value, Type targetType, ObjectRegistry objectRegistry) throws Exception {
             Integer[] integerArray = (Integer[]) value;
 
-            logger.info("Constructed integer parameter from integer array: " + Arrays.toString(integerArray));
+            Log.info("Constructed integer parameter from integer array: " + Arrays.toString(integerArray));
 
             // Create IntegerParameter directly (assuming it has a constructor like RealParameter)
             IntegerParameter integerParameter = new IntegerParameter(integerArray);
@@ -659,7 +659,7 @@ public class AutoboxingRegistry {
             integerParameter.setInputValue("estimate", false);
             integerParameter.initAndValidate();
 
-            logger.info("  Dimension of integerParameter is: " + integerParameter.getDimension());
+            Log.info("  Dimension of integerParameter is: " + integerParameter.getDimension());
 
             return integerParameter;
         }
@@ -791,7 +791,7 @@ public class AutoboxingRegistry {
 
                 return null;
             } catch (Exception e) {
-                logger.warning("Error creating TreeIntervals: " + e.getMessage());
+                Log.warning("Error creating TreeIntervals: " + e.getMessage());
                 return null;
             }
         }

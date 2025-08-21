@@ -2,6 +2,7 @@ package org.beast2.modelLanguage.beast;
 
 import beast.base.core.BEASTInterface;
 import beast.base.core.Input;
+import beast.base.core.Log;
 import beast.base.inference.StateNode;
 import beast.base.inference.parameter.BooleanParameter;
 import beast.base.inference.parameter.IntegerParameter;
@@ -21,7 +22,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.logging.Logger;
 
 /**
  * Utility class for common BEAST2 operations.
@@ -29,7 +29,7 @@ import java.util.logging.Logger;
  */
 public class BEASTUtils {
 
-    private static final Logger logger = Logger.getLogger(BEASTUtils.class.getName());
+//    private static final Logger logger = Logger.getLogger(BEASTUtils.class.getName());
 
     /**
      * Set the ID on a BEAST object
@@ -39,7 +39,7 @@ public class BEASTUtils {
             Method setId = clazz.getMethod("setID", String.class);
             setId.invoke(object, id);
         } catch (Exception e) {
-            logger.warning("Failed to set ID on " + clazz.getName() + ": " + e.getMessage());
+            Log.warning("Failed to set ID on " + clazz.getName() + ": " + e.getMessage());
         }
     }
 
@@ -51,7 +51,7 @@ public class BEASTUtils {
             Method initMethod = clazz.getMethod("initAndValidate");
             initMethod.invoke(object);
         } catch (Exception e) {
-            logger.warning("Failed to call initAndValidate on " + clazz.getName() + ": " + e.getMessage());
+            Log.warning("Failed to call initAndValidate on " + clazz.getName() + ": " + e.getMessage());
         }
     }
 
@@ -69,7 +69,7 @@ public class BEASTUtils {
                     Input<?> input = (Input<?>) field.get(object);
                     inputMap.put(input.getName(), input);
                 } catch (IllegalAccessException e) {
-                    logger.warning("Failed to access Input field: " + field.getName());
+                    Log.warning("Failed to access Input field: " + field.getName());
                 }
             }
         }
@@ -110,7 +110,7 @@ public class BEASTUtils {
             param.initAndValidate();
             return param;
         } catch (Exception e) {
-            logger.severe("Failed to create RealParameter: " + e.getMessage());
+            Log.err("Failed to create RealParameter: " + e.getMessage());
             throw new RuntimeException("Failed to create RealParameter", e);
         }
     }
@@ -126,7 +126,7 @@ public class BEASTUtils {
             param.initByName("value", values);
             return param;
         } catch (Exception e) {
-            logger.severe("Failed to create IntegerParameter: " + e.getMessage());
+            Log.err("Failed to create IntegerParameter: " + e.getMessage());
             throw new RuntimeException("Failed to create IntegerParameter", e);
         }
     }
@@ -142,7 +142,7 @@ public class BEASTUtils {
             param.initByName("value", values);
             return param;
         } catch (Exception e) {
-            logger.severe("Failed to create BooleanParameter: " + e.getMessage());
+            Log.err("Failed to create BooleanParameter: " + e.getMessage());
             throw new RuntimeException("Failed to create BooleanParameter", e);
         }
     }
@@ -171,11 +171,11 @@ public class BEASTUtils {
             try {
                 return Double.parseDouble((String) value);
             } catch (NumberFormatException e) {
-                logger.warning("Cannot convert string '" + value + "' to double, using 0.0");
+                Log.warning("Cannot convert string '" + value + "' to double, using 0.0");
                 return 0.0;
             }
         } else {
-            logger.warning("Cannot convert " + value.getClass().getName() + " to double, using 0.0");
+            Log.warning("Cannot convert " + value.getClass().getName() + " to double, using 0.0");
             return 0.0;
         }
     }
@@ -199,12 +199,12 @@ public class BEASTUtils {
                 try {
                     return (int) Double.parseDouble((String) value);
                 } catch (NumberFormatException e2) {
-                    logger.warning("Cannot convert string '" + value + "' to integer, using 0");
+                    Log.warning("Cannot convert string '" + value + "' to integer, using 0");
                     return 0;
                 }
             }
         } else {
-            logger.warning("Cannot convert " + value.getClass().getName() + " to integer, using 0");
+            Log.warning("Cannot convert " + value.getClass().getName() + " to integer, using 0");
             return 0;
         }
     }
@@ -225,7 +225,7 @@ public class BEASTUtils {
             String str = ((String) value).toLowerCase();
             return str.equals("true") || str.equals("yes") || str.equals("1");
         } else {
-            logger.warning("Cannot convert " + value.getClass().getName() + " to boolean, using false");
+            Log.warning("Cannot convert " + value.getClass().getName() + " to boolean, using false");
             return false;
         }
     }
@@ -237,10 +237,10 @@ public class BEASTUtils {
         try {
             @SuppressWarnings("unchecked")
             Input<Object> typedInput = (Input<Object>) input;
-            logger.fine("Setting input '" + input.getName() + "' to " + value);
+            Log.trace("Setting input '" + input.getName() + "' to " + value);
             typedInput.setValue(value, beastObject);
         } catch (Exception e) {
-            logger.warning("Error setting input " + input.getName() + " with value " + value + ": " + e.getMessage());
+            Log.warning("Error setting input " + input.getName() + " with value " + value + ": " + e.getMessage());
             throw e;
         }
     }
@@ -277,7 +277,7 @@ public class BEASTUtils {
 
             Input<?> input = inputMap.get(name);
             if (input == null) {
-                logger.warning("No input named '" + name + "' found");
+                Log.warning("No input named '" + name + "' found");
                 continue;
             }
 
@@ -288,7 +288,7 @@ public class BEASTUtils {
             try {
                 setInputValue(input, argValue, beastObject);
             } catch (Exception e) {
-                logger.warning("Failed to set input '" + name + "': " + e.getMessage());
+                Log.warning("Failed to set input '" + name + "': " + e.getMessage());
             }
         }
     }
@@ -303,7 +303,7 @@ public class BEASTUtils {
                 Input<?> input = target.getInput(inputName);
                 if (input != null) {
                     setInputValue(input, source, target);
-                    logger.fine("Connected object to '" + inputName + "' input");
+                    Log.trace("Connected object to '" + inputName + "' input");
                     return true;
                 }
             } catch (Exception e) {
@@ -311,7 +311,7 @@ public class BEASTUtils {
             }
         }
 
-        logger.warning("Could not find matching input for connection");
+        Log.warning("Could not find matching input for connection");
         return false;
     }
 
@@ -337,7 +337,7 @@ public class BEASTUtils {
             // Default to RealParameter if no specific type is identified
             return createRealParameter(convertToDouble(value));
         } catch (Exception e) {
-            logger.warning("Error creating parameter: " + e.getMessage());
+            Log.warning("Error creating parameter: " + e.getMessage());
             return createRealParameter(0.0);
         }
     }
@@ -384,14 +384,14 @@ public class BEASTUtils {
         }
 
         // Add debug logging
-        Logger logger = Logger.getLogger(BEASTUtils.class.getName());
-        logger.fine("getInputExpectedType: Called for input '" + inputName +
+//        Logger logger = Logger.getLogger(BEASTUtils.class.getName());
+        Log.trace("getInputExpectedType: Called for input '" + inputName +
                 "' on object of type " + beastObject.getClass().getName());
 
         // First try the direct approach to get raw class
         Class<?> rawType = input.getType();
         if (rawType != null) {
-            logger.fine("getInputExpectedType: Raw type from input.getType(): " + rawType.getName());
+            Log.trace("getInputExpectedType: Raw type from input.getType(): " + rawType.getName());
         }
 
         // Look for the field in the object's class and superclasses
@@ -408,21 +408,21 @@ public class BEASTUtils {
 
                                 try {
                                     Type genericType = field.getGenericType();
-                                    logger.fine("getInputExpectedType: Found field '" + field.getName() +
+                                    Log.trace("getInputExpectedType: Found field '" + field.getName() +
                                             "' with generic type: " + genericType);
 
                                     if (genericType instanceof ParameterizedType) {
                                         ParameterizedType paramType = (ParameterizedType) genericType;
-                                        logger.fine("getInputExpectedType: It's a parameterized type with raw type: " +
+                                        Log.trace("getInputExpectedType: It's a parameterized type with raw type: " +
                                                 paramType.getRawType());
 
                                         Type[] typeArgs = paramType.getActualTypeArguments();
                                         if (typeArgs.length > 0) {
-                                            logger.fine("getInputExpectedType: First type arg: " + typeArgs[0]);
+                                            Log.trace("getInputExpectedType: First type arg: " + typeArgs[0]);
 
                                             if (typeArgs[0] instanceof ParameterizedType) {
                                                 ParameterizedType nestedType = (ParameterizedType) typeArgs[0];
-                                                logger.fine("getInputExpectedType: Nested parameterized type with raw type: " +
+                                                Log.trace("getInputExpectedType: Nested parameterized type with raw type: " +
                                                         nestedType.getRawType() + " and args: " +
                                                         java.util.Arrays.toString(nestedType.getActualTypeArguments()));
                                             }
@@ -435,12 +435,12 @@ public class BEASTUtils {
                                 }
                             }
                         } catch (Exception e) {
-                            logger.warning("getInputExpectedType: Error examining field: " + e.getMessage());
+                            Log.warning("getInputExpectedType: Error examining field: " + e.getMessage());
                         }
                     }
                 }
             } catch (Exception e) {
-                logger.warning("getInputExpectedType: Error getting fields: " + e.getMessage());
+                Log.warning("getInputExpectedType: Error getting fields: " + e.getMessage());
             }
 
             clazz = clazz.getSuperclass();
@@ -451,7 +451,7 @@ public class BEASTUtils {
             return rawType;
         }
 
-        logger.warning("getInputExpectedType: Could not determine expected type for input '" +
+        Log.warning("getInputExpectedType: Could not determine expected type for input '" +
                 inputName + "', defaulting to Object.class");
         return Object.class;
     }

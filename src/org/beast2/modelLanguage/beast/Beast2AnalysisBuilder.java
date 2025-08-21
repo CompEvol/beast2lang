@@ -1,9 +1,6 @@
 package org.beast2.modelLanguage.beast;
 
-import beast.base.core.BEASTInterface;
-import beast.base.core.BEASTObject;
-import beast.base.core.Function;
-import beast.base.core.Input;
+import beast.base.core.*;
 import beast.base.evolution.alignment.Alignment;
 import beast.base.evolution.alignment.TaxonSet;
 import beast.base.evolution.branchratemodel.BranchRateModel;
@@ -27,7 +24,6 @@ import org.beast2.modelLanguage.operators.ExtraOperator;
 import org.beast2.modelLanguage.operators.MCMCOperator;
 
 import java.util.*;
-import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 import static org.beast2.modelLanguage.beast.BEASTObjectID.*;
@@ -37,7 +33,7 @@ import static org.beast2.modelLanguage.beast.BEASTObjectID.*;
  */
 public class Beast2AnalysisBuilder {
 
-    private static final Logger logger = Logger.getLogger(Beast2AnalysisBuilder.class.getName());
+//    private static final Logger logger = Logger.getLogger(Beast2AnalysisBuilder.class.getName());
 
     private final Beast2ModelBuilder modelBuilder;
     private final Map<String, Operator> operatorCache = new HashMap<>();
@@ -96,7 +92,7 @@ public class Beast2AnalysisBuilder {
                             treeToPriors.put(treeId, new ArrayList<>());
                         }
                         treeToPriors.get(treeId).add(prior);
-                        logger.info("Found MRCAPrior for tree " + treeId + ": " + prior.getID());
+                        Log.info("Found MRCAPrior for tree " + treeId + ": " + prior.getID());
                     }
                 }
             }
@@ -112,7 +108,7 @@ public class Beast2AnalysisBuilder {
 
                     if (tree != null && data != null) {
                         treeToAlignment.put(tree.getID(), data);
-                        logger.info("Found alignment " + data.getID() + " for tree " + tree.getID());
+                        Log.info("Found alignment " + data.getID() + " for tree " + tree.getID());
                     }
                 }
             }
@@ -125,7 +121,7 @@ public class Beast2AnalysisBuilder {
                     // Find the alignment for this tree
                     Alignment alignment = treeToAlignment.get(treeId);
                     if (alignment == null) {
-                        logger.warning("Could not find alignment for tree " + treeId + ", skipping initialization");
+                        Log.warning("Could not find alignment for tree " + treeId + ", skipping initialization");
                         continue;
                     }
 
@@ -142,14 +138,14 @@ public class Beast2AnalysisBuilder {
                         try {
                             createRandomTreeInitializer(tree, alignment, treeId, priors);
                         } catch (Exception e) {
-                            logger.warning("Failed to create tree initializer for " + treeId + ": " + e.getMessage());
+                            Log.warning("Failed to create tree initializer for " + treeId + ": " + e.getMessage());
                             e.printStackTrace();
                         }
                     }
                 }
             }
         } catch (Exception e) {
-            logger.warning("Error in tree initialization: " + e.getMessage());
+            Log.warning("Error in tree initialization: " + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -199,9 +195,9 @@ public class Beast2AnalysisBuilder {
             modelBuilder.addObjectToModel(popModel.getID(), popModel);
             modelBuilder.addObjectToModel(randomTree.getID(), randomTree);
 
-            logger.info("Successfully created RandomTree initializer: " + randomTree.getID());
+            Log.info("Successfully created RandomTree initializer: " + randomTree.getID());
         } catch (Exception e) {
-            logger.warning("Failed to create RandomTree for " + treeId + ": " + e.getMessage());
+            Log.warning("Failed to create RandomTree for " + treeId + ": " + e.getMessage());
             throw e;
         }
     }
@@ -241,7 +237,7 @@ public class Beast2AnalysisBuilder {
                     INPUT_LOGGER, loggers,
                     "init", initializers
             );
-            logger.info("Added " + initializers.size() + " tree initializers to MCMC");
+            Log.info("Added " + initializers.size() + " tree initializers to MCMC");
         }
 
         return mcmc;
@@ -255,11 +251,11 @@ public class Beast2AnalysisBuilder {
             Object obj = entry.getValue();
             if (obj instanceof StateNodeInitialiser) {
                 initializers.add((StateNodeInitialiser) obj);
-                logger.info("Found initializer: " + entry.getKey() + " of class " + obj.getClass().getName());
+                Log.info("Found initializer: " + entry.getKey() + " of class " + obj.getClass().getName());
             }
         }
 
-        logger.info("Total initializers found: " + initializers.size());
+        Log.info("Total initializers found: " + initializers.size());
         return initializers;
     }
 
@@ -290,9 +286,9 @@ public class Beast2AnalysisBuilder {
         }
 
         if (uniqueNodes.isEmpty()) {
-            logger.warning("No state nodes found! The analysis may not run correctly.");
+            Log.warning("No state nodes found! The analysis may not run correctly.");
         } else {
-            logger.info("Setting up state with " + uniqueNodes.size() + " unique state nodes");
+            Log.info("Setting up state with " + uniqueNodes.size() + " unique state nodes");
         }
 
         state.initByName(INPUT_STATE_NODE, new ArrayList<>(uniqueNodes.values()));
@@ -343,19 +339,19 @@ public class Beast2AnalysisBuilder {
             }
 
             // Sample from leaf distributions
-            logger.info("Found " + leafDistributions.size() + " leaf distributions for sampling");
+            Log.info("Found " + leafDistributions.size() + " leaf distributions for sampling");
             for (Distribution dist : leafDistributions) {
                 try {
-                    logger.info("Sampling from " + dist.getID() + " to initialize state nodes");
+                    Log.info("Sampling from " + dist.getID() + " to initialize state nodes");
                     dist.sample(state, random);
                 } catch (Exception e) {
-                    logger.warning("Could not sample from " + dist.getID() + ": " + e.getMessage());
+                    Log.warning("Could not sample from " + dist.getID() + ": " + e.getMessage());
                 }
             }
 
-            logger.info("State nodes initialized via distribution sampling");
+            Log.info("State nodes initialized via distribution sampling");
         } catch (Exception e) {
-            logger.warning("Could not initialize state nodes: " + e.getMessage());
+            Log.warning("Could not initialize state nodes: " + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -492,11 +488,11 @@ public class Beast2AnalysisBuilder {
     }
 
     public void fine(String message) {
-        logger.fine(message);
+        Log.trace(message);
     }
 
     public void warning(String message) {
-        logger.warning(message);
+        Log.warning(message);
     }
 
     /**
@@ -573,10 +569,10 @@ public class Beast2AnalysisBuilder {
                     // if it is also Parameter
                     paramOpFactory.addOperators(stateNode);
                 } else {
-                    logger.warning("Unhandled stateNode in setupOperators " + stateNode.getID());
+                    Log.warning("Unhandled stateNode in setupOperators " + stateNode.getID());
                 }
             } catch (Exception e) {
-                logger.warning("Could not create operators for " + stateNode.getID() + ": " + e.getMessage());
+                Log.warning("Could not create operators for " + stateNode.getID() + ": " + e.getMessage());
             }
         }
 
@@ -595,7 +591,7 @@ public class Beast2AnalysisBuilder {
         List<Distribution> likelihoods = new ArrayList<>(treeLikelihoods);
 
         likelihood.initByName(INPUT_DISTRIBUTION, likelihoods);
-        logger.info("Set up likelihood with " + likelihoods.size() + " distributions");
+        Log.info("Set up likelihood with " + likelihoods.size() + " distributions");
 
         return likelihood;
     }
@@ -628,7 +624,7 @@ public class Beast2AnalysisBuilder {
         }
 
         prior.initByName(INPUT_DISTRIBUTION, priors);
-        logger.info("Set up prior with " + priors.size() + " distributions");
+        Log.info("Set up prior with " + priors.size() + " distributions");
 
         return prior;
     }
@@ -647,7 +643,7 @@ public class Beast2AnalysisBuilder {
         distributions.add(likelihood);
 
         posterior.initByName(INPUT_DISTRIBUTION, distributions);
-        logger.info("Set up posterior combining prior and likelihood");
+        Log.info("Set up posterior combining prior and likelihood");
 
         return posterior;
     }
