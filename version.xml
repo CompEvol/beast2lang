@@ -3,7 +3,7 @@
 	<depends on='BEAST.app' atleast='2.7.8'/>
 	<depends on='BEASTLabs' atleast='2.0.3'/>
 
-	<packageapp description="Run a Beast2 model after conversion"
+	<packageapp description="Run a Beast2 model using the definition language"
 				class="org.beast2.modelLanguage.Beast2LangRun"
 	/>
 

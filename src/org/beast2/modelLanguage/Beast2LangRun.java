@@ -23,7 +23,7 @@ import java.io.StringWriter;
  * Main application class for Beast2Lang
  * Provides utilities for working with Beast2 model definition language
  */
-@Description("Run a Beast2 model given definition language")
+@Description("Run a Beast2 model using the definition language")
 public class Beast2LangRun extends beast.base.inference.Runnable {
     public static final String version = "v0.0.1";
     public static final String FILE_INIT = "[[*.b2l]]";
