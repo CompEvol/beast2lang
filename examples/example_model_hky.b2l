@@ -2,10 +2,10 @@ requires BEAST.base;
 requires feast;
 
 @data
-Alignment alignment_data = AlignmentFromNexus(fileName="primates.nex");
+Alignment primates = AlignmentFromNexus(fileName="primates.nex");
 
 RealParameter birthRate ~ LogNormalDistributionModel(M=1, S=1);
-Tree tree ~ YuleModel(birthDiffRate=birthRate, taxonset=alignment_data);
+Tree tree ~ YuleModel(birthDiffRate=birthRate, taxonset=primates);
 
 RealParameter kappa ~ LogNormalDistributionModel(M=1, S=1);
 
@@ -14,5 +14,6 @@ RealParameter freqs ~ Dirichlet(alpha=[2.0, 2.0, 2.0, 2.0]);
 
 HKY hky = HKY(kappa=kappa, frequencies=freqs);
 
-@observed(data=alignment_data)
-Alignment alignment ~ TreeLikelihood(tree=tree, siteModel=hky);
+// alignment is reserved.
+@observed(data=primates)
+Alignment alignment_data ~ TreeLikelihood(tree=tree, siteModel=hky);

@@ -9,4 +9,4 @@ Tree tree ~ YuleModel(birthDiffRate=birthRate, taxonset=alignment_data);
 JukesCantor jc = JukesCantor();
 
 @observed(data=alignment_data)
-Alignment alignment ~ TreeLikelihood(tree=tree, siteModel=jc);
+Alignment a ~ TreeLikelihood(tree=tree, siteModel=jc);
