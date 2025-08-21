@@ -175,6 +175,7 @@
 			<!-- top-level examples -->
 			<fileset dir="examples">
 				<include name="example_model_hky.b2l" />
+				<include name="example_model_requires.b2l" />
 				<include name="primates.nex" />
 			</fileset>
 
