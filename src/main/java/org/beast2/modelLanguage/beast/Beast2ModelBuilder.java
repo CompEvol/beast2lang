@@ -30,9 +30,19 @@ public class Beast2ModelBuilder {
      * Constructor that initializes the parser, registry, and object factory.
      */
     public Beast2ModelBuilder() {
+        this(false);
+    }
+
+    /**
+     * Constructor with legacy mode flag.
+     * In legacy mode, old deprecated classes are preferred over new spec classes.
+     *
+     * @param legacyMode if true, prefer deprecated classes for backward compatibility
+     */
+    public Beast2ModelBuilder(boolean legacyMode) {
         this.parser = new Beast2LangParserImpl();
         this.registry = new BeastObjectRegistry();
-        this.objectFactory = new ModelStatementProcessor(registry);
+        this.objectFactory = new ModelStatementProcessor(registry, legacyMode);
     }
 
     /**

@@ -18,15 +18,28 @@ public class NameResolver {
     private final List<String> wildcardImports;
     private final Map<String, String> resolvedCache;
     private final Set<String> processedPackages;
+    private final boolean legacyMode;
 
     /**
      * Constructor that initializes empty import collections
      */
     public NameResolver() {
+        this(false);
+    }
+
+    /**
+     * Constructor with legacy mode flag.
+     * In legacy mode, old deprecated classes (beast.base.*) are preferred
+     * over new spec classes (beast.base.spec.*).
+     *
+     * @param legacyMode if true, prefer deprecated classes for backward compatibility
+     */
+    public NameResolver(boolean legacyMode) {
         this.explicitImports = new HashMap<>();
         this.wildcardImports = new ArrayList<>();
         this.resolvedCache = new HashMap<>();
         this.processedPackages = new HashSet<>();
+        this.legacyMode = legacyMode;
     }
 
     /**
@@ -80,8 +93,23 @@ public class NameResolver {
                 }
             }
 
+            // Sort packages so preferred classes are found first.
+            // In legacy mode: beast.base.* before beast.base.spec.*
+            // In default mode: beast.base.spec.* before beast.base.*
+            List<String> sortedPackages = new ArrayList<>(javaPackages);
+            sortedPackages.sort((a, b) -> {
+                boolean aIsSpec = a.contains(".spec.");
+                boolean bIsSpec = b.contains(".spec.");
+                if (aIsSpec == bIsSpec) return a.compareTo(b);
+                if (legacyMode) {
+                    return aIsSpec ? 1 : -1; // non-spec first
+                } else {
+                    return aIsSpec ? -1 : 1; // spec first
+                }
+            });
+
             // Add wildcard imports for each Java package found
-            for (String javaPackage : javaPackages) {
+            for (String javaPackage : sortedPackages) {
                 wildcardImports.add(javaPackage);
                 logger.info("Added wildcard import for Java package: " + javaPackage);
             }

@@ -48,6 +48,11 @@ import static org.beast2.modelLanguage.Beast2LangUtils.*;
         })
 public class Beast2Lang implements Runnable {
 
+    @Option(names = "--legacy",
+            description = "Use legacy (deprecated) BEAST2 classes instead of new spec classes.",
+            scope = ScopeType.INHERIT)
+    boolean legacyMode;
+
     @Override
     public void run() {
         new CommandLine(this).usage(System.out);
@@ -66,6 +71,8 @@ public class Beast2Lang implements Runnable {
             description = "Run a Beast2 model after conversion to XML.",
             mixinStandardHelpOptions = true)
     static class RunCmd implements Callable<Integer> {
+
+        @ParentCommand Beast2Lang parent;
 
         @Parameters(paramLabel = "FILE", description = "Input Beast2Lang file.")
         File inputFile;
@@ -117,7 +124,7 @@ public class Beast2Lang implements Runnable {
             try {
                 System.out.println("Running Beast2 model from file: " + inputFile.getPath());
 
-                Beast2ModelBuilder modelBuilder = new Beast2ModelBuilder();
+                Beast2ModelBuilder modelBuilder = new Beast2ModelBuilder(parent.legacyMode);
                 Beast2LangParser parser = usePhyloSpec
                         ? new Beast2LangParserWithPhyloSpec()
                         : new Beast2LangParserImpl();
@@ -177,6 +184,8 @@ public class Beast2Lang implements Runnable {
             mixinStandardHelpOptions = true)
     static class ValidateCmd implements Callable<Integer> {
 
+        @ParentCommand Beast2Lang parent;
+
         @Parameters(paramLabel = "FILE", description = "Beast2Lang file to validate.")
         File inputFile;
 
@@ -214,6 +223,8 @@ public class Beast2Lang implements Runnable {
             description = "Convert between Beast2Lang and other formats.",
             mixinStandardHelpOptions = true)
     static class ConvertCmd implements Callable<Integer> {
+
+        @ParentCommand Beast2Lang parent;
 
         @Parameters(paramLabel = "FILE", description = "Input file.")
         File inputFile;
@@ -255,7 +266,7 @@ public class Beast2Lang implements Runnable {
 
                 Beast2ToPhyloSpecConverter toPhyloSpecConverter = new Beast2ToPhyloSpecConverter();
                 PhyloSpecToBeast2Converter toBeast2Converter = new PhyloSpecToBeast2Converter();
-                Beast2ModelBuilder reflectionBuilder = new Beast2ModelBuilder();
+                Beast2ModelBuilder reflectionBuilder = new Beast2ModelBuilder(parent.legacyMode);
                 Beast2ToLPHYConverter toLPHYConverter = new Beast2ToLPHYConverter();
 
                 if ("beast2".equals(fromFormat) && "phylospec".equals(toFormat)) {
@@ -344,6 +355,8 @@ public class Beast2Lang implements Runnable {
             mixinStandardHelpOptions = true)
     static class DecompileCmd implements Callable<Integer> {
 
+        @ParentCommand Beast2Lang parent;
+
         @Parameters(paramLabel = "FILE", description = "Input BEAST2 XML file.")
         File inputFile;
 
@@ -414,6 +427,8 @@ public class Beast2Lang implements Runnable {
             mixinStandardHelpOptions = true)
     static class LPhyCmd implements Callable<Integer> {
 
+        @ParentCommand Beast2Lang parent;
+
         @Parameters(paramLabel = "FILE", description = "Input Beast2Lang file.")
         File inputFile;
 
@@ -462,6 +477,8 @@ public class Beast2Lang implements Runnable {
             description = "Generate BEAST2 engine library schema.",
             mixinStandardHelpOptions = true)
     static class SchemaCmd implements Callable<Integer> {
+
+        @ParentCommand Beast2Lang parent;
 
         @Option(names = {"-o", "--output"}, defaultValue = "beast2-model-library.json",
                 description = "Output JSON file.")

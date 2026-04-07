@@ -32,9 +32,16 @@ public class ModelStatementProcessor implements StatementVisitor {
      * Constructor that accepts a registry
      */
     public ModelStatementProcessor(ObjectRegistry registry) {
+        this(registry, false);
+    }
+
+    /**
+     * Constructor that accepts a registry and legacy mode flag
+     */
+    public ModelStatementProcessor(ObjectRegistry registry, boolean legacyMode) {
         this.varDeclHandler = new VariableDeclarationHandler();
         this.distAssignHandler = new DistributionAssignmentHandler();
-        this.nameResolver = new NameResolver();
+        this.nameResolver = new NameResolver(legacyMode);
         this.registry = registry;
     }
 
