@@ -2,6 +2,7 @@ open module beast.language {
     requires beast.base;
     requires beast.pkgmgmt;
     requires beast.labs;
+    requires feast;
     requires info.picocli;
     requires org.json;
     requires org.antlr.antlr4.runtime;

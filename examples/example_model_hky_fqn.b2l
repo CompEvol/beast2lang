@@ -1,0 +1,16 @@
+requires BEAST.base;
+
+@data
+Alignment primates = nexus(file="examples/primates.nex");
+
+RealParameter birthRate ~ beast.base.inference.distribution.LogNormalDistributionModel(M=1, S=1);
+Tree tree ~ beast.base.evolution.speciation.YuleModel(birthDiffRate=birthRate, taxonset=primates);
+
+RealParameter kappa ~ beast.base.inference.distribution.LogNormalDistributionModel(M=1, S=1);
+
+RealParameter freqs ~ beast.base.inference.distribution.Dirichlet(alpha=[2.0, 2.0, 2.0, 2.0]);
+
+beast.base.evolution.substitutionmodel.HKY hky = beast.base.evolution.substitutionmodel.HKY(kappa=kappa, frequencies=freqs);
+
+@observed(data=primates)
+Alignment alignment_data ~ beast.base.evolution.likelihood.TreeLikelihood(tree=tree, siteModel=hky);
