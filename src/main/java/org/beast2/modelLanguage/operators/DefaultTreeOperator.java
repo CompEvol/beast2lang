@@ -53,10 +53,8 @@ public class DefaultTreeOperator implements MCMCOperator<Tree> {
                 builder.addOperator(treeID + "RootHeightScaler", getRootHeightOperator(tree));
                 builder.addOperator(treeID + "Uniform", getTreeUniformOperator(tree));
 
-                // TODO: migrate to beast3 spec operators (IntervalScaleOperator, etc.)
-                // EpochFlexOperator is deprecated and broken in beast3
-                // builder.addOperator(treeID + "BICEPSEpochTop", getBICEPSEpochTop(tree));
-                // builder.addOperator(treeID + "BICEPSEpochAll", getBICEPSEpochAll(tree));
+                builder.addOperator(treeID + "BICEPSEpochTop", getBICEPSEpochTop(tree));
+                builder.addOperator(treeID + "BICEPSEpochAll", getBICEPSEpochAll(tree));
                 builder.addOperator(treeID + "BICEPSTreeFlex", getBICEPSTreeFlex(tree));
 
                 builder.addOperator(treeID + "SubtreeSlide", getSubtreeSlideOperator(tree));
