@@ -53,8 +53,10 @@ public class DefaultTreeOperator implements MCMCOperator<Tree> {
                 builder.addOperator(treeID + "RootHeightScaler", getRootHeightOperator(tree));
                 builder.addOperator(treeID + "Uniform", getTreeUniformOperator(tree));
 
-                builder.addOperator(treeID + "BICEPSEpochTop", getBICEPSEpochTop(tree));
-                builder.addOperator(treeID + "BICEPSEpochAll", getBICEPSEpochAll(tree));
+                // TODO: migrate to beast3 spec operators (IntervalScaleOperator, etc.)
+                // EpochFlexOperator is deprecated and broken in beast3
+                // builder.addOperator(treeID + "BICEPSEpochTop", getBICEPSEpochTop(tree));
+                // builder.addOperator(treeID + "BICEPSEpochAll", getBICEPSEpochAll(tree));
                 builder.addOperator(treeID + "BICEPSTreeFlex", getBICEPSTreeFlex(tree));
 
                 builder.addOperator(treeID + "SubtreeSlide", getSubtreeSlideOperator(tree));
@@ -68,6 +70,30 @@ public class DefaultTreeOperator implements MCMCOperator<Tree> {
             }
         }
 
+    }
+
+    /**
+     * Get the internal node count, falling back to taxon count - 1
+     * when the tree hasn't been initialized yet (e.g. before RandomTree runs).
+     */
+    private int getInternalNodeCount(Tree tree) {
+        try {
+            if (tree.getRoot() != null) {
+                int count = tree.getRoot().getInternalNodeCount();
+                if (count > 0) return count;
+            }
+        } catch (Exception e) {
+            // tree not initialized
+        }
+        // Tree not yet initialized — estimate from taxon set
+        try {
+            if (tree.getTaxonset() != null) {
+                return Math.max(1, tree.getTaxonset().getTaxonCount() - 1);
+            }
+        } catch (Exception e) {
+            // taxon set not available
+        }
+        return 1; // safe fallback
     }
 
     /**
@@ -91,7 +117,7 @@ public class DefaultTreeOperator implements MCMCOperator<Tree> {
         Operator exchange = new Exchange();
         exchange.setInputValue(INPUT_TREE, tree);
         double pow = (isNarrow) ? 0.7 : 0.2; // WideExchange size^0.2
-        exchange.setInputValue(INPUT_WEIGHT, getOperatorWeight(tree.getInternalNodeCount(), pow));
+        exchange.setInputValue(INPUT_WEIGHT, getOperatorWeight(getInternalNodeCount(tree), pow));
         exchange.setInputValue("isNarrow", isNarrow);
         exchange.initAndValidate();
         exchange.setID(tree.getID() + "." + ((isNarrow) ? "narrow" : "wide") + "Exchange");
@@ -101,7 +127,7 @@ public class DefaultTreeOperator implements MCMCOperator<Tree> {
     protected Operator getTreeUniformOperator(Tree tree) {
         Operator uniform = new BactrianNodeOperator();
         uniform.setInputValue(INPUT_TREE, tree);
-        uniform.setInputValue(INPUT_WEIGHT, getOperatorWeight(tree.getInternalNodeCount()));
+        uniform.setInputValue(INPUT_WEIGHT, getOperatorWeight(getInternalNodeCount(tree)));
         uniform.initAndValidate();
         uniform.setID(tree.getID() + "." + "uniform");
         return uniform;
@@ -110,8 +136,10 @@ public class DefaultTreeOperator implements MCMCOperator<Tree> {
     protected Operator getSubtreeSlideOperator(Tree tree) {
         Operator subtreeSlide = new BactrianSubtreeSlide();
         subtreeSlide.setInputValue(INPUT_TREE, tree);
-        subtreeSlide.setInputValue(INPUT_WEIGHT, getOperatorWeight(tree.getInternalNodeCount()));
-        subtreeSlide.setInputValue("size", tree.getRoot().getHeight() / 10.0);
+        subtreeSlide.setInputValue(INPUT_WEIGHT, getOperatorWeight(getInternalNodeCount(tree)));
+        double rootHeight = (tree.getRoot() != null && tree.getRoot().getHeight() > 0)
+                ? tree.getRoot().getHeight() : 1.0;
+        subtreeSlide.setInputValue("size", rootHeight / 10.0);
         subtreeSlide.initAndValidate();
         subtreeSlide.setID(tree.getID() + "." + "subtreeSlide");
         return subtreeSlide;
@@ -120,7 +148,7 @@ public class DefaultTreeOperator implements MCMCOperator<Tree> {
     protected Operator getWilsonBaldingOperator(Tree tree) {
         Operator wilsonBalding = new WilsonBalding();
         wilsonBalding.setInputValue(INPUT_TREE, tree);
-        wilsonBalding.setInputValue(INPUT_WEIGHT, getOperatorWeight(tree.getInternalNodeCount(), 0.2));
+        wilsonBalding.setInputValue(INPUT_WEIGHT, getOperatorWeight(getInternalNodeCount(tree), 0.2));
         wilsonBalding.initAndValidate();
         wilsonBalding.setID(tree.getID() + "." + "wilsonBalding");
         return wilsonBalding;
@@ -154,7 +182,7 @@ public class DefaultTreeOperator implements MCMCOperator<Tree> {
         operator.setInputValue(INPUT_TREE, tree);
         // weight="2.0" scaleFactor="0.01"
         operator.setInputValue(SCALE_FACTOR, 0.01); // TODO used to be 0.75 ?
-        operator.setInputValue(INPUT_WEIGHT, getOperatorWeight(tree.getInternalNodeCount()));
+        operator.setInputValue(INPUT_WEIGHT, getOperatorWeight(getInternalNodeCount(tree)));
         operator.initAndValidate();
         operator.setID(tree.getID() + "." + "BICEPSTreeFlex");
         return operator;

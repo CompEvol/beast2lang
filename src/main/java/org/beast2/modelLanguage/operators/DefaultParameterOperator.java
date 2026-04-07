@@ -1,12 +1,9 @@
 package org.beast2.modelLanguage.operators;
 
 import beast.base.core.BEASTInterface;
-import beast.base.core.Function;
 import beast.base.evolution.operator.kernel.BactrianScaleOperator;
 import beast.base.inference.Operator;
 import beast.base.inference.StateNode;
-import beast.base.inference.distribution.ParametricDistribution;
-import beast.base.inference.distribution.Prior;
 import beast.base.inference.operator.BitFlipOperator;
 import beast.base.inference.operator.IntRandomWalkOperator;
 import beast.base.inference.operator.kernel.BactrianDeltaExchangeOperator;
@@ -15,11 +12,9 @@ import beast.base.inference.parameter.BooleanParameter;
 import beast.base.inference.parameter.IntegerParameter;
 import beast.base.inference.parameter.Parameter;
 import beast.base.inference.parameter.RealParameter;
-import beastlabs.math.distributions.WeightedDirichlet;
 import org.beast2.modelLanguage.beast.Beast2AnalysisBuilder;
 
 import java.util.List;
-import java.util.Set;
 
 import static org.beast2.modelLanguage.beast.BEASTObjectID.*;
 import static org.beast2.modelLanguage.operators.MCMCOperator.getOperatorWeight;
@@ -56,7 +51,7 @@ public class DefaultParameterOperator implements MCMCOperator<StateNode> {
         if (!builder.hasOperators(paramID + "Operator")) {
             Operator operator = null;
             try {
-                if (stateNode.getDimension() > 1) {
+                if (stateNode instanceof Parameter<?> p && p.getDimension() > 1) {
                     // TODO DeltaExchange should be added only if the distribution is a Dirichlet
                     // Use Delta Exchange operator for multidimensional parameters
                     operator = getDeltaExchangeOperator(stateNode);
@@ -128,26 +123,13 @@ public class DefaultParameterOperator implements MCMCOperator<StateNode> {
     }
 
     protected Operator getDeltaExchangeOperator(StateNode stateNode) {
+        if (!(stateNode instanceof Parameter<?> param)) {
+            throw new IllegalArgumentException("DeltaExchangeOperator requires a Parameter, got: " + stateNode.getClass());
+        }
         BactrianDeltaExchangeOperator deltaOperator = new BactrianDeltaExchangeOperator();
         deltaOperator.setInputValue(INPUT_PARAMETER, stateNode);
-        deltaOperator.setInputValue("delta", 1.0 / stateNode.getDimension());
-        deltaOperator.setInputValue(INPUT_WEIGHT, getOperatorWeight(stateNode.getDimension() - 1) );
-        // handle WeightedDirichlet with weight vector
-        Set<BEASTInterface> outputs = stateNode.getOutputs();
-        for (BEASTInterface output : outputs) {
-            if (output instanceof Prior prior) {
-                ParametricDistribution x = prior.distInput.get();
-                if (x instanceof WeightedDirichlet weightedDirichlet) { // in BEASTLabs
-// <weights id="L" spec="parameter.IntegerParameter" dimension="3" estimate="false">209 210 210</weights>
-                    Function wL = weightedDirichlet.weightsInput.get();
-                    if ( !(wL instanceof IntegerParameter) )
-                        throw new IllegalArgumentException("WeightedDirichlet weights parameter must be an integer parameter !");
-                    deltaOperator.setInputValue("weightvector", wL);
-
-                    break;
-                }
-            }
-        }
+        deltaOperator.setInputValue("delta", 1.0 / param.getDimension());
+        deltaOperator.setInputValue(INPUT_WEIGHT, getOperatorWeight(param.getDimension() - 1));
         deltaOperator.initAndValidate();
         deltaOperator.setID(stateNode.getID() + ".deltaExchange");
         builder.fine("Added BactrianDeltaExchangeOperator for " + stateNode.getID());

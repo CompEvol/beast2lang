@@ -16,9 +16,7 @@ public class ComponentFilter {
 
     private final FilterReport filterReport = new FilterReport();
 
-    private static final Set<String> EXCLUDED_PACKAGES = Set.of(
-            "beastfx.app"
-    );
+    private static final Set<String> EXCLUDED_PACKAGES = Set.of();
 
     private static final Set<String> INFERENCE_TYPES = Set.of(
             "Logger", "Operator", "MCMC", "OperatorSchedule",
@@ -26,7 +24,7 @@ public class ComponentFilter {
     );
 
     private static final Set<String> GUI_TYPES = Set.of(
-            "LogFile", "TreeFile", "OutFile", "BeautiSubTemplate"
+            "LogFile", "TreeFile", "BeautiSubTemplate"
     );
 
     private static final Set<String> INFERENCE_CLASSES = Set.of(

@@ -190,6 +190,9 @@ public class Beast2AnalysisBuilder {
                 randomTree.setInputValue("constraint", priors);
             }
 
+            // Initialize the random tree so it populates the tree topology
+            randomTree.initAndValidate();
+
             // Add objects to model builder
             modelBuilder.addObjectToModel(popSize.getID(), popSize);
             modelBuilder.addObjectToModel(popModel.getID(), popModel);
